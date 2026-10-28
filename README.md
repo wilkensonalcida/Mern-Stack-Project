@@ -2,8 +2,10 @@
  
 COP 4331C MERN group project. Players join a hosted game, choose teams, and use attack, heal, and block actions to battle enemies.
 
-## Technology
+## Technologies
 
+- React
+- TypeScript
 - Node.js
 - Express
 - MongoDB and Mongoose
