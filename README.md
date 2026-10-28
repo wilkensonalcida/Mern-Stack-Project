@@ -11,6 +11,6 @@ COP 4331C MERN group project. Players join a hosted game, choose teams, and use 
 - JSON Web Tokens (JWT) for authentication
 - Bruno for API testing
 
-- ## Contributers
+## Contributers
 - Nathan Davis - Frontend
 - Wilkenson Alcida - API
