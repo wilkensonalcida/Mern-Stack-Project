@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Forest Crawler</title>
+
+    <link rel="stylesheet" href="./style.css">
+    <script src=".//src/login.js" defer></script>
+    <script src="../backend/middleware/auth.js" defer></script>
+    <script src="./src/gameplay.js" defer></script>
+</head>
+
+<body>
+    <div class="gameContainer">
+
+        <!-- Game display -->
+        <canvas id="gameCanvas"
+                width="800"
+                height="400">
+        </canvas>
+
+        <div class="gui">
+            <div class="playerData">
+                <div class="healthPlayer">
+                    <label for="healthPlayer">Knight HP</label>
+                    <progress id="healthPlayer"
+                              value="100"
+                              max="100">
+                    </progress>
+                </div>
+                <div class="roundInfo">
+                    <h3 id="roundText">Round 1</h3>
+                    <p>
+                         Time remaining:
+                        <span id="roundTimer">5.0</span>s
+                    </p>
+                </div>
+                <div class="actions">
+                    <div id="attack">
+                        <button id="attackButton" type="button">
+                            ATK
+                        </button>
+
+                        <button id="attackClickButton"
+                                class="hidden"
+                                type="button">
+                            CLICK!!!
+                        </button>
+                    </div>
+
+                    <div id="block">
+                        <button id="blockButton" type="button">
+                            BLK
+                        </button>
+                    </div>
+
+                    <div id="heal">
+                        <button id="healButton" type="button">
+                            HEAL
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="enemyData">
+                <label for="healthEnemy">Ghoul HP</label>
+                <progress id="healthEnemy"
+                          value="100"
+                          max="100">
+                </progress>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
