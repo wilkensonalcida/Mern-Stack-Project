@@ -11,6 +11,9 @@ router.param('userId', validateObjectId);
 // POST /api/users - Register a new user (open to everyone)
 router.post('/', users.createUser);
 
+//POST /api/users/login - Login to an existing account
+router.post('/login', users.loginUser);
+
 // Everything below needs a logged-in user, and only their own account
 // GET /api/users/:userId - Fetch one user
 router.get('/:userId', requireAuth, requireSelf, users.getUser);
