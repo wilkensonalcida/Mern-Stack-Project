@@ -32,7 +32,7 @@ app.use(errorHandler);
 // });
 
 if (require.main === module) {
-  const PORT = process.env.PORT || 5001;
+  const PORT = process.env.PORT || 6000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 module.exports = app;
