@@ -16,7 +16,12 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected successfully via Mongoose'))
   .catch((err) => console.error('MongoDB connection error:', err));
-
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'Fight Me Bro API is running.',
+    status: 'success'
+  });
+});
 app.use('/api', apiRouter);
 app.use(notFound);
 app.use(errorHandler);
