@@ -1,3 +1,4 @@
+
 name: Deploy to Droplet
 
 on:
@@ -23,22 +24,20 @@ jobs:
       - name: Deploy
         run: |
           ssh -i ~/.ssh/deploy_key \
-            "${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}" '
-              set -e
+            ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} \
+            "set -e
+             cd /root/Mern-Stack-Project
 
-              cd /root/Mern-Stack-Project
+             git fetch origin main
+             git reset --hard origin/main
 
-              git fetch origin main
-              git reset --hard origin/main
+             cd backend
+             npm ci
 
-              cd backend
-              npm ci
+             cd ../frontend
+             npm ci
+             npm run build
 
-              cd ../frontend
-              npm ci
-              npm run build
+             pm2 restart game-api
 
-              pm2 restart game-api
-
-              echo "Deployment complete"
-            '
+             echo 'Deployment complete'"
