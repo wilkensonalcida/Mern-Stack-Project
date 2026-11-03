@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import LoginPage from './pages/LoginPage'
 
 const container = document.getElementById('root')
 
@@ -8,4 +9,4 @@ if (!container) {
 
 const root = createRoot(container)
 
-root.render(<h1>Fight Me Bro</h1>)
+root.render(<LoginPage />)
