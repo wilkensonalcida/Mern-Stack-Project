@@ -1,47 +1,12 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport"
-              content="width=device-width, initial-scale=1.0">
-    
-        <title>Forest Crawler</title>
-    
-        <link rel="stylesheet" href="./style.css">
-        <script src="./src/login.js" defer></script>
-        <script src="../backend/middleware/auth.js" defer></script>
-    </head>
-    <body>
-        <div class = "login-container">
-            <div class="login-title">Login to Forest Crawler</div>
-        </div>
-        <form id="login-form" onsubmit="event.preventDefault(); doLogin();">
-            <div class="login-form">
-                <input class="form-text"
-                 type="text" 
-                 id="username" 
-                 name="username" 
-                 placeholder="Username" 
-                 required>
-                <input class="form-text" 
-                type="text" 
-                id="password" 
-                name="password" 
-                placeholder="Password" 
-                required>
-                <div class="login-row">
-                <label class="remember-label" for="remember">
-                    <input class="remember-input" type="checkbox" id="remember" name="remember">
-                    Remember me!
-                </label>
-            </div>
-            <p class="login-error" id="login-error" role="alert" hidden></p>
-            <button class="btn-primary" type="submit">Login</button>
-            <div class="login-divider">
-                <span>OR</span>
-            </div>
-            <a class="btn-primary" href="signup.html">Sign Up</a>
-            </div>
-        </form>
-    </body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fight Me Bro</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
