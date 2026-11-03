@@ -3,7 +3,7 @@ import { useParams } from 'react-router'
 import PlayerLobby from '../components/PlayerLobby'
 
 const sampleSession = {
-  phase: 'lobby',
+  gameState: 'lobby',
   player: { id: 'player-1', name: 'Nathan' },
   teams: [
     {
@@ -64,7 +64,7 @@ export default function PlayPage() {
 
   return (
     <main>
-      {sampleSession.phase === 'lobby' && (
+      {sampleSession.gameState === 'lobby' && (
         <PlayerLobby
           sessionCode={sessionCode ?? ''}
           player={player}
