@@ -11,6 +11,8 @@ export default function JoinPage() {
         event.preventDefault()
         const formData = new FormData(event.currentTarget)
         const sessionCode = String(formData.get('sessionCode') ?? '').trim()
+        // TODO (API): Check that this session exists and accepts players before navigating.
+        // Show a failed lookup on this form. Player registration happens after nickname entry in PlayPage.
         if (sessionCode) navigate(`/play/${encodeURIComponent(sessionCode)}`)
       }}>
         <div>
