@@ -4,12 +4,14 @@ import JoinPage from './pages/JoinPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import HostPage from './pages/HostPage'
+import PlayPage from './pages/PlayPage'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/join" element={<JoinPage />} />
+      <Route path="/play/:sessionCode" element={<PlayPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/host" element={<HostPage />} />

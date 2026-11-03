@@ -1,29 +1,27 @@
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 
 export default function JoinPage() {
+  const navigate = useNavigate()
+
   return (
     <main>
       <h1>Join a game</h1>
-      <p>Enter the PIN from your host and choose a nickname.</p>
-      <form onSubmit={(event) => event.preventDefault()}>
+      <p>Enter the session code from your host.</p>
+      <form onSubmit={(event) => {
+        event.preventDefault()
+        const formData = new FormData(event.currentTarget)
+        const sessionCode = String(formData.get('sessionCode') ?? '').trim()
+        if (sessionCode) navigate(`/play/${encodeURIComponent(sessionCode)}`)
+      }}>
         <div>
-          <label htmlFor="game-pin">Game PIN</label>
+          <label htmlFor="session-code">Session code</label>
           <input
             type="text"
-            id="game-pin"
-            name="pin"
+            id="session-code"
+            name="sessionCode"
             autoComplete="off"
             spellCheck={false}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="player-nickname">Nickname</label>
-          <input
-            type="text"
-            id="player-nickname"
-            name="nickname"
-            autoComplete="nickname"
+            pattern=".*\S.*"
             required
           />
         </div>
