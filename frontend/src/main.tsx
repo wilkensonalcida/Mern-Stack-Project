@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
-import LoginPage from './pages/LoginPage'
+import { BrowserRouter } from 'react-router'
+import App from './App'
 
 const container = document.getElementById('root')
 
@@ -9,4 +10,8 @@ if (!container) {
 
 const root = createRoot(container)
 
-root.render(<LoginPage />)
+root.render(
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>,
+)

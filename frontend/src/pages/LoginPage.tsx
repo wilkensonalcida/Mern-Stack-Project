@@ -1,8 +1,10 @@
+import { Link } from 'react-router'
+
 export default function LoginPage() {
   return (
     <>
       <div className="login-container">
-        <h1 className="login-title">Login to Forest Crawler</h1>
+        <h1 className="login-title">Login to Fight Me Bro!</h1>
       </div>
       <form id="login-form" onSubmit={(event) => event.preventDefault()}>
         <div className="login-form">
@@ -32,12 +34,11 @@ export default function LoginPage() {
               Remember me!
             </label>
           </div>
-          <p>Login and sign up are not available yet.</p>
-          <button className="btn-primary" type="submit" disabled>Login</button>
+          <button className="btn-primary" type="submit">Login</button>
           <div className="login-divider">
             <span>OR</span>
           </div>
-          <button className="btn-primary" type="button" disabled>Sign Up</button>
+          <Link className="btn-primary" to="/register">Sign Up</Link>
         </div>
       </form>
     </>
