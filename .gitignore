@@ -1,3 +1,5 @@
 node_modules/
 .env
 api-tests/
+.DS_Store
+frontend/dist/
