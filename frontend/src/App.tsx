@@ -3,6 +3,7 @@ import LandingPage from './pages/LandingPage'
 import JoinPage from './pages/JoinPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import HostPage from './pages/HostPage'
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
       <Route path="/join" element={<JoinPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/host" element={<HostPage />} />
     </Routes>
   )
 }

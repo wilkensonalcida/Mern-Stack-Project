@@ -47,7 +47,7 @@ async function doLogin(){
                 sessionStorage.setItem("authToken", jsonObject.token);
 
                 saveCookie();
-                window.location.href = "lobby.html";
+                window.location.href = "/host";
             } else {
                 showLoginError(xhr);
             }
