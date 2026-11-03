@@ -7,7 +7,7 @@ const sampleLobby = {
       players: [
         { id: 'player-1', name: 'Nathan' },
         { id: 'player-2', name: 'Nate' },
-        { id: 'player-3', name: 'Nathaniel' },
+        { id: 'player-3', name: 'Nathaniel Bob' },
       ],
     },
     {
@@ -15,8 +15,8 @@ const sampleLobby = {
       name: 'Blue team',
       players: [
         { id: 'player-4', name: 'Nathanael' },
-        { id: 'player-5', name: 'Nat' },
-        { id: 'player-6', name: 'Nathy' },
+        { id: 'player-5', name: 'Nathan Bobby Brown' },
+        { id: 'player-6', name: 'Nootu' },
       ],
     },
   ],
