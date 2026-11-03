@@ -5,24 +5,24 @@ const sampleLobby = {
       id: 'red',
       name: 'Red team',
       players: [
-        { id: 'player-1', name: 'Jordan' },
-        { id: 'player-2', name: 'Taylor' },
-        { id: 'player-3', name: 'Morgan' },
+        { id: 'player-1', name: 'Nathan' },
+        { id: 'player-2', name: 'Nate' },
+        { id: 'player-3', name: 'Nathaniel' },
       ],
     },
     {
       id: 'blue',
       name: 'Blue team',
       players: [
-        { id: 'player-4', name: 'Alex' },
-        { id: 'player-5', name: 'Sam' },
-        { id: 'player-6', name: 'Casey' },
+        { id: 'player-4', name: 'Nathanael' },
+        { id: 'player-5', name: 'Nat' },
+        { id: 'player-6', name: 'Nathy' },
       ],
     },
   ],
   unassignedPlayers: [
-    { id: 'player-7', name: 'Riley' },
-    { id: 'player-8', name: 'Jamie' },
+    { id: 'player-7', name: 'Nathan Jr.' },
+    { id: 'player-8', name: 'Nate the Great' },
   ],
 }
 
