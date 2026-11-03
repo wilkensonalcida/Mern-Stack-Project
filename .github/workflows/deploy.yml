@@ -22,8 +22,9 @@ jobs:
 
       - name: Deploy
         run: |
-          ssh -i ~/.ssh/deploy_key \"${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}" '
-            set -e
+          ssh -i ~/.ssh/deploy_key \
+            "${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}" '
+              set -e
 
               cd /root/Mern-Stack-Project
 
