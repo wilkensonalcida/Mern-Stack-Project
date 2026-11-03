@@ -13,7 +13,7 @@ app.use(express.json());
 // Connect to Database
 const url = process.env.MONGODB_URI || 'mongodb://localhost:27017/TestDB';
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(url)
   .then(() => console.log('MongoDB connected successfully via Mongoose'))
   .catch((err) => console.error('MongoDB connection error:', err));
 app.get('/', (req, res) => {
@@ -32,7 +32,7 @@ app.use(errorHandler);
 // });
 
 if (require.main === module) {
-  const PORT = process.env.PORT || 6000;
+  const PORT = process.env.PORT || 5001;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 module.exports = app;
