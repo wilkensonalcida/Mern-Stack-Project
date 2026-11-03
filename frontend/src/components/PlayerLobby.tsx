@@ -37,9 +37,9 @@ export default function PlayerLobby({ sessionCode, player, teams }: PlayerLobbyP
             ) : (
               <p>No players have selected this team yet.</p>
             )}
-            {/* TODO (API): Add a callback to PlayPage that requests this team for the current player.
-                The server must validate the player and whether team changes are allowed.
-                Use the confirmed roster for selection and counts; show a failed request here. */}
+            {/* TODO (API): Have PlayPage send this team choice to the server.
+                Check on the server that this player can join the team before updating the list.
+                Show an error here if the request fails. */}
             <button type="button" aria-pressed={selectedTeam?.id === team.id}>
               Join {team.name.toLowerCase()}
             </button>
@@ -48,8 +48,8 @@ export default function PlayerLobby({ sessionCode, player, teams }: PlayerLobbyP
       </section>
 
       <p role="status">Waiting for the host to start the game.</p>
-      {/* TODO (API): Add a callback to leave the session, then clear the local player identity
-          and return to /join after success. Show an error here if leaving fails. */}
+      {/* TODO (API): Ask the server to remove this player from the session.
+          After success, clear the saved player and return to /join. If leaving fails, show an error here. */}
       <button type="button" aria-describedby="lobby-preview">Leave lobby</button>
     </>
   )
