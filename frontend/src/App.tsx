@@ -74,7 +74,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={ user ? <LandingPage onLogout={handleLogout} /> : <LoginPage onLogin={handleAuth} />} />
-      <Route path="/login" element={ user ? Navigate to="/" replace/> : <LoginPage onLogin={handleAuth} /> } />
+      <Route path="/login" element={ user ? <Navigate to="/" replace /> : <LoginPage onLogin={handleAuth} /> } />
       <Route path="/register" element={ user ? <Navigate to "/" replace /> : <RegisterPage onRegister={handleAuth} /> } />
       <Route path="/join" element={<JoinPage />} />
       <Route path="/play/:sessionCode" element={<PlayPage />} />
