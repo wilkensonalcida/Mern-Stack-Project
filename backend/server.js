@@ -17,19 +17,15 @@ mongoose
   .connect(url)
   .then(() => console.log('MongoDB connected successfully via Mongoose'))
   .catch((err) => console.error('MongoDB connection error:', err));
-app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'Fight Me Bro API is running.',
-    status: 'success'
-  });
-});
+
 app.use('/api', apiRouter);
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-app.get('/', (req, res) => {
+const frontendPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
+app.get('/.*/', (req, res, next) => {
   if(req.path.startsWith('/api/')) {
     return next();
   }
-  res.sendFile(path.join(__dirname, '../frontend/dist'));
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 app.use(notFound);
 app.use(errorHandler);
