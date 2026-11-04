@@ -1,9 +1,14 @@
 import { Link } from 'react-router'
 
-export default function LandingPage() {
+interface LandingPageProps {
+  onLogout: () => void
+}
+
+export default function LandingPage({ onLogout }: LandingPageProps) {
   return (
     <main>
       <h1>Fight Me Bro!</h1>
+       <button onClick={onLogout}>Log out</button>
       <section aria-labelledby="join-heading">
         <h2 id="join-heading">Join a game</h2>
         <p>Have a game PIN? Join without an account.</p>
