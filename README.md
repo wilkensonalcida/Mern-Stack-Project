@@ -24,6 +24,7 @@ npm run dev
 ```
 
 Open the local URL printed by Vite.
+Run `npm run typecheck` in `frontend` to check the TypeScript code for errors.
 The frontend uses React Router for these pages:
 
 | Route | Page | Purpose |
