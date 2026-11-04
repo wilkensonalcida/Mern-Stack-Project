@@ -36,7 +36,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       onLogin(data)
     } catch (err) {
-      setError(err instanceofError ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setLoading(false)
     }
