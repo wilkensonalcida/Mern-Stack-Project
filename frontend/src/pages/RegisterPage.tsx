@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { useState } from 'react'
 
 interface RegisterPageProps {
-  onRegister: (data: { token: string: user { _id: string } }) => void
+  onRegister: (data: { token: string; user: { _id: string } }) => void
 }
 
 export default function RegisterPage() {
