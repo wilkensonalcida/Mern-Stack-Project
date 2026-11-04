@@ -49,7 +49,7 @@ export default function App() {
         const data = await response.json()
         setUser(data)
       } catch (err) {
-        console.error('Could not restore login:' error)
+        console.error('Could not restore login:', error)
         localStorage.removeItem('token')
         localStorage.removeItem('user')
       } finally {
