@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const path = require('path');
 require('dotenv').config();
 
 const apiRouter = require('./routes');
@@ -23,6 +24,13 @@ app.get('/', (req, res) => {
   });
 });
 app.use('/api', apiRouter);
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+app.get('/', (req, res) => {
+  if(req.path.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(path.join(__dirname, '../frontend/dist'));
+});
 app.use(notFound);
 app.use(errorHandler);
 
