@@ -5,10 +5,11 @@ services:
       dockerfile: Dockerfile
     container_name: mern60_backend
     restart: unless-stopped
+    # PORT comes from the .env file next to this one, or 5001 when it's unset
     ports:
-      - "6000:6000"
+      - "${PORT:-5001}:${PORT:-5001}"
     environment:
-      - PORT=6000
+      - PORT=${PORT:-5001}
       - NODE_ENV=development
       - MONGODB_URI=mongodb://mongodb:27017/TestDB
       # Read from the .env file next to this one (copy .env.example to .env)
