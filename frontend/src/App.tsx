@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react'
 import { Route, Routes, Navigate } from 'react-router'
 
@@ -12,101 +13,122 @@ interface AuthData {
   token: string
   user: {
     _id: string
+    login?: string
   }
 }
+
 interface User {
   _id: string
   login: string
-  firstname?: string
+  firstName?: string
   lastName?: string
 }
 
 export default function App() {
-  const[user, setUser] = useState<User | user>(null)
-  const[loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
+  // Restore the user's login when the application opens.
   useEffect(() => {
     async function checkLogin() {
-      const token = locaclStorage.getItem('token')
+      const token = localStorage.getItem('token')
       const savedUser = localStorage.getItem('user')
 
-      if(!token || !savedUser) {
+      if (!token || !savedUser) {
         setLoading(false)
         return
       }
+
       try {
         const storedUser = JSON.parse(savedUser)
 
-        const response = await fetch(`api/users/${storedUser._id}`, {
+        const response = await fetch(`/api/users/${storedUser._id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
-        if(!response.ok){
+
+        if (!response.ok) {
           throw new Error('Login expired')
         }
 
         const data = await response.json()
         setUser(data)
       } catch (err) {
-        console.error('Could not restore login:', error)
+        console.error('Could not restore login:', err)
         localStorage.removeItem('token')
         localStorage.removeItem('user')
+        setUser(null)
       } finally {
         setLoading(false)
       }
     }
+
     checkLogin()
   }, [])
 
-  function handleAuth(data : AuthData) {
+  // Save the user's login after registration or successful login.
+  function handleAuth(data: AuthData) {
     localStorage.setItem('token', data.token)
     localStorage.setItem('user', JSON.stringify(data.user))
     setUser(data.user as User)
   }
+
+  // Log the user out.
   function handleLogout() {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    setUser(null)
   }
-  if(loading) {
+
+  if (loading) {
     return <p>Loading...</p>
   }
+
   return (
     <Routes>
-      <Routes>
       <Route
-  path="/"
-  element={
-    user ? (
-      <LandingPage onLogout={handleLogout} />
-    ) : (
-      <LoginPage onLogin={handleAuth} />
-    )
-  }
-/>
+        path="/"
+        element={
+          user ? (
+            <LandingPage onLogout={handleLogout} />
+          ) : (
+            <LoginPage onLogin={handleAuth} />
+          )
+        }
+      />
+
       <Route
-  path="/login"
-  element={
-    user ? (
-      <Navigate to="/" replace />
-    ) : (
-      <LoginPage onLogin={handleAuth} />
-    )
-  }
-/>
-     <Route
-  path="/register"
-  element={
-    user ? (
-      <Navigate to="/" replace />
-    ) : (
-      <RegisterPage onRegister={handleAuth} />
-    )
-  }
-/>
+        path="/login"
+        element={
+          user ? (
+            <Navigate to="/" replace />
+          ) : (
+            <LoginPage onLogin={handleAuth} />
+          )
+        }
+      />
+
+      <Route
+        path="/register"
+        element={
+          user ? (
+            <Navigate to="/" replace />
+          ) : (
+            <RegisterPage onRegister={handleAuth} />
+          )
+        }
+      />
+
       <Route path="/join" element={<JoinPage />} />
       <Route path="/play/:sessionCode" element={<PlayPage />} />
-      <Route path="/host" element={<HostPage />} />
+
+      <Route
+        path="/host"
+        element={
+          user ? <HostPage /> : <Navigate to="/login" replace />
+        }
+      />
     </Routes>
   )
 }
