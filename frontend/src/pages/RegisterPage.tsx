@@ -1,15 +1,17 @@
+
 import { Link } from 'react-router'
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 
 interface RegisterPageProps {
   onRegister: (data: { token: string; user: { _id: string } }) => void
 }
 
-export default function RegisterPage() {
+export default function RegisterPage({ onRegister }: RegisterPageProps) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(event : React.FormEvent<HTMLFormElement>){
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
 
@@ -18,14 +20,16 @@ export default function RegisterPage() {
     const password = formData.get('password')
     const confirmPassword = formData.get('confirmPassword')
 
-    if(password !== confirmPassowrd) {
+    if (password !== confirmPassword) {
       setError('Passwords do not match!')
       return
     }
+
     setLoading(true)
-    try{
+
+    try {
       const response = await fetch('/api/users', {
-        method: POST,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -37,20 +41,23 @@ export default function RegisterPage() {
 
       const data = await response.json()
 
-      if(!response.ok) {
+      if (!response.ok) {
         throw new Error(data.error || 'Registration failed')
       }
+
       onRegister(data)
     } catch (error) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(error instanceof Error ? error.message : 'Something went wrong')
     } finally {
       setLoading(false)
     }
   }
+
   return (
     <main>
       <h1>Create an account</h1>
       <p>Choose a username and password. All fields are required.</p>
+
       <form onSubmit={handleSubmit}>
         <div>
           <label htmlFor="register-username">Username</label>
@@ -62,6 +69,7 @@ export default function RegisterPage() {
             required
           />
         </div>
+
         <div>
           <label htmlFor="register-password">Password</label>
           <input
@@ -72,6 +80,7 @@ export default function RegisterPage() {
             required
           />
         </div>
+
         <div>
           <label htmlFor="register-confirm-password">Confirm password</label>
           <input
@@ -82,12 +91,17 @@ export default function RegisterPage() {
             required
           />
         </div>
-        {error && <p role="alert">{error}</p>
+
+        {error && <p role="alert">{error}</p>}
+
         <button type="submit" disabled={loading}>
-        {loading ? 'Creating account...' : 'Create account'}
+          {loading ? 'Creating account...' : 'Create account'}
         </button>
       </form>
-      <p>Already have an account? <Link to="/login">Log in</Link></p>
+
+      <p>
+        Already have an account? <Link to="/login">Log in</Link>
+      </p>
     </main>
   )
 }
