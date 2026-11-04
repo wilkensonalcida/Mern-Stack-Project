@@ -1,6 +1,46 @@
 import { Link } from 'react-router'
+import { useState } from 'react'
 
-export default function LoginPage() {
+interface LoginPageProps {
+  onLogin: (data: { roken: string; user: { _id: string } }) => void
+}
+
+export default function LoginPage({ onLogin }: LoginPageProps) {
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSerror('')
+    setLoading(true)
+
+    const formData = new FormData(event.currentTarget)
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: POST,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          login: formData.get('username'),
+          password: formData.get('password'),
+        })
+      })
+
+      const data = await response.json()
+
+      if(!response.ok){
+        throw new Error(data.error || 'Login failed')
+      }
+
+      onLogin(data)
+    } catch (err) {
+      setError(err instanceofError ? err.message : 'Something went wrong')
+    } finally {
+      setLoading(false)
+    }
+  }
   return (
     <>
       <div className="login-container">
