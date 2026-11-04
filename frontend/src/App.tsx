@@ -10,7 +10,7 @@ import PlayPage from './pages/PlayPage'
 
 interface AuthData {
   token: string
-  user {
+  user: {
     _id: string
   }
 }
