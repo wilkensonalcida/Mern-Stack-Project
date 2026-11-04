@@ -14,11 +14,11 @@ RUN npm install
 COPY . .
 
 # Expose API port
-EXPOSE 5000
+EXPOSE 5001
 
 # Set environment variables
 ENV NODE_ENV=development
-ENV PORT=5000
+ENV PORT=5001
 
 # Run the application using nodemon in development
 CMD ["npm", "run", "dev"]

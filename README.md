@@ -37,7 +37,8 @@ The frontend uses React Router for these pages:
 Page components live in `frontend/src/pages/`, and routes are defined in `frontend/src/App.tsx`.
 The forms collect input and prevent a page reload on submit; they do not yet send API requests or enter a game.
 Password confirmation checks, authentication state, and navigation after successful submission are integration work.
-Vite forwards `/api` requests to `http://127.0.0.1:6000` during development.
+Vite forwards `/api` requests to the API during development, on the port that `PORT` sets in `backend/.env`, or 5001 when it's unset.
+`backend/.env.example` lists the API's settings; copy it to `backend/.env` and fill in `JWT_SECRET`.
 The host lobby is a public structural preview with sample data and Start game and Cancel match controls that have no actions connected.
 Host authentication and live session behavior are not connected.
 
