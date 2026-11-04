@@ -5,7 +5,10 @@ COP 4331C MERN group project. Players join a hosted game, choose teams, and use 
 ## Technologies
 
 - React
-- TypeScript
+- React Router for page routes
+- TypeScript for type checking swag
+- Vite for the frontend dev server and build
+- Bootstrap using its prebuilt CSS
 - Node.js
 - Express
 - MongoDB and Mongoose
@@ -23,7 +26,6 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite.
 Run `npm run typecheck` in `frontend` to check the TypeScript code for errors.
 The frontend uses React Router for these pages:
 
@@ -36,10 +38,7 @@ The frontend uses React Router for these pages:
 | `/host` | `HostPage.tsx` | Preview the host lobby with sample players and a session code |
 
 Page components live in `frontend/src/pages/`, and routes are defined in `frontend/src/App.tsx`.
-The forms collect input and prevent a page reload on submit; they do not yet send API requests or enter a game.
-Password confirmation checks, authentication state, and navigation after successful submission are integration work.
 Vite forwards `/api` requests to the API during development, on the port that `PORT` sets in `backend/.env`, or 5001 when it's unset.
-`backend/.env.example` lists the API's settings; copy it to `backend/.env` and fill in `JWT_SECRET`.
 The host lobby is a public structural preview with sample data and Start game and Cancel match controls that have no actions connected.
 Host authentication and live session behavior are not connected.
 
