@@ -46,3 +46,6 @@ Host authentication and live session behavior are not connected.
 - Nathan Davis - Frontend
 - Wilkenson Alcida - API
 - Aidan Oien - API
+
+## AI Disclosure 
+Email Verification
