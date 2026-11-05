@@ -24,7 +24,7 @@ exports.sendVerificationEmail = async (email, token) => {
         from: EMAIL_FROM.trim(),
         to: [email],
         subject: 'Verify your Fight Me Bro email',
-        text: `Open this link and select Verify email:\n${url.href}\n\nThis link expires in 30 minutes. If you did not request this, ignore this email.`
+        text: `Open this link to verify your email:\n${url.href}\n\nThis link expires in 30 minutes. If you did not request this, ignore this email.`
       })
     });
   } catch {

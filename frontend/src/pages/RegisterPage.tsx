@@ -1,13 +1,16 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { register, type SignupResult } from '../api/auth'
+import { register, type LoginResult } from '../api/auth'
 import PageLayout from '../components/PageLayout'
+import VerifyWait from '../components/VerifyWait'
 
-export default function RegisterPage() {
+type Waiting = { loginName: string; password: string; email?: string; emailSent: boolean }
+
+export default function RegisterPage({ onLogin }: { onLogin: (result: LoginResult, remember: boolean) => void }) {
   const pending = useRef(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [result, setResult] = useState<SignupResult | null>(null)
+  const [waiting, setWaiting] = useState<Waiting | null>(null)
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (pending.current) return
@@ -18,16 +21,24 @@ export default function RegisterPage() {
       setError('Passwords do not match')
       return
     }
+    const loginName = String(form.get('login') || '')
     pending.current = true
     setBusy(true)
     try {
-      setResult(await register({
+      const result = await register({
         firstName: String(form.get('firstName') || ''),
         lastName: String(form.get('lastName') || ''),
-        login: String(form.get('login') || ''),
+        login: loginName,
         email: String(form.get('email') || ''),
         password
-      }))
+      })
+      // Waits on this page until the emailed link is clicked, then logs in without asking again.
+      setWaiting({
+        loginName,
+        password,
+        email: result.user.email,
+        emailSent: result.emailVerification.delivery === 'sent'
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to register. Please try again.')
     } finally {
@@ -35,25 +46,11 @@ export default function RegisterPage() {
       setBusy(false)
     }
   }
-  if (result) {
-    const sent = result.emailVerification.delivery === 'sent'
-    return (
-      <PageLayout>
-        <section className="card" aria-labelledby="register-heading">
-          <div className="card-body p-4">
-            <h1 className="h4 card-title" id="register-heading">{sent ? 'Check your email' : 'Account created'}</h1>
-            <p role="status">
-              {sent
-                ? <>We sent a verification link to <strong>{result.user.email ?? 'your email'}</strong>.</>
-                : "We couldn't send your verification email."}
-            </p>
-            <Link className="btn btn-dark w-100" to="/">Log in</Link>
-            <p className="mt-3 mb-0 text-center">No email? <Link to="/verify-email">Send a new link</Link></p>
-          </div>
-        </section>
-      </PageLayout>
-    )
-  }
+  if (waiting) return (
+    <PageLayout>
+      <VerifyWait {...waiting} remember={false} onLogin={onLogin} />
+    </PageLayout>
+  )
 
   return (
     <PageLayout>

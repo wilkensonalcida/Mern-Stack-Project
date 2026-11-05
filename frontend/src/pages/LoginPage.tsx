@@ -3,45 +3,49 @@ import { Link } from 'react-router'
 import { AuthError, login, type LoginResult } from '../api/auth'
 import OrDivider from '../components/OrDivider'
 import PageLayout from '../components/PageLayout'
+import VerifyWait from '../components/VerifyWait'
+
+type Waiting = { loginName: string; password: string; remember: boolean }
 
 export default function LoginPage({ onLogin }: { onLogin: (result: LoginResult, remember: boolean) => void }) {
   const pending = useRef(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [needsVerification, setNeedsVerification] = useState(false)
+  const [waiting, setWaiting] = useState<Waiting | null>(null)
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (pending.current) return
     const form = new FormData(event.currentTarget)
+    const loginName = String(form.get('username') || '')
+    const password = String(form.get('password') || '')
+    const remember = form.get('remember') === 'on'
     pending.current = true
     setBusy(true)
     setError('')
-    setNeedsVerification(false)
     try {
-      const result = await login(String(form.get('username') || ''), String(form.get('password') || ''))
-      onLogin(result, form.get('remember') === 'on')
+      const result = await login(loginName, password)
+      onLogin(result, remember)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to log in. Please try again.')
-      setNeedsVerification(err instanceof AuthError && err.status === 403)
+      // The password was right but the email isn't verified, so wait for the emailed link instead.
+      if (err instanceof AuthError && err.status === 403) setWaiting({ loginName, password, remember })
+      else setError(err instanceof Error ? err.message : 'Unable to log in. Please try again.')
     } finally {
       pending.current = false
       setBusy(false)
     }
   }
+  if (waiting) return (
+    <PageLayout>
+      <VerifyWait {...waiting} onLogin={onLogin} />
+    </PageLayout>
+  )
   return (
     <PageLayout>
       <section className="card" aria-labelledby="host-heading">
         <div className="card-body p-4">
           <h2 className="h4 card-title" id="host-heading">Host a game</h2>
           <p className="text-body-secondary">You need an account to host.</p>
-          {error && (
-            <div className="alert alert-secondary" role="alert">
-              <p className="mb-0"><strong>Login failed.</strong> {error}</p>
-              {needsVerification && (
-                <p className="mb-0 mt-2">No email? <Link to="/verify-email">Send a new link</Link></p>
-              )}
-            </div>
-          )}
+          {error && <div className="alert alert-secondary" role="alert"><strong>Login failed.</strong> {error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
               <label className="form-label" htmlFor="username">Username</label>
