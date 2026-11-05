@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { register, type SignupResult } from '../api/auth'
+import PageLayout from '../components/PageLayout'
 
 export default function RegisterPage() {
   const pending = useRef(false)
@@ -34,45 +35,64 @@ export default function RegisterPage() {
       setBusy(false)
     }
   }
+  if (result) {
+    const sent = result.emailVerification.delivery === 'sent'
+    return (
+      <PageLayout>
+        <section className="card" aria-labelledby="register-heading">
+          <div className="card-body p-4">
+            <h1 className="h4 card-title" id="register-heading">{sent ? 'Check your email' : 'Account created'}</h1>
+            <p role="status">
+              {sent
+                ? <>We sent a verification link to <strong>{result.user.email ?? 'your email'}</strong>.</>
+                : "We couldn't send your verification email."}
+            </p>
+            <Link className="btn btn-dark w-100" to="/">Log in</Link>
+            <p className="mt-3 mb-0 text-center">No email? <Link to="/verify-email">Send a new link</Link></p>
+          </div>
+        </section>
+      </PageLayout>
+    )
+  }
+
   return (
-    <main>
-      <h1>Create an account</h1>
-      {result ? <>
-        <p role="status">{result.message}</p>
-        <p>{result.emailVerification.message}</p>
-        <p><Link to="/verify-email">Request another verification email</Link></p>
-      </> : <>
-        <p>Enter your details. Verify your email before logging in.</p>
-        <form onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="register-first-name">First name</label>
-            <input id="register-first-name" name="firstName" autoComplete="given-name" required />
-          </div>
-          <div>
-            <label htmlFor="register-last-name">Last name</label>
-            <input id="register-last-name" name="lastName" autoComplete="family-name" required />
-          </div>
-          <div>
-            <label htmlFor="register-email">Email</label>
-            <input id="register-email" name="email" type="email" autoComplete="email" required />
-          </div>
-          <div>
-            <label htmlFor="register-username">Username</label>
-            <input id="register-username" name="login" autoComplete="username" required />
-          </div>
-          <div>
-            <label htmlFor="register-password">Password</label>
-            <input id="register-password" name="password" type="password" autoComplete="new-password" required />
-          </div>
-          <div>
-            <label htmlFor="register-confirm-password">Confirm password</label>
-            <input id="register-confirm-password" name="confirmPassword" type="password" autoComplete="new-password" required />
-          </div>
-          {error && <p role="alert">{error}</p>}
-          <button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
-        </form>
-      </>}
-      <p>Already have an account? <Link to="/login">Log in</Link></p>
-    </main>
+    <PageLayout>
+      <section className="card" aria-labelledby="register-heading">
+        <div className="card-body p-4">
+          <h1 className="h4 card-title mb-3" id="register-heading">Create Account</h1>
+          <form onSubmit={handleSubmit}>
+            <div className="row g-2 mb-2">
+              <div className="col-6">
+                <label className="form-label mb-1" htmlFor="register-first-name">First name</label>
+                <input className="form-control" id="register-first-name" name="firstName" autoComplete="given-name" required />
+              </div>
+              <div className="col-6">
+                <label className="form-label mb-1" htmlFor="register-last-name">Last name</label>
+                <input className="form-control" id="register-last-name" name="lastName" autoComplete="family-name" required />
+              </div>
+            </div>
+            <div className="mb-2">
+              <label className="form-label mb-1" htmlFor="register-email">Email</label>
+              <input className="form-control" id="register-email" name="email" type="email" autoComplete="email" required />
+            </div>
+            <div className="mb-2">
+              <label className="form-label mb-1" htmlFor="register-username">Username</label>
+              <input className="form-control" id="register-username" name="login" autoComplete="username" required />
+            </div>
+            <div className="mb-2">
+              <label className="form-label mb-1" htmlFor="register-password">Password</label>
+              <input className="form-control" id="register-password" name="password" type="password" autoComplete="new-password" required />
+            </div>
+            <div className="mb-3">
+              <label className="form-label mb-1" htmlFor="register-confirm-password">Confirm password</label>
+              <input className="form-control" id="register-confirm-password" name="confirmPassword" type="password" autoComplete="new-password" required />
+            </div>
+            {error && <div className="alert alert-secondary" role="alert">{error}</div>}
+            <button className="btn btn-dark w-100" type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Register'}</button>
+          </form>
+          <p className="mt-3 mb-0 text-center">Have an account? <Link to="/">Log in</Link></p>
+        </div>
+      </section>
+    </PageLayout>
   )
 }

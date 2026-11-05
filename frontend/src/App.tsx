@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Route, Routes, Navigate } from 'react-router'
-import LandingPage from './pages/LandingPage'
+import DashboardPage from './pages/DashboardPage'
 import JoinPage from './pages/JoinPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -8,6 +8,7 @@ import HostPage from './pages/HostPage'
 import PlayPage from './pages/PlayPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import { AuthError, type LoginResult, type User } from './api/auth'
+import PageLayout from './components/PageLayout'
 
 function clearStoredLogin() {
   for (const name of ['localStorage', 'sessionStorage'] as const) {
@@ -72,8 +73,8 @@ export default function App() {
         setUser(data)
       } catch (error) {
         if (active) setRestoreError(error instanceof Error && error.name !== 'AbortError'
-          ? 'Unable to restore your login. Check the connection and retry.'
-          : 'Checking your login timed out. Please retry.')
+          ? 'Check your connection.'
+          : 'The server took too long to answer.')
       } finally {
         window.clearTimeout(timeout)
         if (active) setLoading(false)
@@ -104,18 +105,29 @@ export default function App() {
     setRestoreError('')
   }
 
-  if (loading) return <p>Loading...</p>
+  if (loading) return (
+    <PageLayout>
+      <p className="text-body-secondary text-center mb-0" role="status">Loading…</p>
+    </PageLayout>
+  )
   if (restoreError) return (
-    <main>
-      <p role="alert">{restoreError}</p>
-      <button type="button" onClick={() => setRestoreAttempt(value => value + 1)}>Retry</button>
-      <button type="button" onClick={handleLogout}>Continue signed out</button>
-    </main>
+    <PageLayout>
+      <section className="card" aria-labelledby="restore-heading">
+        <div className="card-body p-4">
+          <h1 className="h4 card-title" id="restore-heading">Can't reach the server</h1>
+          <p role="alert">{restoreError}</p>
+          <button className="btn btn-dark w-100" type="button" onClick={() => setRestoreAttempt(value => value + 1)}>Reconnect</button>
+          <p className="mt-3 mb-0 text-center">
+            <button className="btn btn-link p-0 align-baseline" type="button" onClick={handleLogout}>Log out</button>
+          </p>
+        </div>
+      </section>
+    </PageLayout>
   )
 
   return (
     <Routes>
-      <Route path="/" element={user ? <LandingPage onLogout={handleLogout} /> : <LoginPage onLogin={handleAuth} />} />
+      <Route path="/" element={user ? <DashboardPage user={user} onLogout={handleLogout} /> : <LoginPage onLogin={handleAuth} />} />
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage onLogin={handleAuth} />} />
       <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
