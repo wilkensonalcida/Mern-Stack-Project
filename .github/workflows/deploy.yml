@@ -38,6 +38,17 @@ jobs:
              npm ci
              npm run build
 
+             # Apache serves the pages from its own folder, not frontend/dist, so copy the build there.
+             COPIED=no
+             for DOCROOT in \$(grep -lis 'mern.alex84plus.xyz' /etc/apache2/sites-enabled/* | xargs -r grep -hiE '^[[:space:]]*DocumentRoot[[:space:]]' | awk '{print \$2}' | tr -d '\"' | sort -u); do
+               if [ -f \"\$DOCROOT/index.html\" ]; then
+                 cp -a dist/. \"\$DOCROOT/\" && COPIED=yes && echo \"Copied the build into \$DOCROOT\" || echo \"Could not copy the build into \$DOCROOT\"
+               else
+                 echo \"Skipped \$DOCROOT, which has no index.html\"
+               fi
+             done
+             [ \"\$COPIED\" = yes ] || echo 'Found no Apache folder to copy the build into'
+
              pm2 restart game-api
 
              echo 'Deployment complete'"
