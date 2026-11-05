@@ -1,7 +1,7 @@
 # Fight Me Bro
  
 COP 4331C MERN group project. Players join a hosted game, choose teams, and use attack, heal, and block actions to battle enemies.
-
+- [Website](https://mern.alex84plus.xyz/)
 ## Technologies
 
 - React
