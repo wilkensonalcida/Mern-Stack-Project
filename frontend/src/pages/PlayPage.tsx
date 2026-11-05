@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
+import PageLayout from '../components/PageLayout'
 import PlayerLobby from '../components/PlayerLobby'
 
 // Sample data for the preview. What is the API response format??
@@ -11,7 +12,6 @@ const sampleSession = {
       id: 'red',
       name: 'Red team',
       players: [
-        { id: 'player-1', name: 'Nathan' },
         { id: 'player-2', name: 'Nate' },
         { id: 'player-3', name: 'Nathaniel Bob' },
       ],
@@ -36,43 +36,51 @@ export default function PlayPage() {
 
   if (!nickname) {
     return (
-      <main>
-        <h1>Choose a nickname</h1>
-        <p>Game session code: <strong>{sessionCode}</strong></p>
-        <form onSubmit={(event) => {
-          event.preventDefault()
-          const formData = new FormData(event.currentTarget)
-          // TODO (API): Send sessionCode and the trimmed nickname to join the session.
-          // Use the returned player to enter the lobby. If joining fails, show the error on this form.
-          setNickname(String(formData.get('nickname') ?? '').trim())
-        }}>
-          <label htmlFor="player-nickname">Nickname</label>
-          <input
-            type="text"
-            id="player-nickname"
-            name="nickname"
-            autoComplete="nickname"
-            pattern=".*\S.*"
-            required
-          />
-          <button type="submit">Enter lobby</button>
-        </form>
-      </main>
+      <PageLayout>
+        <section className="card" aria-labelledby="nickname-heading">
+          <div className="card-body p-4">
+            <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
+              <h1 className="h4 card-title mb-0" id="nickname-heading">Choose a nickname</h1>
+              <span className="border rounded px-2 py-1 fw-semibold text-nowrap" aria-label={`Game code ${sessionCode}`}>{sessionCode}</span>
+            </div>
+            <form onSubmit={(event) => {
+              event.preventDefault()
+              const formData = new FormData(event.currentTarget)
+              // TODO (API): Send sessionCode and the trimmed nickname to join the session.
+              // Use the returned player to enter the lobby. If joining fails, show the error on this form.
+              setNickname(String(formData.get('nickname') ?? '').trim())
+            }}>
+              <div className="mb-3">
+                <input
+                  className="form-control form-control-lg text-center"
+                  type="text"
+                  id="player-nickname"
+                  name="nickname"
+                  placeholder="Enter a nickname"
+                  aria-label="Nickname"
+                  autoComplete="nickname"
+                  pattern=".*\S.*"
+                  required
+                  autoFocus
+                />
+              </div>
+              <button className="btn btn-dark w-100" type="submit">Join game</button>
+            </form>
+          </div>
+        </section>
+      </PageLayout>
     )
   }
 
-  // The preview puts you on red and replaces a sample player's name with your nickname.
+  // The preview starts you without a team, the way a new player joins.
   // TODO (API): Use the player list from the server, including players without a team.
   const player = { ...sampleSession.player, name: nickname }
-  const teams = sampleSession.teams.map((team) => ({
-    ...team,
-    players: team.players.map((member) => member.id === player.id ? player : member),
-  }))
+  const teams = sampleSession.teams
 
   // TODO (API): Get player list and gameState updates from the server.
   // Show the lobby, game, or results based on gameState. Keep the same URL.
   return (
-    <main>
+    <>
       {sampleSession.gameState === 'lobby' && (
         <PlayerLobby
           sessionCode={sessionCode ?? ''}
@@ -80,6 +88,6 @@ export default function PlayPage() {
           teams={teams}
         />
       )}
-    </main>
+    </>
   )
 }

@@ -31,16 +31,20 @@ The frontend uses React Router for these pages:
 
 | Route | Page | Purpose |
 | --- | --- | --- |
-| `/` | `LandingPage.tsx` | Choose guest joining or host login and registration |
-| `/join` | `JoinPage.tsx` | Enter a game PIN and nickname without an account |
+| `/` when logged out | `LoginPage.tsx` | Log in to host a game, or go to `/join` |
+| `/` when logged in | `DashboardPage.tsx` | Go to `/host` to create a lobby, or log out |
+| `/join` | `JoinPage.tsx` | Enter a session code without an account |
+| `/play/:sessionCode` | `PlayPage.tsx` | Choose a nickname and a team, then wait for the host to start the game |
 | `/login` | `LoginPage.tsx` | Log in to host a game |
 | `/register` | `RegisterPage.tsx` | Create a host account |
+| `/verify-email` | `VerifyEmailPage.tsx` | Verify an email address with its emailed link, or send a new link |
 | `/host` | `HostPage.tsx` | Preview the host lobby with sample players and a session code |
 
 Page components live in `frontend/src/pages/`, and routes are defined in `frontend/src/App.tsx`.
 Vite forwards `/api` requests to the API during development, on the port that `PORT` sets in `backend/.env`, or 5001 when it's unset.
-The host lobby is a public structural preview with sample data and Start game and Cancel match controls that have no actions connected.
-Host authentication and live session behavior are not connected.
+Without a login, `/host` redirects to `/login`.
+The host and player pages use sample data and don't call the API.
+The host lobby's **Start game** and **Cancel match** buttons do nothing.
 
 ## Contributers
 - Nathan Davis - Frontend

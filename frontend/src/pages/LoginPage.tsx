@@ -1,74 +1,88 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { AuthError, login, type LoginResult } from '../api/auth'
+import OrDivider from '../components/OrDivider'
+import PageLayout from '../components/PageLayout'
+import VerifyWait from '../components/VerifyWait'
+
+type Waiting = { loginName: string; password: string; remember: boolean }
 
 export default function LoginPage({ onLogin }: { onLogin: (result: LoginResult, remember: boolean) => void }) {
   const pending = useRef(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [needsVerification, setNeedsVerification] = useState(false)
+  const [waiting, setWaiting] = useState<Waiting | null>(null)
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (pending.current) return
     const form = new FormData(event.currentTarget)
+    const loginName = String(form.get('username') || '')
+    const password = String(form.get('password') || '')
+    const remember = form.get('remember') === 'on'
     pending.current = true
     setBusy(true)
     setError('')
-    setNeedsVerification(false)
     try {
-      const result = await login(String(form.get('username') || ''), String(form.get('password') || ''))
-      onLogin(result, form.get('remember') === 'on')
+      const result = await login(loginName, password)
+      onLogin(result, remember)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to log in. Please try again.')
-      setNeedsVerification(err instanceof AuthError && err.status === 403)
+      // The password was right but the email isn't verified, so wait for the emailed link instead.
+      if (err instanceof AuthError && err.status === 403) setWaiting({ loginName, password, remember })
+      else setError(err instanceof Error ? err.message : 'Unable to log in. Please try again.')
     } finally {
       pending.current = false
       setBusy(false)
     }
   }
+  if (waiting) return (
+    <PageLayout>
+      <VerifyWait {...waiting} onLogin={onLogin} />
+    </PageLayout>
+  )
   return (
-    <>
-      <div className="login-container">
-        <h1 className="login-title">Login to Fight Me Bro!</h1>
-      </div>
-      <form id="login-form" onSubmit={handleSubmit}>
-        <div className="login-form">
-          <label htmlFor="username">Username</label>
-          <input
-            className="form-text"
-            type="text"
-            id="username"
-            name="username"
-            placeholder="Username"
-            autoComplete="username"
-            required
-          />
-          <label htmlFor="password">Password</label>
-          <input
-            className="form-text"
-            type="password"
-            id="password"
-            name="password"
-            placeholder="Password"
-            autoComplete="current-password"
-            required
-          />
-          <div className="login-row">
-            <label className="remember-label" htmlFor="remember">
-              <input className="remember-input" type="checkbox" id="remember" name="remember" />
-              Remember me!
-            </label>
-          </div>
-          <p>Remember me keeps this login on this browser until the login token expires.</p>
-          {error && <p role="alert">{error}</p>}
-          {needsVerification && <p><Link to="/verify-email">Request a verification email</Link></p>}
-          <button className="btn-primary" type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Login'}</button>
-          <div className="login-divider">
-            <span>OR</span>
-          </div>
-          <Link className="btn-primary" to="/register">Sign Up</Link>
+    <PageLayout>
+      <section className="card" aria-labelledby="host-heading">
+        <div className="card-body p-4">
+          <h2 className="h4 card-title" id="host-heading">Host a game</h2>
+          <p className="text-body-secondary">You need an account to host.</p>
+          {error && <div className="alert alert-secondary" role="alert"><strong>Login failed.</strong> {error}</div>}
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label className="form-label" htmlFor="username">Username</label>
+              <input
+                className="form-control"
+                type="text"
+                id="username"
+                name="username"
+                autoComplete="username"
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label" htmlFor="password">Password</label>
+              <input
+                className="form-control"
+                type="password"
+                id="password"
+                name="password"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            <div className="form-check mb-3">
+              <input className="form-check-input" type="checkbox" id="remember" name="remember" />
+              <label className="form-check-label" htmlFor="remember">Remember me</label>
+            </div>
+            <button className="btn btn-dark w-100" type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
+          </form>
+          <p className="mt-3 mb-0 text-center">Need an account? <Link to="/register">Register</Link></p>
         </div>
-      </form>
-    </>
+      </section>
+
+      <OrDivider />
+
+      <Link className="btn btn-outline-dark w-100" to="/join" aria-describedby="join-help">Join a game</Link>
+      <p className="text-body-secondary text-center mt-2 mb-0" id="join-help">Have a code? No account needed.</p>
+    </PageLayout>
   )
 }
