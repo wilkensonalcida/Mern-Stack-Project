@@ -1,27 +1,46 @@
-const { User } = require('../models');
+const User = require('../models/User');
 const { createToken } = require('../middleware/auth');
 
-// POST /api/auth/login
 exports.login = async (req, res, next) => {
   try {
     const { login, password } = req.body || {};
 
-    if (!login || !password) {
-      return res.status(400).json({ error: 'login and password are required' });
+    if (
+      typeof login !== 'string' ||
+      typeof password !== 'string' ||
+      !login.trim() ||
+      !password
+    ) {
+      return res.status(400).json({
+        error: 'Login and password are required as strings'
+      });
     }
 
-    // String() matters: without it, a body like {"login": {"$ne": null}}
-    // becomes a MongoDB operator instead of a username.
-    // The password field is hidden by default (select: false), so ask for it.
-    const user = await User.findOne({ login: String(login) }).select('+password');
-
-    // Same message whether the login or the password was wrong, so the
-    // response doesn't reveal which usernames exist.
-    if (!user || !(await user.checkPassword(String(password)))) {
-      return res.status(401).json({ error: 'Invalid login or password' });
+    if (Buffer.byteLength(password, 'utf8') > 72) {
+      return res.status(400).json({
+        error: 'Password must not exceed 72 UTF-8 bytes'
+      });
     }
 
-    res.status(200).json({ token: createToken(user), user });
+    const user = await User.findOne({ login: login.trim() })
+      .select('+password');
+
+    if (!user || !(await user.checkPassword(password))) {
+      return res.status(401).json({
+        error: 'Invalid login or password'
+      });
+    }
+
+    if (user.emailVerified !== true) {
+      return res.status(403).json({
+        error: 'Verify your email before logging in'
+      });
+    }
+
+    res.status(200).json({
+      token: createToken(user),
+      user
+    });
   } catch (err) {
     next(err);
   }

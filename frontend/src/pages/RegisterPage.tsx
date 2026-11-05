@@ -1,107 +1,78 @@
-
+import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { register, type SignupResult } from '../api/auth'
 
-interface RegisterPageProps {
-  onRegister: (data: { token: string; user: { _id: string } }) => void
-}
-
-export default function RegisterPage({ onRegister }: RegisterPageProps) {
+export default function RegisterPage() {
+  const pending = useRef(false)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-
+  const [result, setResult] = useState<SignupResult | null>(null)
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (pending.current) return
+    const form = new FormData(event.currentTarget)
+    const password = String(form.get('password') || '')
     setError('')
-
-    const formData = new FormData(event.currentTarget)
-
-    const password = formData.get('password')
-    const confirmPassword = formData.get('confirmPassword')
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match!')
+    if (password !== String(form.get('confirmPassword') || '')) {
+      setError('Passwords do not match')
       return
     }
-
-    setLoading(true)
-
+    pending.current = true
+    setBusy(true)
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          login: formData.get('login'),
-          password: password,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed')
-      }
-
-      onRegister(data)
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Something went wrong')
+      setResult(await register({
+        firstName: String(form.get('firstName') || ''),
+        lastName: String(form.get('lastName') || ''),
+        login: String(form.get('login') || ''),
+        email: String(form.get('email') || ''),
+        password
+      }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to register. Please try again.')
     } finally {
-      setLoading(false)
+      pending.current = false
+      setBusy(false)
     }
   }
-
   return (
     <main>
       <h1>Create an account</h1>
-      <p>Choose a username and password. All fields are required.</p>
-
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="register-username">Username</label>
-          <input
-            type="text"
-            id="register-username"
-            name="login"
-            autoComplete="username"
-            required
-          />
-        </div>
-
-        <div>
-          <label htmlFor="register-password">Password</label>
-          <input
-            type="password"
-            id="register-password"
-            name="password"
-            autoComplete="new-password"
-            required
-          />
-        </div>
-
-        <div>
-          <label htmlFor="register-confirm-password">Confirm password</label>
-          <input
-            type="password"
-            id="register-confirm-password"
-            name="confirmPassword"
-            autoComplete="new-password"
-            required
-          />
-        </div>
-
-        {error && <p role="alert">{error}</p>}
-
-        <button type="submit" disabled={loading}>
-          {loading ? 'Creating account...' : 'Create account'}
-        </button>
-      </form>
-
-      <p>
-        Already have an account? <Link to="/login">Log in</Link>
-      </p>
+      {result ? <>
+        <p role="status">{result.message}</p>
+        <p>{result.emailVerification.message}</p>
+        <p><Link to="/verify-email">Request another verification email</Link></p>
+      </> : <>
+        <p>Enter your details. Verify your email before logging in.</p>
+        <form onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="register-first-name">First name</label>
+            <input id="register-first-name" name="firstName" autoComplete="given-name" required />
+          </div>
+          <div>
+            <label htmlFor="register-last-name">Last name</label>
+            <input id="register-last-name" name="lastName" autoComplete="family-name" required />
+          </div>
+          <div>
+            <label htmlFor="register-email">Email</label>
+            <input id="register-email" name="email" type="email" autoComplete="email" required />
+          </div>
+          <div>
+            <label htmlFor="register-username">Username</label>
+            <input id="register-username" name="login" autoComplete="username" required />
+          </div>
+          <div>
+            <label htmlFor="register-password">Password</label>
+            <input id="register-password" name="password" type="password" autoComplete="new-password" required />
+          </div>
+          <div>
+            <label htmlFor="register-confirm-password">Confirm password</label>
+            <input id="register-confirm-password" name="confirmPassword" type="password" autoComplete="new-password" required />
+          </div>
+          {error && <p role="alert">{error}</p>}
+          <button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
+        </form>
+      </>}
+      <p>Already have an account? <Link to="/login">Log in</Link></p>
     </main>
   )
 }

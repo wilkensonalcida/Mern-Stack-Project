@@ -1,48 +1,85 @@
-const { User } = require('../models');
-const { createToken } = require('../middleware/auth');
+const User = require('../models/User');
+const { issueVerification } = require('../services/emailVerification');
 
-// POST /api/users
 exports.createUser = async (req, res, next) => {
   try {
-    const { firstName = '', lastName = '', login, password, email = '' } = req.body || {};
+    const {
+      firstName = '',
+      lastName = '',
+      login,
+      password,
+      email
+    } = req.body || {};
 
-    if (!login || !password) {
-      return res.status(400).json({ error: 'login and password are required' });
+    if (
+      [firstName, lastName, login, password, email].some(
+        value => typeof value !== 'string'
+      )
+    ) {
+      return res.status(400).json({
+        error: 'Names, login, password, and email must be strings'
+      });
     }
 
-    if (await User.exists({ login: String(login) })) {
-      return res.status(409).json({ error: 'A user with that login already exists' });
+    const normalizedLogin = login.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedLogin || !password || !normalizedEmail) {
+      return res.status(400).json({
+        error: 'Login, password, and email are required'
+      });
     }
 
-    // role is intentionally not read from the request body: letting clients
-    // choose their own role would let anyone register as an admin.
-    // The password is hashed by the User model before it is saved.
+    if (Buffer.byteLength(password, 'utf8') > 72) {
+      return res.status(400).json({
+        error: 'Password must not exceed 72 UTF-8 bytes'
+      });
+    }
+
+    if (await User.exists({ login: normalizedLogin })) {
+      return res.status(409).json({
+        error: 'A user with that login already exists'
+      });
+    }
+
+    if (await User.exists({ email: normalizedEmail })) {
+      return res.status(409).json({
+        error: 'A user with that email already exists'
+      });
+    }
+
     const user = await User.create({
-      firstName: String(firstName),
-      lastName: String(lastName),
-      login: String(login),
-      password: String(password),
-      email: String(email),
-      role: 'user'
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      login: normalizedLogin,
+      password,
+      email: normalizedEmail,
+      role: 'user',
+      emailVerified: false
     });
 
-    // A new user is logged in right away, so the response includes a token.
-    res
-      .status(201)
+    const delivery = await issueVerification(user._id);
+
+    res.status(201)
       .location(`/api/users/${user._id}`)
-      .json({ token: createToken(user), user });
+      .json({
+        message: 'User registered successfully',
+        emailVerification: { delivery, message: delivery === 'sent' ? 'Check your inbox to verify your email.' : 'Your account was created, but email delivery is unavailable. Request another verification email later.' },
+        user
+      });
   } catch (err) {
     next(err);
   }
 };
 
-// GET /api/users/:userId
 exports.getUser = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.userId).lean();
+    const user = await User.findById(req.params.userId);
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({
+        error: 'User not found'
+      });
     }
 
     res.status(200).json(user);
@@ -50,4 +87,3 @@ exports.getUser = async (req, res, next) => {
     next(err);
   }
 };
-
