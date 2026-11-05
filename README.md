@@ -33,7 +33,8 @@ The frontend uses React Router for these pages:
 | --- | --- | --- |
 | `/` when logged out | `LoginPage.tsx` | Log in to host a game, or go to `/join` |
 | `/` when logged in | `DashboardPage.tsx` | Go to `/host` to create a lobby, or log out |
-| `/join` | `JoinPage.tsx` | Enter a game PIN and nickname without an account |
+| `/join` | `JoinPage.tsx` | Enter a session code without an account |
+| `/play/:sessionCode` | `PlayPage.tsx` | Choose a nickname and a team, then wait for the host to start the game |
 | `/login` | `LoginPage.tsx` | Log in to host a game |
 | `/register` | `RegisterPage.tsx` | Create a host account |
 | `/verify-email` | `VerifyEmailPage.tsx` | Verify an email address with its emailed link, or send a new link |
