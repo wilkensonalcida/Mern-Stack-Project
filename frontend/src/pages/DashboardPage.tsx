@@ -34,7 +34,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
           )
           return
         }
-        navigate(` /host/${response.lobby.code}`)
+        navigate(`/host/${response.lobby.code}`)
       }
     )
   }
