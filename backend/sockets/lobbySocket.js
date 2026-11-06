@@ -53,13 +53,6 @@ function registerLobbySockets(io) {
         return;
       }
 
-      if (maxPlayers !== 2 && maxPlayers !== 4) {
-        return callback({
-        success: false,
-        error: "Match size must be 2 or 4 players."
-        });
-    }
-
       const code = generateCode();
 
       const lobby = {
