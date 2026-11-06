@@ -11,6 +11,7 @@ import VerifyEmailPage from './pages/VerifyEmailPage'
 import { AuthError, type LoginResult, type User } from './api/auth'
 import PageLayout from './components/PageLayout'
 import PlayerLobby from './components/PlayerLobby';
+import LobbyPage from './pages/LobbyPage';
 
 
 function clearStoredLogin() {
