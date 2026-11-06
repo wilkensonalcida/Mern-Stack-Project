@@ -9,6 +9,8 @@ const http = require("http");
 const apiRouter = require('./routes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
+const registerLobbySockets = require('./sockets/lobbySocket');
+
 const app = express();
 
 app.use(cors());
@@ -17,16 +19,13 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "https://localhost:5173",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST"],
   }
 });
 
 registerLobbySockets(io);
 
-server.listen(3000, () => {
-  console.log("Server started on port 3000");
-});
 
 // Connect to Database
 const url = process.env.MONGODB_URI || 'mongodb://localhost:27017/TestDB';
@@ -60,7 +59,7 @@ app.use(errorHandler);
 if (require.main === module) {
   const PORT = process.env.PORT || 5001;
 
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
