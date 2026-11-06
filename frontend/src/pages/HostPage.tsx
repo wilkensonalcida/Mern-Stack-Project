@@ -17,6 +17,9 @@ export default function HostPage() {
   const[lobby, setLobby] = useState<Lobby | null>(null)
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false)
+
+  const [teamError, setTeamError] = useState("");
+  const [selectingTeam, setSelectingTeam] = useState(false);
   
   useEffect(() => {
     if (!code) return;
@@ -88,6 +91,33 @@ export default function HostPage() {
     navigate(` /dashboard`)
   }
 
+  function selectTeam(team: TeamId) {
+  if (!lobby || selectingTeam) return;
+
+  setSelectingTeam(true);
+  setTeamError("");
+
+  socket.timeout(5000).emit(
+    "game:team",
+    team,
+    (
+      err: Error | null,
+      response: {
+        success: boolean;
+        error?: string;
+      }
+    ) => {
+      setSelectingTeam(false);
+
+      if (err || !response?.success) {
+        setTeamError(
+          response?.error || "Unable to select team."
+        );
+      }
+    }
+  );
+}
+
   if(error && !lobby) {
     return (
       <PageLayout>
@@ -113,10 +143,19 @@ export default function HostPage() {
   const bluePlayers = lobby.players.filter(
     p => p.team === "blue"
   )
+  
   const unassignedPlayers = lobby.players.filter(
     p => p.team === null
   )
   const isHost = lobby.hostId === socket.id
+
+  const teamCapacity = lobby.maxPlayers / 2;
+
+  const currentHost = lobby.players.find(
+    player => player.id === lobby.hostId
+  );
+
+  const hostTeam = currentHost?.team;
   
   function renderTeam(
     teamId: TeamId,
@@ -182,7 +221,31 @@ export default function HostPage() {
             </div>
           </div>
         </section>
+      
+        <section className="card mt-3">
+          <div className="card-body text-center">
+            <h2 className="h5 mb-3">
+              Choose your team
+            </h2>
 
+            <div className="d-flex gap-3 justify-content-center">
+              {(["red", "blue"] as TeamId[]).map(team => {
+                const players = lobby.players.filter(player => player.team === team);
+                const isFull = players.length >= teamCapacity;
+                const isSelected = hostTeam === team;
+
+                return (
+                  <button key={team} type="button" className={`btn btn-lg ${isSelected? "btn-dark": "btn-outline-dark"}`} onClick={() => selectTeam(team)} disabled={ selectingTeam || (isFull && !isSelected)}>
+                    {team === "red" ? "Red" : "Blue"} Team
+                    {" "}
+                    ({players.length}/{teamCapacity})
+                  </button>
+                );
+              })}
+            </div>
+            {teamError && (<p className="text-danger mt-3" role="alert">{teamError}</p>)}
+          </div>
+        </section>
         <section className="flex-grow-1 d-flex flex-column justify-content-center py-4" aria-label="Players">
           {/* Players who just joined wait here until they pick a team. */}
           {unassignedPlayers.length > 0 && (
