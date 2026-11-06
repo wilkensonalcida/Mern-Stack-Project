@@ -17,43 +17,54 @@ export default function LobbyPage() {
 
     useEffect(() => {
         if (!code) return;
+        let active = true;
 
         const updateLobby = (updatedLobby: Lobby) => {
-            setLobby(updatedLobby);
+            if (updatedLobby.code === code && active) {
+                setLobby(updatedLobby);
+            }
         };
+
+        function loadLobby() {
+            socket.timeout(5000).emit(
+                "game:get",
+                code,
+                (
+                    err: Error | null,
+                    response: {
+                        success: boolean;
+                        lobby?: Lobby;
+                        error?: string;
+                    }
+                ) => {
+                    if (err || !response?.success || !response.lobby) {
+                        setError(response?.error ?? "Unable to load lobby.");
+                        return;
+                    }
+                    setError("");
+                    setLobby(response.lobby);
+                }
+            );
+        }
 
         socket.on("game:updated", updateLobby);
 
-        socket.timeout(5000).emit(
-            "game:get",
-            { code },
-            (
-                err: Error | null,
-                response: {
-                    success: boolean;
-                    lobby?: Lobby;
-                    error?: string;
-                }
-            ) => {
-                if (err || !response?.success || !response.lobby) {
-                    setError(response?.error ?? "Unable to load lobby.");
-                    return;
-                }
-
-                setLobby(response.lobby);
-            }
-        );
+        if(socket.connected) { 
+            loadLobby();
+        } else {
+            socket.once("connect", loadLobby);
+            socket.connect();
+        }
 
         return () => {
+            active=false;
+            socket.off("connect", loadLobby);
             socket.off("game:updated", updateLobby);
         };
     }, [code]);
 
     const selectTeam = (teamId: TeamId) => {
-        socket.emit("game:selectTeam", {
-            code,
-            teamId
-        });
+        socket.emit("game:team", teamId);
     };
 
     if (error) return <p>{error}</p>;
@@ -66,11 +77,24 @@ export default function LobbyPage() {
         return <p>You are not currently in this lobby.</p>;
     }
 
+    const teams = [
+        {
+            name: "Red Team",
+            id: "red",
+            players: lobby.players.filter(p => p.team === "red")
+        },
+        {
+            name: "Blue Team",
+            id: "blue",
+            players: lobby.players.filter(p => p.team === "blue")
+        }
+    ];
+
     return (
         <PlayerLobby
             sessionCode={lobby.code}
             player={player}
-            teams={lobby.teams}
+            teams={teams}
             onSelectTeam={selectTeam}
         />
     );

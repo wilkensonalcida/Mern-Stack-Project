@@ -16,7 +16,6 @@ type PlayerLobbyProps = {
 
 // A player's phone shows only which team they're on. The host's screen shows who joined.
 export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }: PlayerLobbyProps) {
-  const [error, setError] = useState('')
 
   // Team selection comes from the server's lobby state
   const teamId = teams.find((team) =>
@@ -26,7 +25,6 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }
   function selectTeam(id: string) {
     if (id !== 'red' && id !== 'blue') return
 
-    setError('')
     onSelectTeam(id)
   }
 
@@ -55,11 +53,7 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }
               </button>
             ))}
           </div>
-           {error && (
-            <p className="text-danger mt-3" role="alert">
-              {error}
-            </p>
-          )}
+           
           {/* The waiting line appears once a team is picked. The status region stays, so screen readers announce it. */}
           <div role="status">
             {teamId && <p className="text-body-secondary text-center mt-3 mb-0">Waiting for the host to start the game.</p>}
