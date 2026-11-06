@@ -38,6 +38,33 @@ export default function HostPage() {
     function onCancelled() {
       navigate(`/dashboard`)
     }
+
+    function selectTeam(team: TeamId) {
+  if (!lobby || selectingTeam) return;
+
+  setSelectingTeam(true);
+  setTeamError("");
+
+  socket.timeout(5000).emit(
+    "game:team",
+    team,
+    (
+      err: Error | null,
+      response: {
+        success: boolean;
+        error?: string;
+      }
+    ) => {
+      setSelectingTeam(false);
+
+      if (err || !response?.success) {
+        setTeamError(
+          response?.error || "Unable to select team."
+        );
+      }
+    }
+  );
+}
     socket.on("game:updated", onUpdate)
     socket.on("game:started", onStarted)
     socket.on("game:cancelled", onCancelled)
@@ -91,33 +118,6 @@ export default function HostPage() {
     navigate(` /dashboard`)
   }
 
-  function selectTeam(team: TeamId) {
-  if (!lobby || selectingTeam) return;
-
-  setSelectingTeam(true);
-  setTeamError("");
-
-  socket.timeout(5000).emit(
-    "game:team",
-    team,
-    (
-      err: Error | null,
-      response: {
-        success: boolean;
-        error?: string;
-      }
-    ) => {
-      setSelectingTeam(false);
-
-      if (err || !response?.success) {
-        setTeamError(
-          response?.error || "Unable to select team."
-        );
-      }
-    }
-  );
-}
-
   if(error && !lobby) {
     return (
       <PageLayout>
@@ -143,7 +143,6 @@ export default function HostPage() {
   const bluePlayers = lobby.players.filter(
     p => p.team === "blue"
   )
-  
   const unassignedPlayers = lobby.players.filter(
     p => p.team === null
   )
@@ -221,7 +220,6 @@ export default function HostPage() {
             </div>
           </div>
         </section>
-      
         <section className="card mt-3">
           <div className="card-body text-center">
             <h2 className="h5 mb-3">
@@ -238,7 +236,6 @@ export default function HostPage() {
                   <button key={team} type="button" className={`btn btn-lg ${isSelected? "btn-dark": "btn-outline-dark"}`} onClick={() => selectTeam(team)} disabled={ selectingTeam || (isFull && !isSelected)}>
                     {team === "red" ? "Red" : "Blue"} Team
                     {" "}
-                    ({players.length}/{teamCapacity})
                   </button>
                 );
               })}

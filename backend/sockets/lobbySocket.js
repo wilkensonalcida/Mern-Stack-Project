@@ -1,4 +1,3 @@
-
 const { randomInt } = require("node:crypto");
 
 const lobbies = new Map();
@@ -22,7 +21,6 @@ function publicLobby(lobby) {
     code: lobby.code,
     hostId: lobby.hostId,
     status: lobby.status,
-    maxPlayers: lobby.maxPlayers,
     players: lobby.players,
   };
 }
@@ -40,10 +38,10 @@ function registerLobbySockets(io) {
           success: false,
           error: "Already in a lobby",
         });
+        return;
       }
 
       const name = String(data?.name || "").trim().slice(0, 40);
-      const maxPlayers = Number(data?.maxPlayers);
 
       if (!name) {
         callback({
@@ -125,13 +123,6 @@ function registerLobbySockets(io) {
         });
       }
 
-      if (!lobby.players.some(p => p.id === socket.id) && lobby.players.length >= lobby.maxPlayers) {
-        return callback({
-          success: false,
-          error: "Lobby is full",
-        });
-      }
-
       if (!lobby.players.some(p => p.id === socket.id)) {
         lobby.players.push({
           id: socket.id,
@@ -194,23 +185,6 @@ function registerLobbySockets(io) {
         p => p.id === socket.id
       );
 
-      const teamCapacity = lobby.maxPlayers / 2;
-
-        const teamPlayers = lobby.players.filter(
-            p => p.team === team
-        );
-
-        if (player.team === team) {
-            return callback({ success: true });
-        }
-
-        if (teamPlayers.length >= teamCapacity) {
-            return callback({
-                success: false,
-                error: "That team is full."
-        });
-  }
-
       if (!player) return;
 
       player.team = team;
@@ -237,28 +211,6 @@ function registerLobbySockets(io) {
           error: "Game already started",
         });
       }
-
-      
-        const teamCapacity = lobby.maxPlayers / 2;
-
-        const redCount = lobby.players.filter(
-            p => p.team === "red"
-        ).length;
-
-        const blueCount = lobby.players.filter(
-            p => p.team === "blue"
-        ).length;
-
-        if (
-            lobby.players.length !== lobby.maxPlayers ||
-            redCount !== teamCapacity ||
-            blueCount !== teamCapacity
-        ) {
-        return callback({
-            success: false,
-            error: "All player slots must be filled and teams must be balanced."
-            });
-        }
 
       lobby.status = "playing";
 
