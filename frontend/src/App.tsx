@@ -136,8 +136,8 @@ export default function App() {
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage onLogin={handleAuth} />} />
       <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage onLogin={handleAuth} />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/join" element={<JoinPage />} />
-      <Route path="/lobby/:code" element={<PlayerLobby />} />
+      <Route path="/join" element={ user ? <JoinPage user={user} /> : <Navigate to="/login" replace />} />
+      <Route path="/lobby/:code" element={<LobbyPage />} />
       <Route path="/play/:code" element={<PlayPage />} />
       <Route path="/host/:code" element={user ? <HostPage /> : <Navigate to="/login" replace />} />
     </Routes>

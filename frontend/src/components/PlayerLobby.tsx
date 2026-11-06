@@ -11,11 +11,11 @@ type PlayerLobbyProps = {
     name: string
     players: { id: string; name: string }[]
   }[]
-  onSelectTeam: (team: TeamId) => Promise<void>
+  onSelectTeam: (team: TeamId) => void
 }
 
 // A player's phone shows only which team they're on. The host's screen shows who joined.
-export default function PlayerLobby({ sessionCode, player, teams }: PlayerLobbyProps) {
+export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }: PlayerLobbyProps) {
   const [error, setError] = useState('')
 
   // Team selection comes from the server's lobby state
