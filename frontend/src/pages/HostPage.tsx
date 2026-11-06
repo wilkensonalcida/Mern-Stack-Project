@@ -39,32 +39,6 @@ export default function HostPage() {
       navigate(`/dashboard`)
     }
 
-    function selectTeam(team: TeamId) {
-  if (!lobby || selectingTeam) return;
-
-  setSelectingTeam(true);
-  setTeamError("");
-
-  socket.timeout(5000).emit(
-    "game:team",
-    team,
-    (
-      err: Error | null,
-      response: {
-        success: boolean;
-        error?: string;
-      }
-    ) => {
-      setSelectingTeam(false);
-
-      if (err || !response?.success) {
-        setTeamError(
-          response?.error || "Unable to select team."
-        );
-      }
-    }
-  );
-}
     socket.on("game:updated", onUpdate)
     socket.on("game:started", onStarted)
     socket.on("game:cancelled", onCancelled)
@@ -155,6 +129,33 @@ export default function HostPage() {
   );
 
   const hostTeam = currentHost?.team;
+  
+  function selectTeam(team: TeamId) {
+    if (!lobby || selectingTeam) return;
+  
+    setSelectingTeam(true);
+    setTeamError("");
+  
+    socket.timeout(5000).emit(
+      "game:team",
+      team,
+      (
+        err: Error | null,
+        response: {
+          success: boolean;
+          error?: string;
+        }
+      ) => {
+        setSelectingTeam(false);
+  
+        if (err || !response?.success) {
+          setTeamError(
+            response?.error || "Unable to select team."
+          );
+        }
+      }
+    );
+  }
   
   function renderTeam(
     teamId: TeamId,
