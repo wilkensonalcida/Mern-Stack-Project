@@ -28,12 +28,12 @@ export default function HostPage() {
     }
     function onStarted(updatedLobby : Lobby) {
       if(updatedLobby.code === code){
-        navigate(` /play/${code}`)
+        navigate(`/play/${code}`)
       }
     }
 
     function onCancelled() {
-      navigate(` /dashboard`)
+      navigate(`/dashboard`)
     }
     socket.on("game:updated", onUpdate)
     socket.on("game:started", onStarted)
