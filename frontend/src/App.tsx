@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Route, Routes, Navigate } from 'react-router'
+import { socket } from "./socket/socket";
 import DashboardPage from './pages/DashboardPage'
 import JoinPage from './pages/JoinPage'
 import LoginPage from './pages/LoginPage'
@@ -9,6 +10,8 @@ import PlayPage from './pages/PlayPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import { AuthError, type LoginResult, type User } from './api/auth'
 import PageLayout from './components/PageLayout'
+import PlayerLobby from './components/PlayerLobby';
+
 
 function clearStoredLogin() {
   for (const name of ['localStorage', 'sessionStorage'] as const) {
@@ -28,6 +31,8 @@ export default function App() {
   const [restoreAttempt, setRestoreAttempt] = useState(0)
 
   useEffect(() => {
+
+    socket.connect();
     let active = true
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 10000)
@@ -81,7 +86,7 @@ export default function App() {
       }
     }
     void checkLogin()
-    return () => { active = false; window.clearTimeout(timeout); controller.abort() }
+    return () => { active = false; window.clearTimeout(timeout); controller.abort(); socket.disconnect(); }
   }, [restoreAttempt])
 
   function handleAuth(data: LoginResult, remember: boolean) {
@@ -132,8 +137,9 @@ export default function App() {
       <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage onLogin={handleAuth} />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/join" element={<JoinPage />} />
-      <Route path="/play/:sessionCode" element={<PlayPage />} />
-      <Route path="/host" element={user ? <HostPage /> : <Navigate to="/login" replace />} />
+      <Route path="/lobby/:code" element={<PlayerLobby />} />
+      <Route path="/play/:code" element={<PlayPage />} />
+      <Route path="/host/:code" element={user ? <HostPage /> : <Navigate to="/login" replace />} />
     </Routes>
   )
 }

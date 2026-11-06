@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import PageLayout from './PageLayout'
 
+type TeamId = 'red' | 'blue'
+
 type PlayerLobbyProps = {
   sessionCode: string
   player: { id: string; name: string }
@@ -9,13 +11,26 @@ type PlayerLobbyProps = {
     name: string
     players: { id: string; name: string }[]
   }[]
+  onSelectTeam: (team: TeamId) => Promise<void>
 }
 
 // A player's phone shows only which team they're on. The host's screen shows who joined.
 export default function PlayerLobby({ sessionCode, player, teams }: PlayerLobbyProps) {
-  const [teamId, setTeamId] = useState(
-    () => teams.find((team) => team.players.some((member) => member.id === player.id))?.id,
-  )
+  const [error, setError] = useState('')
+
+  // Team selection comes from the server's lobby state
+  const teamId = teams.find((team) =>
+    team.players.some((member) => member.id === player.id)
+  )?.id
+
+  function selectTeam(id: string) {
+    if (id !== 'red' && id !== 'blue') return
+
+    setError('')
+    onSelectTeam(id)
+  }
+
+  
 
   return (
     <PageLayout>
@@ -33,13 +48,18 @@ export default function PlayerLobby({ sessionCode, player, teams }: PlayerLobbyP
                 className={`btn btn-lg flex-fill text-nowrap ${teamId === team.id ? 'btn-dark' : 'btn-outline-dark'}`}
                 type="button"
                 aria-pressed={teamId === team.id}
-                onClick={() => setTeamId(team.id)}
+                onClick={() => selectTeam(team.id)}
                 key={team.id}
               >
                 {team.name}
               </button>
             ))}
           </div>
+           {error && (
+            <p className="text-danger mt-3" role="alert">
+              {error}
+            </p>
+          )}
           {/* The waiting line appears once a team is picked. The status region stays, so screen readers announce it. */}
           <div role="status">
             {teamId && <p className="text-body-secondary text-center mt-3 mb-0">Waiting for the host to start the game.</p>}

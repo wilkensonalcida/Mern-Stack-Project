@@ -3,6 +3,8 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
+const {Server} = require("socket.io");
+const http = require("http");
 
 const apiRouter = require('./routes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
@@ -10,7 +12,21 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "https://localhost:5173",
+    methods: ["GET", "POST"],
+  }
+});
+
+registerLobbySockets(io);
+
+server.listen(3000, () => {
+  console.log("Server started on port 3000");
+});
 
 // Connect to Database
 const url = process.env.MONGODB_URI || 'mongodb://localhost:27017/TestDB';
