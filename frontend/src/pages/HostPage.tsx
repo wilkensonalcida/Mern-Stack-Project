@@ -38,7 +38,7 @@ export default function HostPage() {
     }
 
     function onCancelled() {
-      navigate(`/dashboard`)
+      navigate('/')
     }
 
     socket.on("game:updated", onUpdate)
@@ -91,14 +91,14 @@ export default function HostPage() {
   function cancelGame() {
     if (!lobby) return
     socket.emit("game:cancel", lobby.code)
-    navigate(` /dashboard`)
+    navigate('/')
   }
 
   if(error && !lobby) {
     return (
       <PageLayout>
         <p className="text-danger">{error}</p>
-        <button className="btn btn-outline-dark" onClick={(() => navigate(` /dashboard`))}>Back to dashboard</button>
+        <button className="btn btn-outline-dark" onClick={(() => navigate('/'))}>Back to dashboard</button>
       </PageLayout>
     )
   }
