@@ -112,7 +112,7 @@ export default function HostPage() {
   }
 
   if (lobby.status === 'playing') {
-    return <TeamFight />
+    return <TeamFight lobby={lobby} onEndGame={cancelGame} />
   }
 
   const playerCount = lobby.players.length

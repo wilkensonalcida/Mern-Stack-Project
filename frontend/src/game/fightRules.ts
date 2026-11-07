@@ -19,6 +19,19 @@ export type Knight = {
   players: number
 }
 
+// What a finished turn did, for the screen to show.
+export type TurnResult = {
+  team: TeamId
+  // HP the other knight lost.
+  damage: number
+  // Damage the other knight's shield soaked up.
+  blocked: number
+  // HP the team's own knight gained.
+  healed: number
+  // The team's shield for the other team's next turn.
+  shield: number
+}
+
 // Plain data, so a socket can carry it.
 export type FightState = {
   turn: TeamId
@@ -27,6 +40,8 @@ export type FightState = {
   // The taps of the turn in progress.
   taps: Record<Move, number>
   knights: Record<TeamId, Knight>
+  // Null until the first turn ends.
+  lastTurn: TurnResult | null
   winner: TeamId | null
 }
 
@@ -46,6 +61,7 @@ export function startFight(players: Record<TeamId, number>, first: TeamId): Figh
     turnNumber: 1,
     taps: { attack: 0, block: 0, heal: 0 },
     knights: { red: knight('red'), blue: knight('blue') },
+    lastTurn: null,
     winner: null,
   }
 }
@@ -69,13 +85,15 @@ export function endTurn(state: FightState): FightState {
 
   // Taps count per player, so a bigger team doesn't win on numbers alone.
   const perPlayer = (move: Move) => state.taps[move] / own.players
-  const damage = Math.max(0, perPlayer('attack') * DAMAGE_PER_TAP - foe.shield)
-  const foeHp = roundToTenth(Math.max(0, foe.hp - damage))
+  const attack = perPlayer('attack') * DAMAGE_PER_TAP
+  const blocked = Math.min(foe.shield, attack)
+  const foeHp = roundToTenth(Math.max(0, foe.hp - (attack - blocked)))
   const ownHp = roundToTenth(Math.min(MAX_HP, own.hp + perPlayer('heal') * HEAL_PER_TAP))
+  const shield = roundToTenth(perPlayer('block') * SHIELD_PER_TAP)
   const winner = foeHp === 0 ? team : null
 
   const knights = {
-    [team]: { ...own, hp: ownHp, shield: roundToTenth(perPlayer('block') * SHIELD_PER_TAP) },
+    [team]: { ...own, hp: ownHp, shield },
     [foeTeam]: { ...foe, hp: foeHp, shield: 0 },
   } as Record<TeamId, Knight>
 
@@ -84,6 +102,13 @@ export function endTurn(state: FightState): FightState {
     turnNumber: winner ? state.turnNumber : state.turnNumber + 1,
     taps: { attack: 0, block: 0, heal: 0 },
     knights,
+    lastTurn: {
+      team,
+      damage: roundToTenth(foe.hp - foeHp),
+      blocked: roundToTenth(blocked),
+      healed: roundToTenth(ownHp - own.hp),
+      shield,
+    },
     winner,
   }
 }

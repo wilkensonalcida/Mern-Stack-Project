@@ -86,10 +86,20 @@ describe('the team fight', () => {
     state = endTurn(state)
     state = endTurn(tapTimes(state, 'red', 'attack', 25))
     expect(state.knights.blue.hp).toBe(0)
+    expect(state.lastTurn?.damage).toBe(40)
     expect(state.winner).toBe('red')
     expect(state.turn).toBe('red')
     expect(tap(state, 'red', 'attack')).toBe(state)
     expect(endTurn(state)).toBe(state)
+  })
+
+  it('records what each turn did', () => {
+    let state = startFight(oneEach, 'red')
+    expect(state.lastTurn).toBeNull()
+    state = endTurn(tapTimes(state, 'red', 'block', 10))
+    expect(state.lastTurn).toEqual({ team: 'red', damage: 0, blocked: 0, healed: 0, shield: 5 })
+    state = endTurn(tapTimes(tapTimes(state, 'blue', 'attack', 10), 'blue', 'heal', 4))
+    expect(state.lastTurn).toEqual({ team: 'blue', damage: 15, blocked: 5, healed: 0, shield: 0 })
   })
 
   it('flips a coin for the first turn', () => {
