@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import PageLayout from '../components/PageLayout'
 import type { Lobby, TeamId } from '../socket/lobby'
 import { MAX_HP, TURN_SECONDS, endTurn, flipCoin, otherTeam, startFight, tap, type Move, type TurnResult } from './fightRules'
+import Knight, { type KnightAnimation } from './Knight'
 
 // How long the coin flip shows before the first turn, and how long the pause after each turn shows what it did.
 const FLIP_SECONDS = 3
@@ -62,6 +63,14 @@ export default function TeamFight({ lobby, onEndGame }: TeamFightProps) {
   else if (phase === 'flip') heading = `${teamNames[fight.turn]} won the coin flip`
   else if (phase === 'pause') heading = `${teamNames[fight.turn]} is up next`
 
+  // Knights idle, except a knight that just attacked swings during the pause, and the winner celebrates.
+  function animationFor(team: TeamId): KnightAnimation {
+    if (fight.winner === team) return 'victory'
+    const last = fight.lastTurn
+    if (phase === 'pause' && last?.team === team && last.damage + last.blocked > 0) return 'attack'
+    return 'idle'
+  }
+
   function renderHp(team: TeamId) {
     const { hp, shield } = fight.knights[team]
     return (
@@ -109,17 +118,13 @@ export default function TeamFight({ lobby, onEndGame }: TeamFightProps) {
           {(phase === 'pause' || over) && fight.lastTurn && describeTurn(fight.lastTurn)}
         </p>
 
-        {/* The knights face off here. Gray boxes stand in for them until the sprites come in. */}
+        {/* The knights face off here. Both use Alex's knight for now, so Blue's is the same knight, mirrored. */}
+        {/* The losing knight disappears, and its empty spot keeps the winner where it stood. */}
         <section className="flex-grow-1 d-flex align-items-center justify-content-around py-4" aria-label="Arena">
-          {(['red', 'blue'] as TeamId[]).map(team => (
-            <div
-              className="border rounded bg-body-secondary d-flex align-items-center justify-content-center text-body-secondary"
-              style={{ width: 'min(200px, 40vw)', aspectRatio: '1 / 1' }}
-              key={team}
-            >
-              {team === 'red' ? 'Red knight' : 'Blue knight'}
-            </div>
-          ))}
+          {(['red', 'blue'] as TeamId[]).map(team => fight.winner && fight.winner !== team
+            ? <div style={{ width: 'min(250px, 40vw)', aspectRatio: '1 / 1' }} key={team} />
+            : <Knight animation={animationFor(team)} mirrored={team === 'blue'} label={`${teamNames[team]}'s knight`} key={team} />
+          )}
         </section>
       </div>
 
