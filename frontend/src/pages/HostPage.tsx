@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import PageLayout from '../components/PageLayout'
+import TeamFight from '../game/TeamFight'
 import { socket } from '../socket/socket'
 
 import type {
@@ -29,14 +30,15 @@ export default function HostPage() {
         setLobby(updatedLobby)
       }
     }
+    // The host stays on this page, which swaps the lobby for the fight.
     function onStarted(updatedLobby : Lobby) {
       if(updatedLobby.code === code){
-        navigate(`/play/${code}`)
+        setLobby(updatedLobby)
       }
     }
 
     function onCancelled() {
-      navigate(`/dashboard`)
+      navigate('/')
     }
 
     socket.on("game:updated", onUpdate)
@@ -89,14 +91,14 @@ export default function HostPage() {
   function cancelGame() {
     if (!lobby) return
     socket.emit("game:cancel", lobby.code)
-    navigate(` /dashboard`)
+    navigate('/')
   }
 
   if(error && !lobby) {
     return (
       <PageLayout>
         <p className="text-danger">{error}</p>
-        <button className="btn btn-outline-dark" onClick={(() => navigate(` /dashboard`))}>Back to dashboard</button>
+        <button className="btn btn-outline-dark" onClick={(() => navigate('/'))}>Back to dashboard</button>
       </PageLayout>
     )
   }
@@ -107,6 +109,10 @@ export default function HostPage() {
         <p>Loading lobby...</p>
       </PageLayout>
     )
+  }
+
+  if (lobby.status === 'playing') {
+    return <TeamFight lobby={lobby} onEndGame={cancelGame} />
   }
 
   const playerCount = lobby.players.length
