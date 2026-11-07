@@ -160,6 +160,8 @@ function describeTurn(result: TurnResult): string {
   return result.blocked > 0 ? `${did} ${foe}'s shield blocked ${result.blocked}.` : did
 }
 
+// Joins "a and b", or "a, b, and c" with the serial comma.
 function joinWithAnd(parts: string[]): string {
-  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0]
+  if (parts.length < 3) return parts.join(' and ')
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`
 }
