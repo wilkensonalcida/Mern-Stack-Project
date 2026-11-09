@@ -1,4 +1,5 @@
 const { randomInt } = require("node:crypto");
+const { createEnemyGameManager } = require("./enemyGame");
 
 const lobbies = new Map();
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -26,8 +27,11 @@ function publicLobby(lobby) {
 }
 
 function registerLobbySockets(io) {
+  const enemyGame = createEnemyGameManager(io, lobbies);
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
+
+    enemyGame.register(socket);
 
     // CREATE LOBBY
     socket.on("game:create", (data, callback) => {
@@ -189,6 +193,8 @@ function registerLobbySockets(io) {
 
       player.team = team;
 
+      callback({ success:true });
+
       io.to(code).emit("game:updated", publicLobby(lobby));
     });
 
@@ -196,7 +202,9 @@ function registerLobbySockets(io) {
     socket.on("game:start", (code, callback) => {
       if (typeof callback !== "function") return;
 
-      const lobby = lobbies.get(code);
+      const sessionCode = String(code || "").trim().toUpperCase();
+
+      const lobby = lobbies.get(sessionCode);
 
       if (!lobby || lobby.hostId !== socket.id) {
         return callback({
@@ -209,6 +217,41 @@ function registerLobbySockets(io) {
         return callback({
           success: false,
           error: "Game already started",
+        });
+      }
+
+      const unassignedPlayers = lobby.players.filter(
+        player => player.team !== "red" && player.team !== "blue"
+      );
+
+      if (unassignedPlayers.length > 0) {
+        return callback({
+          success: false,
+          error: "All players must select a team",
+        });
+      }
+
+      const redPlayers = lobby.players.filter(
+        player => player.team === "red"
+      );
+
+      const bluePlayers = lobby.players.filter(
+        player => player.team === "blue"
+      );
+
+      if (redPlayers.length === 0 || bluePlayers.length === 0) {
+        return callback({
+          success: false,
+          error: "Both teams must have at least one player",
+        });
+      }
+
+      try{
+        enemyGame.begin(lobby);
+      } catch (error) {
+        return callback({
+          success: false,
+          error: "Failed to start the game",
         });
       }
 

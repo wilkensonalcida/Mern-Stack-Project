@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import PlayerLobby from "../components/PlayerLobby";
 import { socket } from "../socket/socket";
 
@@ -11,6 +11,7 @@ import type {
 
 export default function LobbyPage() {
     const { code } = useParams<{ code: string }>();
+    const navigate = useNavigate();
 
     const [lobby, setLobby] = useState<Lobby | null>(null);
     const [error, setError] = useState("");
@@ -47,6 +48,13 @@ export default function LobbyPage() {
             );
         }
 
+        function onGameStarted(updatedLobby: Lobby) {
+            if(updatedLobby.code !== code) return;
+            navigate(`/play/${updatedLobby.code}`);
+        }
+
+        socket.on("game:started", onGameStarted);
+
         socket.on("game:updated", updateLobby);
 
         if(socket.connected) { 
@@ -60,6 +68,7 @@ export default function LobbyPage() {
             active=false;
             socket.off("connect", loadLobby);
             socket.off("game:updated", updateLobby);
+            socket.off("game:started", onGameStarted);
         };
     }, [code]);
 

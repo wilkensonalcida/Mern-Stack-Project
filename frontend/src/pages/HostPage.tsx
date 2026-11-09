@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import PageLayout from '../components/PageLayout'
-import TeamFight from '../game/TeamFight'
 import { socket } from '../socket/socket'
 
 import type {
@@ -10,6 +9,7 @@ import type {
   LobbyResponse,
   TeamId,
 } from '../socket/lobby'
+
 
 export default function HostPage() {
   const { code } = useParams<{ code: string }>()
@@ -21,6 +21,8 @@ export default function HostPage() {
 
   const [teamError, setTeamError] = useState("");
   const [selectingTeam, setSelectingTeam] = useState(false);
+
+  
   
   useEffect(() => {
     if (!code) return;
@@ -31,9 +33,9 @@ export default function HostPage() {
       }
     }
     // The host stays on this page, which swaps the lobby for the fight.
-    function onStarted(updatedLobby : Lobby) {
-      if(updatedLobby.code === code){
-        setLobby(updatedLobby)
+    function onStarted(updatedLobby: Lobby) {
+      if (updatedLobby.code === code) {
+        navigate(`/play/${updatedLobby.code}`);
       }
     }
 
@@ -62,9 +64,36 @@ export default function HostPage() {
   return () => {
     socket.off("game:updated", onUpdate)
     socket.off("game:started", onStarted)
-    socket.off("game:cancelled",)
+    socket.off("game:cancelled", onCancelled)
   }
   }, [code, navigate])
+
+  function selectTeam(team: TeamId) {
+    if (!lobby || selectingTeam) return;
+  
+    setSelectingTeam(true);
+    setTeamError("");
+  
+    socket.timeout(5000).emit(
+      "game:team",
+      team,
+      (
+        err: Error | null,
+        response: {
+          success: boolean;
+          error?: string;
+        }
+      ) => {
+        setSelectingTeam(false);
+  
+        if (err || !response?.success) {
+          setTeamError(
+            response?.error || "Unable to select team."
+          );
+        }
+      }
+    );
+  }
 
   function startGame() {
     if(!lobby || starting) return;
@@ -111,9 +140,7 @@ export default function HostPage() {
     )
   }
 
-  if (lobby.status === 'playing') {
-    return <TeamFight lobby={lobby} onEndGame={cancelGame} />
-  }
+  
 
   const playerCount = lobby.players.length
 
@@ -135,33 +162,8 @@ export default function HostPage() {
   );
 
   const hostTeam = currentHost?.team;
-  
-  function selectTeam(team: TeamId) {
-    if (!lobby || selectingTeam) return;
-  
-    setSelectingTeam(true);
-    setTeamError("");
-  
-    socket.timeout(5000).emit(
-      "game:team",
-      team,
-      (
-        err: Error | null,
-        response: {
-          success: boolean;
-          error?: string;
-        }
-      ) => {
-        setSelectingTeam(false);
-  
-        if (err || !response?.success) {
-          setTeamError(
-            response?.error || "Unable to select team."
-          );
-        }
-      }
-    );
-  }
+
+  const canStart = !starting &&  isHost && redPlayers.length > 0 && bluePlayers.length > 0 && unassignedPlayers.length === 0;
   
   function renderTeam(
     teamId: TeamId,
@@ -276,7 +278,7 @@ export default function HostPage() {
           <span className="fs-5 text-body-secondary text-nowrap" role="status">
             {playerCount} {playerCount === 1 ? 'player' : 'players'}
           </span>
-          <button className="btn btn-dark px-md-5 text-nowrap" type="button" onClick={startGame} disabled={!isHost || starting}>{starting ? 'Starting game...' : 'Start game'}</button>
+          <button className="btn btn-dark px-md-5 text-nowrap" type="button" onClick={startGame} disabled={!canStart}>{starting ? 'Starting game...' : 'Start game'}</button>
         </div>
       </div>
     </PageLayout>

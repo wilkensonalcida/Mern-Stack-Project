@@ -3,6 +3,7 @@ import PageLayout from '../components/PageLayout'
 import type { Lobby, TeamId } from '../socket/lobby'
 import { MAX_HP, TURN_SECONDS, endTurn, flipCoin, otherTeam, startFight, tap, type Move, type TurnResult } from './fightRules'
 import Knight, { type KnightAnimation } from './Knight'
+import type { PvpReady } from "./enemyTypes";
 
 // How long the coin flip shows before the first turn, and how long the pause after each turn shows what it did.
 const FLIP_SECONDS = 3
@@ -15,6 +16,7 @@ type Phase = 'flip' | 'turn' | 'pause'
 
 type TeamFightProps = {
   lobby: Lobby
+  pvpData: PvpReady
   onEndGame: () => void
 }
 
