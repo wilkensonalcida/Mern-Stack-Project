@@ -10,7 +10,6 @@ export interface Lobby {
   code: string;
   hostId: string;
   status: "waiting" | "playing";
-  maxPlayers: 2 | 4;
   players: LobbyPlayer[];
 }
 

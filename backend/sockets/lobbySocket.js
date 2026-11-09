@@ -175,27 +175,57 @@ function registerLobbySockets(io) {
     });
 
     // SELECT TEAM
-    socket.on("game:team", (team) => {
+    socket.on("game:team", (team, callback) => {
+      const reply = (result) => {
+        if (typeof callback === "function") {
+          callback(result);
+        }
+      };
+
       const code = socket.data.lobbyCode;
       const lobby = lobbies.get(code);
 
-      if (!lobby || lobby.status !== "waiting") return;
+      if (!lobby) {
+        return reply({
+          success: false,
+          error: "Lobby not found."
+        });
+      }
+
+      if (lobby.status !== "waiting") {
+        return reply({
+          success: false,
+          error: "Game has already started."
+        });
+      }
 
       if (team !== "red" && team !== "blue" && team !== null) {
-        return;
+        return reply({
+          success: false,
+          error: "Invalid team."
+        });
       }
 
       const player = lobby.players.find(
         p => p.id === socket.id
       );
 
-      if (!player) return;
+      if (!player) {
+        return reply({
+          success: false,
+          error: "Player not found in lobby."
+        });
+      }
 
       player.team = team;
 
-      callback({ success:true });
-
       io.to(code).emit("game:updated", publicLobby(lobby));
+
+      reply({ success: true });
+
+      console.log(
+        `[TEAM] ${player.name} selected ${team} in ${code}`
+      );
     });
 
     // START GAME

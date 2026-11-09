@@ -155,8 +155,6 @@ export default function HostPage() {
   )
   const isHost = lobby.hostId === socket.id
 
-  const teamCapacity = lobby.maxPlayers / 2;
-
   const currentHost = lobby.players.find(
     player => player.id === lobby.hostId
   );
@@ -238,11 +236,10 @@ export default function HostPage() {
             <div className="d-flex gap-3 justify-content-center">
               {(["red", "blue"] as TeamId[]).map(team => {
                 const players = lobby.players.filter(player => player.team === team);
-                const isFull = players.length >= teamCapacity;
                 const isSelected = hostTeam === team;
 
                 return (
-                  <button key={team} type="button" className={`btn btn-lg ${isSelected? "btn-dark": "btn-outline-dark"}`} onClick={() => selectTeam(team)} disabled={ selectingTeam || (isFull && !isSelected)}>
+                  <button key={team} type="button" className={`btn btn-lg ${isSelected? "btn-dark": "btn-outline-dark"}`} onClick={() => selectTeam(team)} disabled={ selectingTeam || !isHost}>
                     {team === "red" ? "Red" : "Blue"} Team
                     {" "}
                   </button>
