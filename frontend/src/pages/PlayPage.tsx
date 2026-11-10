@@ -16,7 +16,7 @@ export default function PlayPage() {
   const { code = "" } = useParams<{ code: string }>();
 
   const [lobby, setLobby] = useState<Lobby | null>(null);
-  const [gamePhase, setGamePhase] = useState<GamePhase | null>(null);
+  const [gamePhase, setGamePhase] = useState<GamePhase>("enemy");
   const [pvpData, setPvpData] = useState<PvpReady | null>(null);
   const [error, setError] = useState("");
 
@@ -99,5 +99,20 @@ export default function PlayPage() {
       <TeamFight lobby={lobby} pvpData={pvpData} onEndGame={() => setGamePhase("results")}/>
     )
   }
+
+  if (gamePhase === "results") {
+    return (
+      <PageLayout>
+        <h1>Game Results</h1>
+        <p>Results page is not implemented yet.</p>
+      </PageLayout>
+    );
+  }
+
+  return (
+    <PageLayout>
+      <p>Unknown game phase: {gamePhase}</p>
+    </PageLayout>
+  );
   
 }
