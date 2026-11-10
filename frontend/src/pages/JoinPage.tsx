@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { command, guestToken } from '../api/matches'
 import PageLayout from '../components/PageLayout'
 
@@ -7,7 +7,9 @@ import PageLayout from '../components/PageLayout'
 export default function JoinPage() {
   const navigate = useNavigate()
 
-  const [code, setCode] = useState('')
+  const [params] = useSearchParams()
+  const initialCode = (params.get('code') || '').trim().toUpperCase()
+  const [code, setCode] = useState(/^[A-Z0-9]{6}$/.test(initialCode) ? initialCode : '')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [joining, setJoining] = useState(false)
@@ -35,6 +37,7 @@ export default function JoinPage() {
               <label htmlFor="nickname" className="form-label visually-hidden">Nickname</label>
               <input
               id="nickname"
+              autoFocus={!!code}
               className="form-control"
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -51,6 +54,7 @@ export default function JoinPage() {
                 type="text"
                 id="session-code"
                 name="sessionCode"
+                value={code}
                 placeholder="Enter game code"
                 aria-label="Game code"
                 autoComplete="off"
@@ -63,7 +67,7 @@ export default function JoinPage() {
                 }}
                 pattern=".*\S.*"
                 required
-                autoFocus
+                autoFocus={!code}
                 disabled={joining}
               />
             </div>
