@@ -22,22 +22,15 @@ const server = http.createServer(app);
 app.use(express.urlencoded({ extended: true }));
 
 const io = new Server(server, {
+  maxHttpBufferSize: 16 * 1024,
   cors: {
-    origin: "http://localhost:5173",
+    origin: process.env.APP_BASE_URL || "http://localhost:5173",
     methods: ["GET", "POST"],
   }
 });
 
-registerLobbySockets(io);
+const matches = registerLobbySockets(io);
 
-
-// Connect to Database
-const url = process.env.MONGODB_URI || 'mongodb://localhost:27017/TestDB';
-
-mongoose
-  .connect(url)
-  .then(() => console.log('MongoDB connected successfully via Mongoose'))
-  .catch((err) => console.error('MongoDB connection error:', err));
 
 // API routes
 app.use('/api', apiRouter);
@@ -59,13 +52,21 @@ app.get(/.*/, (req, res, next) => {
 app.use(notFound);
 app.use(errorHandler);
 
-// Start server
+// Accept requests only after the database and match indexes are available.
 if (require.main === module) {
   const PORT = process.env.PORT || 5001;
-
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/TestDB')
+    .then(() => require('./models/Match').init())
+    .then(() => server.listen(PORT, process.env.HOST || '127.0.0.1', () => {
+      console.log('Server running on port ' + PORT);
+    }))
+    .catch(() => { console.error('Database startup failed. Check MongoDB configuration.'); process.exit(1); });
+  const shutdown = () => {
+    matches.close();
+    io.close(() => mongoose.disconnect().then(() => process.exit(0)));
+    setTimeout(() => process.exit(1), 5000).unref();
+  };
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
 }
-
 module.exports = app;

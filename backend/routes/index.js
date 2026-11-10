@@ -7,6 +7,8 @@ router.get('/ping', (req, res) => {
   res.status(200).json({ message: 'Hello World from MERN Group 60!!!' });
 });
 
+router.use('/matches', require('./matches'));
+
 router.use('/auth', require('./auth'));
 router.use('/users', require('./users'));
 

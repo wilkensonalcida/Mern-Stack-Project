@@ -235,7 +235,6 @@ export default function HostPage() {
 
             <div className="d-flex gap-3 justify-content-center">
               {(["red", "blue"] as TeamId[]).map(team => {
-                const players = lobby.players.filter(player => player.team === team);
                 const isSelected = hostTeam === team;
 
                 return (

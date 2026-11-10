@@ -1,3 +1,5 @@
+import MatchPage from './pages/MatchPage'
+import MatchHistoryPage from './pages/MatchHistoryPage'
 import { useEffect, useState } from 'react'
 import { Route, Routes, Navigate } from 'react-router'
 import { socket } from "./socket/socket";
@@ -5,13 +7,9 @@ import DashboardPage from './pages/DashboardPage'
 import JoinPage from './pages/JoinPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
-import HostPage from './pages/HostPage'
-import PlayPage from './pages/PlayPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import { AuthError, type LoginResult, type User } from './api/auth'
 import PageLayout from './components/PageLayout'
-import PlayerLobby from './components/PlayerLobby';
-import LobbyPage from './pages/LobbyPage';
 
 
 function clearStoredLogin() {
@@ -107,6 +105,8 @@ export default function App() {
 
   function handleLogout() {
     clearStoredLogin()
+    socket.disconnect()
+    socket.connect()
     setUser(null)
     setRestoreError('')
   }
@@ -134,13 +134,15 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={user ? <DashboardPage user={user} onLogout={handleLogout} /> : <LoginPage onLogin={handleAuth} />} />
+      <Route path="/dashboard" element={<Navigate to="/" replace />} />
+      <Route path="/matches/:code" element={user ? <MatchHistoryPage /> : <Navigate to="/login" replace />} />
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage onLogin={handleAuth} />} />
       <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage onLogin={handleAuth} />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/join" element={<JoinPage />} />
-      <Route path="/lobby/:code" element={<LobbyPage />} />
-      <Route path="/play/:code" element={<PlayPage />} />
-      <Route path="/host/:code" element={user ? <HostPage /> : <Navigate to="/login" replace />} />
+      <Route path="/lobby/:code" element={<MatchPage />} />
+      <Route path="/play/:code" element={<MatchPage />} />
+      <Route path="/host/:code" element={user ? <MatchPage host /> : <Navigate to="/login" replace />} />
     </Routes>
   )
 }
