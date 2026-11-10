@@ -1,22 +1,28 @@
-// Server-owned PvE engine. Attach to the existing lobby manager using the integration steps in README.
 const ENEMIES = [
   { name: 'Goblin', hp: 100, damage: 10 },
   { name: 'Skeleton', hp: 150, damage: 15 },
 ];
-const ROUND_MS = 5000;
-const PAUSE_MS = 1500;
 const BASE = { attack: 2, block: 0.5, heal: 0.5 };
-const BONUS = 0.25; // Each chosen item adds 25% of the base value.
+const BONUS = 0.25;
 const MAX_TAPS_PER_MOVE = 250;
 const TEAMS = ['red', 'blue'];
-const round1 = n => Math.round(n * 10) / 10;
+const otherTeam = team => team === 'red' ? 'blue' : 'red';
+const round1 = number => Math.round(number * 10) / 10;
+const round2 = number => Math.round(number * 100) / 100;
 
-function createEnemyGameManager(io, lobbies) {
+function createEnemyGameManager(io, lobbies, options = {}) {
+  const ROUND_MS = options.roundMs ?? 5000;
+  const PAUSE_MS = options.pauseMs ?? 1500;
+  // Gives browsers time to navigate after game:started before round one begins.
+  const START_DELAY_MS = options.startDelayMs ?? 3000;
+
   const games = new Map();
   const timers = new Map();
   const key = (code, team) => `${code}:${team}`;
   const members = (lobby, team) => lobby.players.filter(p => p.team === team);
-  const reply = (cb, payload) => { if (typeof cb === 'function') cb(payload); };
+  const reply = (cb, payload) => {
+    if (typeof cb === 'function') cb(payload);
+  };
 
   function clearTimers(code) {
     for (const team of TEAMS) {
@@ -25,126 +31,248 @@ function createEnemyGameManager(io, lobbies) {
       timers.delete(k);
     }
   }
+
   function stop(code) {
     clearTimers(code);
     games.delete(code);
   }
-  function publicPlayer(p) {
-    return { id: p.id, name: p.name, team: p.team, hp: p.hp, maxHp: p.maxHp, buffs: { ...p.buffs }, selected: p.selected };
-  }
-  function snapshot(lobby, game, team) {
-    const f = game.teams[team];
-    const spec = ENEMIES[f.stage];
+
+  function publicPlayer(player) {
     return {
-      code: lobby.code, team, phase: f.phase, stage: f.stage,
-      enemy: spec ? { name: spec.name, hp: f.enemyHp, maxHp: spec.hp, damage: spec.damage } : null,
-      round: f.round, endsAt: f.endsAt,
-      players: members(lobby, team).map(publicPlayer),
-      lastRound: f.lastRound,
+      id: player.id,
+      name: player.name,
+      team: player.team,
+      hp: player.hp,
+      maxHp: player.maxHp,
+      buffs: { ...player.buffs },
+      selected: player.selected,
     };
   }
+
+  function snapshot(lobby, game, team) {
+    const fight = game.teams[team];
+    const spec = ENEMIES[fight.stage];
+    return {
+      code: lobby.code,
+      team,
+      phase: fight.phase,
+      stage: fight.stage,
+      enemy: spec ? {
+        name: spec.name,
+        hp: fight.enemyHp,
+        maxHp: spec.hp,
+        damage: spec.damage,
+      } : null,
+      round: fight.round,
+      endsAt: fight.endsAt,
+      remainingMs: fight.endsAt === null ? 0 : Math.max(0, fight.endsAt - Date.now()),
+      players: members(lobby, team).map(publicPlayer),
+      lastRound: fight.lastRound,
+    };
+  }
+
   function broadcast(lobby, game, team) {
     const state = snapshot(lobby, game, team);
-    // Separate perspectives: send only this team's NPC HP, players, and upgrades.
-    for (const p of members(lobby, team)) io.to(p.id).emit('game:enemy:state', state);
+    // Each team receives only its own NPC encounter and player health.
+    for (const player of members(lobby, team)) {
+      io.to(player.id).emit('game:enemy:state', state);
+    }
   }
+
+  function broadcastBoth(lobby, game) {
+    for (const team of TEAMS) broadcast(lobby, game, team);
+  }
+
+  function scheduleRound(lobby, game, team, delay) {
+    const k = key(lobby.code, team);
+    clearTimeout(timers.get(k));
+    timers.set(k, setTimeout(() => {
+      if (games.get(lobby.code) !== game || game.finished || game.pvpSent) return;
+      startRound(lobby, game, team);
+    }, delay));
+  }
+
   function startRound(lobby, game, team) {
-    const f = game.teams[team];
-    if (f.phase === 'failed' || f.phase === 'ready') return;
-    f.phase = 'combat';
-    f.round += 1;
-    f.endsAt = Date.now() + ROUND_MS;
-    f.taps = new Map();
+    const fight = game.teams[team];
+    if (games.get(lobby.code) !== game || game.finished || game.pvpSent) return;
+    if (fight.phase !== 'combat' || fight.endsAt !== null) return;
+
+    fight.round++;
+    fight.endsAt = Date.now() + ROUND_MS;
+    fight.taps = new Map();
     broadcast(lobby, game, team);
+
     const k = key(lobby.code, team);
     clearTimeout(timers.get(k));
     timers.set(k, setTimeout(() => finishRound(lobby.code, team), ROUND_MS));
   }
-  function allSelectionsFinished(lobby, game, team) {
-    const f = game.teams[team];
-    if (f.phase !== 'selection') return;
-    const alive = members(lobby, team).filter(p => p.hp > 0);
-    if (!alive.every(p => p.selected)) return;
-    f.stage += 1;
-    f.round = 0;
-    f.lastRound = null;
-    f.taps = new Map();
-    if (f.stage >= ENEMIES.length) {
-      f.phase = 'ready';
-      f.endsAt = null;
-      broadcast(lobby, game, team);
-      maybeStartPvp(lobby, game);
+
+  function finishGame(lobby, game, winner, reason) {
+    if (game.finished || game.pvpSent) return;
+    clearTimers(lobby.code);
+    game.finished = {
+      code: lobby.code,
+      winner,
+      loser: otherTeam(winner),
+      reason,
+    };
+    for (const team of TEAMS) {
+      game.teams[team].endsAt = null;
+      game.teams[team].phase = team === winner ? 'won' : 'failed';
+    }
+    broadcastBoth(lobby, game);
+    io.to(lobby.code).emit('game:finished', game.finished);
+  }
+
+  function maybeBeginSelection(lobby, game) {
+    if (game.finished || game.pvpSent) return;
+    // A team that defeated the enemy waits here. Nobody starts selecting
+    // until BOTH the red and blue teams defeated the current enemy.
+    if (!TEAMS.every(team => game.teams[team].phase === 'waiting')) return;
+    for (const team of TEAMS) {
+      const fight = game.teams[team];
+      fight.phase = 'selection';
+      fight.endsAt = null;
+      for (const player of members(lobby, team)) player.selected = false;
+    }
+    broadcastBoth(lobby, game);
+  }
+
+  function maybeAdvanceAfterSelections(lobby, game) {
+    if (game.finished || game.pvpSent) return;
+    // Both teams, and every living player on each team, must have chosen.
+    if (!TEAMS.every(team => {
+      const fight = game.teams[team];
+      return fight.phase === 'selection' &&
+        members(lobby, team).some(player => player.hp > 0) &&
+        members(lobby, team).filter(player => player.hp > 0)
+          .every(player => player.selected);
+    })) return;
+
+    const finalStage = TEAMS.every(team => game.teams[team].stage === ENEMIES.length - 1);
+    if (finalStage) {
+      const players = lobby.players
+        .filter(player => TEAMS.includes(player.team))
+        .map(player => ({
+          id: player.id,
+          name: player.name,
+          team: player.team,
+          hp: player.hp,
+          maxHp: player.maxHp,
+          buffs: { ...player.buffs },
+        }));
+      game.pvp = { code: lobby.code, players };
+      game.pvpSent = true;
+      for (const team of TEAMS) {
+        game.teams[team].phase = 'ready';
+        game.teams[team].endsAt = null;
+      }
+      broadcastBoth(lobby, game);
+      io.to(lobby.code).emit('game:pvp-ready', game.pvp);
       return;
     }
-    f.enemyHp = ENEMIES[f.stage].hp;
-    startRound(lobby, game, team);
+
+    // Begin the next enemy only after both teams finish item selection.
+    for (const team of TEAMS) {
+      const fight = game.teams[team];
+      fight.stage++;
+      fight.phase = 'combat';
+      fight.round = 0;
+      fight.enemyHp = ENEMIES[fight.stage].hp;
+      fight.endsAt = null;
+      fight.lastRound = null;
+      fight.taps = new Map();
+      for (const player of members(lobby, team)) player.selected = false;
+    }
+    broadcastBoth(lobby, game);
+    for (const team of TEAMS) scheduleRound(lobby, game, team, PAUSE_MS);
   }
-  function maybeStartPvp(lobby, game) {
-    if (game.pvpSent || !TEAMS.every(t => game.teams[t].phase === 'ready')) return;
-    game.pvpSent = true;
-    const players = lobby.players.filter(p => p.team === 'red' || p.team === 'blue').map(p => ({
-      id: p.id, name: p.name, team: p.team, hp: p.hp, maxHp: p.maxHp, buffs: { ...p.buffs },
-    }));
-    const payload = { code: lobby.code, players };
-    // Stores the hand-off so a late client can retrieve it via game:pvp:get.
-    game.pvp = payload;
-    io.to(lobby.code).emit('game:pvp-ready', payload);
-  }
+
   function finishRound(code, team) {
     const lobby = lobbies.get(code);
     const game = games.get(code);
-    if (!lobby || !game) return;
-    const f = game.teams[team];
-    if (f.phase !== 'combat') return;
-    f.endsAt = null;
-    const spec = ENEMIES[f.stage];
-    const alive = members(lobby, team).filter(p => p.hp > 0);
+    if (!lobby || !game || game.finished || game.pvpSent) return;
+    const fight = game.teams[team];
+    if (fight.phase !== 'combat' || fight.endsAt === null) return;
+
+    fight.endsAt = null; // Server explicitly closes the action window.
+    const spec = ENEMIES[fight.stage];
+    const alive = members(lobby, team).filter(player => player.hp > 0);
     let attack = 0;
     const playerEffects = [];
-    for (const p of alive) {
-      const taps = f.taps.get(p.id) || { attack: 0, block: 0, heal: 0 };
-      attack += taps.attack * BASE.attack * p.buffs.attack;
-      const blocked = Math.min(spec.damage, taps.block * BASE.block * p.buffs.block);
-      const healed = taps.heal * BASE.heal * p.buffs.heal;
-      // Each teammate takes their own NPC damage, adjusted by their own block and heal.
-      p.hp = round1(Math.min(p.maxHp, Math.max(0, p.hp - (spec.damage - blocked) + healed)));
-      playerEffects.push({ id: p.id, blocked: round1(blocked), healed: round1(healed), hp: p.hp });
-    }
-    f.enemyHp = round1(Math.max(0, f.enemyHp - attack));
-    f.lastRound = { round: f.round, attack: round1(attack), enemyDamage: spec.damage, enemyHp: f.enemyHp, playerEffects };
-    broadcast(lobby, game, team);
 
-    const k = key(code, team);
-    clearTimeout(timers.get(k));
-    if (f.enemyHp <= 0) {
-      f.phase = 'selection';
-      for (const p of members(lobby, team)) p.selected = false;
+    for (const player of alive) {
+      const taps = fight.taps.get(player.id) || { attack: 0, block: 0, heal: 0 };
+      attack += taps.attack * BASE.attack * player.buffs.attack;
+      const blocked = Math.min(spec.damage, taps.block * BASE.block * player.buffs.block);
+      const healed = taps.heal * BASE.heal * player.buffs.heal;
+      player.hp = round1(Math.min(player.maxHp, Math.max(0, player.hp - (spec.damage - blocked) + healed)));
+      playerEffects.push({ id: player.id, blocked: round1(blocked), healed: round1(healed), hp: player.hp });
+    }
+    fight.enemyHp = round1(Math.max(0, fight.enemyHp - attack));
+    fight.lastRound = {
+      round: fight.round,
+      attack: round1(attack),
+      enemyDamage: spec.damage,
+      enemyHp: fight.enemyHp,
+      playerEffects,
+    };
+
+    // Team wipe takes priority, even if the final attack also defeated the NPC.
+    if (!members(lobby, team).some(player => player.hp > 0)) {
+      fight.phase = 'failed';
       broadcast(lobby, game, team);
+      finishGame(lobby, game, otherTeam(team), 'enemy-defeat');
       return;
     }
-    if (!members(lobby, team).some(p => p.hp > 0)) {
-      f.phase = 'failed';
+
+    if (fight.enemyHp <= 0) {
+      fight.phase = 'waiting';
       broadcast(lobby, game, team);
-      io.to(code).emit('game:enemy:failed', { team });
+      maybeBeginSelection(lobby, game);
       return;
     }
-    timers.set(k, setTimeout(() => startRound(lobby, game, team), PAUSE_MS));
+
+    broadcast(lobby, game, team); // endsAt null disables buttons during pause.
+    scheduleRound(lobby, game, team, PAUSE_MS);
   }
+
   function begin(lobby) {
     if (games.has(lobby.code)) return;
-    const roster = lobby.players.filter(p => TEAMS.includes(p.team));
-    if (!TEAMS.every(team => roster.some(p => p.team === team))) throw new Error('Both teams need a player.');
-    if (roster.length !== lobby.players.length) throw new Error('Everyone must pick a team.');
-    for (const p of roster) {
-      p.hp = 100; p.maxHp = 100;
-      p.buffs = { attack: 1, block: 1, heal: 1 };
-      p.selected = false;
+    const roster = lobby.players.filter(player => TEAMS.includes(player.team));
+    if (!TEAMS.every(team => roster.some(player => player.team === team))) {
+      throw new Error('Both teams need a player.');
     }
-    const makeTeam = () => ({ phase: 'combat', stage: 0, round: 0, enemyHp: ENEMIES[0].hp, endsAt: null, taps: new Map(), lastRound: null });
-    const game = { teams: { red: makeTeam(), blue: makeTeam() }, pvpSent: false, pvp: null };
+    if (roster.length !== lobby.players.length) {
+      throw new Error('Everyone must pick a team.');
+    }
+
+    for (const player of roster) {
+      player.hp = 100;
+      player.maxHp = 100;
+      player.buffs = { attack: 1, block: 1, heal: 1 };
+      player.selected = false;
+    }
+    const makeFight = () => ({
+      phase: 'combat',
+      stage: 0,
+      round: 0,
+      enemyHp: ENEMIES[0].hp,
+      endsAt: null,
+      taps: new Map(),
+      lastRound: null,
+    });
+    const game = {
+      teams: { red: makeFight(), blue: makeFight() },
+      pvpSent: false,
+      pvp: null,
+      finished: null,
+    };
     games.set(lobby.code, game);
-    for (const team of TEAMS) startRound(lobby, game, team);
+    broadcastBoth(lobby, game);
+    for (const team of TEAMS) scheduleRound(lobby, game, team, START_DELAY_MS);
   }
+
   function register(socket) {
     function context(cb) {
       const code = socket.data.lobbyCode;
@@ -155,45 +283,71 @@ function createEnemyGameManager(io, lobbies) {
         reply(cb, { success: false, error: 'Not an active team member.' });
         return null;
       }
-      return { lobby, game, player, f: game.teams[player.team] };
+      return { lobby, game, player, fight: game.teams[player.team] };
     }
+
     socket.on('game:enemy:get', (code, cb) => {
-      const c = context(cb);
-      if (!c) return;
-      if (String(code).toUpperCase() !== c.lobby.code) return reply(cb, { success: false, error: 'Wrong session code.' });
-      reply(cb, { success: true, state: snapshot(c.lobby, c.game, c.player.team) });
+      const ctx = context(cb);
+      if (!ctx) return;
+      if (String(code).trim().toUpperCase() !== ctx.lobby.code) {
+        return reply(cb, { success: false, error: 'Wrong session code.' });
+      }
+      reply(cb, { success: true, state: snapshot(ctx.lobby, ctx.game, ctx.player.team) });
     });
+
     socket.on('game:enemy:tap', (move, cb) => {
-      const c = context(cb);
-      if (!c) return;
-      if (c.f.phase !== 'combat' || !c.f.endsAt || Date.now() >= c.f.endsAt || c.player.hp <= 0 || !Object.hasOwn(BASE, move)) {
+      const ctx = context(cb);
+      if (!ctx) return;
+      if (ctx.game.finished || ctx.game.pvpSent ||
+          ctx.fight.phase !== 'combat' || ctx.fight.endsAt === null ||
+          Date.now() >= ctx.fight.endsAt || ctx.player.hp <= 0 ||
+          !Object.hasOwn(BASE, move)) {
         return reply(cb, { success: false, error: 'Not accepting taps.' });
       }
-      const taps = c.f.taps.get(socket.id) || { attack: 0, block: 0, heal: 0 };
-      if (taps[move] >= MAX_TAPS_PER_MOVE) return reply(cb, { success: false, error: 'Tap limit reached.' });
+      const taps = ctx.fight.taps.get(socket.id) || { attack: 0, block: 0, heal: 0 };
+      if (taps[move] >= MAX_TAPS_PER_MOVE) {
+        return reply(cb, { success: false, error: 'Tap limit reached.' });
+      }
       taps[move]++;
-      c.f.taps.set(socket.id, taps);
+      ctx.fight.taps.set(socket.id, taps);
       reply(cb, { success: true });
     });
+
     socket.on('game:enemy:choose', (upgrade, cb) => {
-      const c = context(cb);
-      if (!c) return;
-      if (c.f.phase !== 'selection' || c.player.hp <= 0 || c.player.selected || !Object.hasOwn(BASE, upgrade)) {
+      const ctx = context(cb);
+      if (!ctx) return;
+      if (ctx.game.finished || ctx.game.pvpSent ||
+          ctx.fight.phase !== 'selection' || ctx.player.hp <= 0 ||
+          ctx.player.selected || !Object.hasOwn(BASE, upgrade)) {
         return reply(cb, { success: false, error: 'Invalid or duplicate selection.' });
       }
-      c.player.buffs[upgrade] = round1(c.player.buffs[upgrade] + BONUS);
-      c.player.selected = true;
+      ctx.player.buffs[upgrade] = round2(ctx.player.buffs[upgrade] + BONUS);
+      ctx.player.selected = true;
       reply(cb, { success: true });
-      broadcast(c.lobby, c.game, c.player.team);
-      allSelectionsFinished(c.lobby, c.game, c.player.team);
+      broadcast(ctx.lobby, ctx.game, ctx.player.team);
+      maybeAdvanceAfterSelections(ctx.lobby, ctx.game);
     });
+
     socket.on('game:pvp:get', (code, cb) => {
-      const c = context(cb);
-      if (!c) return;
-      if (String(code).toUpperCase() !== c.lobby.code || !c.game.pvp) return reply(cb, { success: false, error: 'PvP not ready.' });
-      reply(cb, { success: true, data: c.game.pvp });
+      const ctx = context(cb);
+      if (!ctx) return;
+      if (String(code).trim().toUpperCase() !== ctx.lobby.code || !ctx.game.pvp) {
+        return reply(cb, { success: false, error: 'PvP not ready.' });
+      }
+      reply(cb, { success: true, data: ctx.game.pvp });
+    });
+
+    socket.on('game:result:get', (code, cb) => {
+      const ctx = context(cb);
+      if (!ctx) return;
+      if (String(code).trim().toUpperCase() !== ctx.lobby.code || !ctx.game.finished) {
+        return reply(cb, { success: false, error: 'No completed game yet.' });
+      }
+      reply(cb, { success: true, result: ctx.game.finished });
     });
   }
+
   return { begin, register, stop };
 }
+
 module.exports = { createEnemyGameManager };
