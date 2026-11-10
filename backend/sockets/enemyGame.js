@@ -45,7 +45,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       hp: player.hp,
       maxHp: player.maxHp,
       buffs: { ...player.buffs },
-      selected: player.selected,
+       selectedUpgrade: player.selectedUpgrade ?? null,
     };
   }
 
@@ -133,7 +133,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       const fight = game.teams[team];
       fight.phase = 'selection';
       fight.endsAt = null;
-      for (const player of members(lobby, team)) player.selected = false;
+      for (const player of members(lobby, team)) player.selectedUpgrade = null;
     }
     broadcastBoth(lobby, game);
   }
@@ -146,7 +146,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       return fight.phase === 'selection' &&
         members(lobby, team).some(player => player.hp > 0) &&
         members(lobby, team).filter(player => player.hp > 0)
-          .every(player => player.selected);
+          .every(player => player.selectedUpgrade !== null);
     })) return;
 
     const finalStage = TEAMS.every(team => game.teams[team].stage === ENEMIES.length - 1);
@@ -182,7 +182,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       fight.endsAt = null;
       fight.lastRound = null;
       fight.taps = new Map();
-      for (const player of members(lobby, team)) player.selected = false;
+      for (const player of members(lobby, team)) player.selectedUpgrade = null;
     }
     broadcastBoth(lobby, game);
     for (const team of TEAMS) scheduleRound(lobby, game, team, PAUSE_MS);
@@ -251,7 +251,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       player.hp = 100;
       player.maxHp = 100;
       player.buffs = { attack: 1, block: 1, heal: 1 };
-      player.selected = false;
+      player.selectedUpgrade = null;
     }
     const makeFight = () => ({
       phase: 'combat',
@@ -316,15 +316,30 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     socket.on('game:enemy:choose', (upgrade, cb) => {
       const ctx = context(cb);
       if (!ctx) return;
-      if (ctx.game.finished || ctx.game.pvpSent ||
-          ctx.fight.phase !== 'selection' || ctx.player.hp <= 0 ||
-          ctx.player.selected || !Object.hasOwn(BASE, upgrade)) {
-        return reply(cb, { success: false, error: 'Invalid or duplicate selection.' });
+
+      if (
+        ctx.game.finished ||
+        ctx.game.pvpSent ||
+        ctx.fight.phase !== 'selection' ||
+        ctx.player.hp <= 0 ||
+        ctx.player.selectedUpgrade !== null ||
+        !Object.hasOwn(BASE, upgrade)
+      ) {
+        return reply(cb, {
+          success: false,
+          error: 'Invalid or duplicate selection.',
+        });
       }
-      ctx.player.buffs[upgrade] = round2(ctx.player.buffs[upgrade] + BONUS);
-      ctx.player.selected = true;
+
+      ctx.player.buffs[upgrade] = round1(ctx.player.buffs[upgrade] + BONUS);
+      ctx.player.selectedUpgrade = upgrade;
+
       reply(cb, { success: true });
+
+      // Send updated state to that team
       broadcast(ctx.lobby, ctx.game, ctx.player.team);
+
+      // Only advances when all living players on both teams have chosen
       maybeAdvanceAfterSelections(ctx.lobby, ctx.game);
     });
 

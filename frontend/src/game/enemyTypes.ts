@@ -10,7 +10,7 @@ export type EnemyPlayer = {
   hp: number;
   maxHp: number;
   buffs: Buffs;
-  selected: boolean;
+  selectedUpgrade: Upgrade | null;
 };
 export type RoundResult = {
   round: number;
