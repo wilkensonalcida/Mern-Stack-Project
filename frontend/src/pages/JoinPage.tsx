@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { socket } from '../socket/socket'
+import { command, guestToken } from '../api/matches'
 import PageLayout from '../components/PageLayout'
-import type { LobbyResponse } from '../socket/lobby'
+
 
 export default function JoinPage() {
   const navigate = useNavigate()
@@ -12,64 +12,17 @@ export default function JoinPage() {
   const [error, setError] = useState('')
   const [joining, setJoining] = useState(false)
 
-  function joinLobby(event: React.SubmitEvent<HTMLFormElement>) {
-
+  async function joinLobby(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-
     if (joining) return
-
     const sessionCode = code.trim().toUpperCase()
-    const nickname = name.trim()
-
-    if(!nickname || !sessionCode) {
-      setError('Please enter a nickname and session code!')
-      return
-    }
-
-    if(!sessionCode) {
-      setError('Please enter a session code!')
-      return
-    }
-
-    setJoining(true)
-    setError('')
-
-    function sendJoinRequest() {
-      socket.timeout(5000).emit(
-        "game:join",
-        {
-          code: sessionCode,
-          name: nickname
-        }, (err: Error | null, response: LobbyResponse) => {
-          setJoining(false) 
-          if (err) {
-            console.error("Join request failed:", err)
-            setError(response?.error || "Server not responding.")
-            return
-          }
-          if(!response?.success || !response.lobby) {
-            setError(response?.error || "Invalid lobby code.")
-            return
-          }
-          console.log("Join request successful:", response.lobby)
-          navigate(`/lobby/${response.lobby.code}`)
-        }
-      )
-    }
-
-    if(socket.connected) {
-      sendJoinRequest()
-    } else {
-      socket.connect()
-      socket.timeout(5000).once("connect", () => {
-        sendJoinRequest()
-      })
-      socket.once("connect_error", () => {
-        setJoining(false)
-        setError("Unable to connect to server.")
-      })
-    }
-
+    setJoining(true); setError('')
+    try {
+      const credential = guestToken(sessionCode, true)
+      const response = await command('game:join', { code: sessionCode, name: name.trim(), guestToken: credential })
+      navigate('/lobby/' + response.match.code)
+    } catch (e) { setError((e as Error).message) }
+    finally { setJoining(false) }
   }
 
   return (

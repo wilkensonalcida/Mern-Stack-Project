@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import PageLayout from './PageLayout'
 
 type TeamId = 'red' | 'blue'
