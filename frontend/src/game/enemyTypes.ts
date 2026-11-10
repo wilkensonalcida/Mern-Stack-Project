@@ -4,7 +4,7 @@ export type Upgrade =
   | 'sharpened_blade'
   | 'heated_blade'
   | 'wood_shield'
-  | 'metal_shieldr'
+  | 'metal_shield'
   | 'healing_potion'
   | 'gauze';
 export type UpgradeOption = {
@@ -59,6 +59,6 @@ export type GameResult = {
   code: string;
   winner: TeamId;
   loser: TeamId;
-  reason: 'enemy-defeat';
+  reason: 'enemy-defeat' | 'pvp-defeat';
 };
 export type Ack = { success: boolean; error?: string };

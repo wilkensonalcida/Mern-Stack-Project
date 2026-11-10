@@ -40,6 +40,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     games.delete(code);
   }
 
+  // Each client sees its own item offers only; teammates see completion status.
   function publicPlayer(player, viewerId) {
     return {
       id: player.id,
@@ -79,7 +80,6 @@ function createEnemyGameManager(io, lobbies, options = {}) {
   }
 
   function broadcast(lobby, game, team) {
-
     for (const player of members(lobby, team)) {
       io.to(player.id).emit('game:enemy:state',
         snapshot(lobby, game, team, player.id));
@@ -130,10 +130,9 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     broadcastBoth(lobby, game);
     io.to(lobby.code).emit('game:finished', game.finished);
   }
-
+  // The waiting room.
   function maybeBeginSelection(lobby, game) {
     if (game.finished || game.pvpSent) return;
-
     if (!TEAMS.every(team => game.teams[team].phase === 'waiting')) return;
     for (const team of TEAMS) {
       const fight = game.teams[team];
@@ -146,7 +145,6 @@ function createEnemyGameManager(io, lobbies, options = {}) {
 
   function maybeAdvanceAfterSelections(lobby, game) {
     if (game.finished || game.pvpSent) return;
-
     if (!allLivingPlayersSelected(lobby, game)) return;
 
     const finalStage = TEAMS.every(team => game.teams[team].stage === ENEMIES.length - 1);
@@ -161,7 +159,18 @@ function createEnemyGameManager(io, lobbies, options = {}) {
           maxHp: player.maxHp,
           buffs: { ...player.buffs },
         }));
-      game.pvp = { code: lobby.code, players };
+      // Initialize server-authoritative PvP BEFORE broadcasting the handoff.
+      // If initialization fails, do not leave browsers on an unplayable PvP page.
+      const handoff = { code: lobby.code, players };
+      if (typeof options.onPvpReady === 'function') {
+        try {
+          options.onPvpReady(lobby, handoff);
+        } catch (error) {
+          console.error('[PVP INITIALIZATION FAILED]', lobby.code, error);
+          return;
+        }
+      }
+      game.pvp = handoff;
       game.pvpSent = true;
       for (const team of TEAMS) {
         game.teams[team].phase = 'ready';
@@ -194,7 +203,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     const fight = game.teams[team];
     if (fight.phase !== 'combat' || fight.endsAt === null) return;
 
-    fight.endsAt = null;
+    fight.endsAt = null; 
     const spec = ENEMIES[fight.stage];
     const alive = members(lobby, team).filter(player => player.hp > 0);
     let attack = 0;
