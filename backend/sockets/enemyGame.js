@@ -3,17 +3,20 @@ const ENEMIES = [
   { name: 'Skeleton', hp: 150, damage: 15 },
 ];
 const BASE = { attack: 2, block: 0.5, heal: 0.5 };
-const BONUS = 0.25;
 const MAX_TAPS_PER_MOVE = 250;
 const TEAMS = ['red', 'blue'];
 const otherTeam = team => team === 'red' ? 'blue' : 'red';
 const round1 = number => Math.round(number * 10) / 10;
-const round2 = number => Math.round(number * 100) / 100;
+const {
+  preparePlayerSelection,
+  clearPlayerSelection,
+  choosePlayerUpgrade,
+  allLivingPlayersSelected,
+} = require('./upgradeSelection');
 
 function createEnemyGameManager(io, lobbies, options = {}) {
   const ROUND_MS = options.roundMs ?? 5000;
   const PAUSE_MS = options.pauseMs ?? 1500;
-  // Gives browsers time to navigate after game:started before round one begins.
   const START_DELAY_MS = options.startDelayMs ?? 3000;
 
   const games = new Map();
@@ -37,7 +40,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     games.delete(code);
   }
 
-  function publicPlayer(player) {
+  function publicPlayer(player, viewerId) {
     return {
       id: player.id,
       name: player.name,
@@ -45,11 +48,15 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       hp: player.hp,
       maxHp: player.maxHp,
       buffs: { ...player.buffs },
-       selectedUpgrade: player.selectedUpgrade ?? null,
+      selectedUpgrade: player.selectedUpgrade ?? null,
+      selectionStage: player.selectionStage ?? null,
+      upgradeOptions: player.id === viewerId
+        ? (player.upgradeOptions ?? []).map(item => ({ ...item }))
+        : [],
     };
   }
 
-  function snapshot(lobby, game, team) {
+  function snapshot(lobby, game, team, viewerId) {
     const fight = game.teams[team];
     const spec = ENEMIES[fight.stage];
     return {
@@ -66,16 +73,16 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       round: fight.round,
       endsAt: fight.endsAt,
       remainingMs: fight.endsAt === null ? 0 : Math.max(0, fight.endsAt - Date.now()),
-      players: members(lobby, team).map(publicPlayer),
+      players: members(lobby, team).map(player => publicPlayer(player, viewerId)),
       lastRound: fight.lastRound,
     };
   }
 
   function broadcast(lobby, game, team) {
-    const state = snapshot(lobby, game, team);
-    // Each team receives only its own NPC encounter and player health.
+
     for (const player of members(lobby, team)) {
-      io.to(player.id).emit('game:enemy:state', state);
+      io.to(player.id).emit('game:enemy:state',
+        snapshot(lobby, game, team, player.id));
     }
   }
 
@@ -126,28 +133,21 @@ function createEnemyGameManager(io, lobbies, options = {}) {
 
   function maybeBeginSelection(lobby, game) {
     if (game.finished || game.pvpSent) return;
-    // A team that defeated the enemy waits here. Nobody starts selecting
-    // until BOTH the red and blue teams defeated the current enemy.
+
     if (!TEAMS.every(team => game.teams[team].phase === 'waiting')) return;
     for (const team of TEAMS) {
       const fight = game.teams[team];
       fight.phase = 'selection';
       fight.endsAt = null;
-      for (const player of members(lobby, team)) player.selectedUpgrade = null;
+      for (const player of members(lobby, team)) preparePlayerSelection(player, fight.stage);
     }
     broadcastBoth(lobby, game);
   }
 
   function maybeAdvanceAfterSelections(lobby, game) {
     if (game.finished || game.pvpSent) return;
-    // Both teams, and every living player on each team, must have chosen.
-    if (!TEAMS.every(team => {
-      const fight = game.teams[team];
-      return fight.phase === 'selection' &&
-        members(lobby, team).some(player => player.hp > 0) &&
-        members(lobby, team).filter(player => player.hp > 0)
-          .every(player => player.selectedUpgrade != null);
-    })) return;
+
+    if (!allLivingPlayersSelected(lobby, game)) return;
 
     const finalStage = TEAMS.every(team => game.teams[team].stage === ENEMIES.length - 1);
     if (finalStage) {
@@ -172,7 +172,6 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       return;
     }
 
-    // Begin the next enemy only after both teams finish item selection.
     for (const team of TEAMS) {
       const fight = game.teams[team];
       fight.stage++;
@@ -182,7 +181,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       fight.endsAt = null;
       fight.lastRound = null;
       fight.taps = new Map();
-      for (const player of members(lobby, team)) player.selectedUpgrade = null;
+      for (const player of members(lobby, team)) clearPlayerSelection(player);
     }
     broadcastBoth(lobby, game);
     for (const team of TEAMS) scheduleRound(lobby, game, team, PAUSE_MS);
@@ -195,7 +194,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     const fight = game.teams[team];
     if (fight.phase !== 'combat' || fight.endsAt === null) return;
 
-    fight.endsAt = null; // Server explicitly closes the action window.
+    fight.endsAt = null;
     const spec = ENEMIES[fight.stage];
     const alive = members(lobby, team).filter(player => player.hp > 0);
     let attack = 0;
@@ -218,7 +217,6 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       playerEffects,
     };
 
-    // Team wipe takes priority, even if the final attack also defeated the NPC.
     if (!members(lobby, team).some(player => player.hp > 0)) {
       fight.phase = 'failed';
       broadcast(lobby, game, team);
@@ -233,7 +231,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       return;
     }
 
-    broadcast(lobby, game, team); // endsAt null disables buttons during pause.
+    broadcast(lobby, game, team); 
     scheduleRound(lobby, game, team, PAUSE_MS);
   }
 
@@ -251,7 +249,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       player.hp = 100;
       player.maxHp = 100;
       player.buffs = { attack: 1, block: 1, heal: 1 };
-      player.selectedUpgrade = null;
+      clearPlayerSelection(player);
     }
     const makeFight = () => ({
       phase: 'combat',
@@ -292,7 +290,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       if (String(code).trim().toUpperCase() !== ctx.lobby.code) {
         return reply(cb, { success: false, error: 'Wrong session code.' });
       }
-      reply(cb, { success: true, state: snapshot(ctx.lobby, ctx.game, ctx.player.team) });
+      reply(cb, { success: true, state: snapshot(ctx.lobby, ctx.game, ctx.player.team, socket.id) });
     });
 
     socket.on('game:enemy:tap', (move, cb) => {
@@ -313,33 +311,30 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       reply(cb, { success: true });
     });
 
-    socket.on('game:enemy:choose', (upgrade, cb) => {
+    socket.on('game:enemy:choose', (request, cb) => {
       const ctx = context(cb);
       if (!ctx) return;
-
-      if (
-        ctx.game.finished ||
-        ctx.game.pvpSent ||
-        ctx.fight.phase !== 'selection' ||
-        ctx.player.hp <= 0 ||
-        ctx.player.selectedUpgrade != null ||
-        !Object.hasOwn(BASE, upgrade)
-      ) {
-        return reply(cb, {
-          success: false,
-          error: 'Invalid or duplicate selection.',
-        });
+      if (ctx.game.finished || ctx.game.pvpSent || ctx.fight.phase !== 'selection') {
+        return reply(cb, { success: false, error: 'Selection phase is closed.' });
+      }
+      if (!request || !Number.isInteger(request.stage) ||
+          request.stage !== ctx.fight.stage || typeof request.itemId !== 'string') {
+        return reply(cb, { success: false, error: 'Invalid stage or item request.' });
       }
 
-      ctx.player.buffs[upgrade] = round1(ctx.player.buffs[upgrade] + BONUS);
-      ctx.player.selectedUpgrade = upgrade;
+      const outcome = choosePlayerUpgrade(ctx.player, ctx.fight.stage, request.itemId);
+      if (!outcome.success) return reply(cb, outcome);
 
-      reply(cb, { success: true });
-
-      // Send updated state to that team
+      console.info('[BUFF ACCEPTED]', {
+        code: ctx.lobby.code,
+        socketId: socket.id,
+        playerId: ctx.player.id,
+        team: ctx.player.team,
+        stage: ctx.fight.stage,
+        itemId: outcome.selectedUpgrade,
+      });
+      reply(cb, { success: true, selectedUpgrade: outcome.selectedUpgrade });
       broadcast(ctx.lobby, ctx.game, ctx.player.team);
-
-      // Only advances when all living players on both teams have chosen
       maybeAdvanceAfterSelections(ctx.lobby, ctx.game);
     });
 

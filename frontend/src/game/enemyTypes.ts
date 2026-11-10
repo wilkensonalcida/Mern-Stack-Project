@@ -1,6 +1,19 @@
 export type Move = 'attack' | 'block' | 'heal';
-export type Upgrade = Move;
 export type TeamId = 'red' | 'blue';
+export type Upgrade =
+  | 'sharpened_blade'
+  | 'heated_blade'
+  | 'wood_shield'
+  | 'metal_shieldr'
+  | 'healing_potion'
+  | 'gauze';
+export type UpgradeOption = {
+  id: Upgrade;
+  name: string;
+  stat: Move;
+  bonus: number;
+  description: string;
+};
 export type EnemyPhase = 'combat' | 'waiting' | 'selection' | 'ready' | 'failed' | 'won';
 export type Buffs = { attack: number; block: number; heal: number };
 export type EnemyPlayer = {
@@ -11,6 +24,8 @@ export type EnemyPlayer = {
   maxHp: number;
   buffs: Buffs;
   selectedUpgrade: Upgrade | null;
+  selectionStage: number | null;
+  upgradeOptions: UpgradeOption[];
 };
 export type RoundResult = {
   round: number;
