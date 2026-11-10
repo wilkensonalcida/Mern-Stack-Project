@@ -146,7 +146,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       return fight.phase === 'selection' &&
         members(lobby, team).some(player => player.hp > 0) &&
         members(lobby, team).filter(player => player.hp > 0)
-          .every(player => player.selectedUpgrade !== null);
+          .every(player => player.selectedUpgrade != null);
     })) return;
 
     const finalStage = TEAMS.every(team => game.teams[team].stage === ENEMIES.length - 1);
@@ -322,7 +322,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
         ctx.game.pvpSent ||
         ctx.fight.phase !== 'selection' ||
         ctx.player.hp <= 0 ||
-        ctx.player.selectedUpgrade !== null ||
+        ctx.player.selectedUpgrade != null ||
         !Object.hasOwn(BASE, upgrade)
       ) {
         return reply(cb, {

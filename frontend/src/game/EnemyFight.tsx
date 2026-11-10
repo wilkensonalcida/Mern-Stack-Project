@@ -162,7 +162,7 @@ export default function EnemyFight({ code, onPvpReady, onGameFinished }: Props) 
   const canChoose = Boolean(
     connected && player && player.hp > 0 &&
     state?.phase === 'selection' &&
-    player.selectedUpgrade === null &&
+    player.selectedUpgrade == null &&
     !pending
   );
   const seconds = localEndsAt === null ? '0.0' :
@@ -241,7 +241,7 @@ export default function EnemyFight({ code, onPvpReady, onGameFinished }: Props) 
   const choicesMade = livingTeam.filter(p => p.selectedUpgrade !== null).length;
 
   const status = state.phase === 'selection'
-    ? (player.selectedUpgrade !== null
+    ? (player.selectedUpgrade != null
       ? `You selected ${player.selectedUpgrade}. Waiting for the other players…`
       : 'Pick one permanent +25% upgrade. Everyone chooses independently.')
     : state.phase === 'waiting' ? 'Enemy defeated! Waiting for the other team to finish.'
