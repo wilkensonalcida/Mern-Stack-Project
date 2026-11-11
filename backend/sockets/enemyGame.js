@@ -2,7 +2,7 @@ const ENEMIES = [
   { name: 'Goblin', hp: 100, damage: 10 },
   { name: 'Skeleton', hp: 150, damage: 15 },
 ];
-const BASE = { attack: 2, block: 0.5, heal: 0.5 };
+const BASE = { attack: 2, block: 1, heal: 1 };
 const MAX_TAPS_PER_MOVE = 250;
 const TEAMS = ['red', 'blue'];
 const otherTeam = team => team === 'red' ? 'blue' : 'red';

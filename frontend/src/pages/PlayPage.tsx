@@ -33,6 +33,23 @@ export default function PlayPage() {
     setGamePhase('results');
   }, [normalizedCode]);
 
+  function leaveGame(destination: string) {
+      socket.timeout(5000).emit(
+        "game:leave",
+        (
+          err: Error | null,
+          response: { success: boolean; error?: string }
+        ) => {
+          if (err || !response?.success) {
+            setError(response?.error || "Unable to leave game.");
+            return;
+          }
+
+          navigate(destination);
+        }
+      );
+    }
+
   useEffect(() => {
     if (!normalizedCode) return;
     let mounted = true;
@@ -55,6 +72,7 @@ export default function PlayPage() {
           });
       }
     }
+    
     socket.on('game:finished', onFinished);
     socket.on('connect', load);
     if (socket.connected) load();
@@ -87,8 +105,8 @@ export default function PlayPage() {
           <p>{result.reason === 'pvp-defeat' ? 'Victory in PvP combat.' : 'Victory during enemy combat.'}</p>
         </> : <p>Waiting for the server's final result…</p>}
         <div className="d-flex justify-content-center gap-2">
-          {host && <button className="btn btn-dark" type="button" onClick={() => navigate('/dashboard')}>Dashboard</button>}
-          <button className="btn btn-outline-dark" type="button" onClick={() => navigate('/login')}>Exit game</button>
+          {host && <button className="btn btn-dark" type="button" onClick={() => leaveGame('/')}>Dashboard</button>}
+          <button className="btn btn-outline-dark" type="button" onClick={() => leaveGame('/login')}>Exit game</button>
         </div>
       </div></section>
     </PageLayout>
