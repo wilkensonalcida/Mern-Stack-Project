@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import PageLayout from '../components/PageLayout'
 import { socket } from '../socket/socket'
 import { HostBossFights } from '../game/EnemyFight'
+import TeamFight from '../game/TeamFight'
 import type { GameResult, HostBossState } from '../game/enemyTypes'
 
 import type {
@@ -167,20 +168,22 @@ export default function HostPage() {
 
   // After Start game, the phones play, and this screen shows the game.
   if (lobby.status === "playing") {
-    if (boss && !pvpStarted && !result) {
+    if (pvpStarted && !result) {
+      return <TeamFight code={lobby.code} onEndGame={cancelGame} />
+    }
+    if (boss && !result) {
       return <HostBossFights state={boss.state} receivedAt={boss.receivedAt} onEndGame={cancelGame} />
     }
-    // PvP and the results get their own displays in later steps. Until then, this card follows them.
+    // The results get their own display in a later step. Until then, this card shows them.
     const heading = result
       ? `${result.winner === "red" ? "Red" : "Blue"} team wins!`
-      : pvpStarted ? "PvP in progress" : "Loading the game..."
+      : "Loading the game..."
     return (
       <PageLayout>
         <section className="card" aria-labelledby="game-heading">
           <div className="card-body p-4 text-center">
             <p className="text-body-secondary mb-1">Game session code {lobby.code}</p>
             <h1 className="h3 card-title" id="game-heading">{heading}</h1>
-            {pvpStarted && !result && <p className="text-body-secondary">The knights are fighting on the phones.</p>}
             {error && <p className="text-danger" role="alert">{error}</p>}
             {result ? (
               <button className="btn btn-dark" type="button" onClick={backToDashboard}>Back to dashboard</button>

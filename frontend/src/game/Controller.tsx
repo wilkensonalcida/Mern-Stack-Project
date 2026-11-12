@@ -147,9 +147,6 @@ export default function Controller({ code, team, nickname }: Props) {
     if (pvp && pvp.state.phase !== 'finished') {
       const state = pvp.state;
       const left = Math.max(0, state.remainingMs - (now - pvp.at));
-      // PvP still gives each player a fighter until it gets team knights, so a phone can be knocked out.
-      const me = state.players.find(player => player.id === socket.id);
-      if (me && me.hp <= 0) return { kind: 'locked', status: 'Your fighter is down.' };
       if (state.phase === 'flip') {
         const status = state.turn === team ? 'You go first! Get ready.' : `${teamNames[state.turn]} goes first.`;
         return { kind: 'locked', status, tone: state.turn, countdown: wholeSeconds(left) };

@@ -242,24 +242,15 @@ function createEnemyGameManager(io, lobbies, options = {}) {
 
     const finalStage = TEAMS.every(team => game.teams[team].stage === ENEMIES.length - 1);
     if (finalStage) {
-      // PvP still takes one fighter per player, so each player brings a copy
-      // of the team knight's HP and item bonuses until PvP has team knights too.
-      const players = lobby.players
-        .filter(player => TEAMS.includes(player.team))
-        .map(player => {
-          const knight = game.teams[player.team].knight;
-          return {
-            id: player.id,
-            name: player.name,
-            team: player.team,
-            hp: knight.hp,
-            maxHp: knight.maxHp,
-            buffs: { ...knight.buffs },
-          };
-        });
+      // Each team's knight goes into PvP with the HP and item bonuses it has after the bosses.
+      const knights = {};
+      for (const team of TEAMS) {
+        const { hp, maxHp, buffs } = game.teams[team].knight;
+        knights[team] = { hp, maxHp, buffs: { ...buffs } };
+      }
       // Initialize server-authoritative PvP BEFORE broadcasting the handoff.
       // If initialization fails, do not leave browsers on an unplayable PvP page.
-      const handoff = { code: lobby.code, players };
+      const handoff = { code: lobby.code, knights };
       if (typeof options.onPvpReady === 'function') {
         try {
           options.onPvpReady(lobby, handoff);

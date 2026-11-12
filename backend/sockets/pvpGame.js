@@ -1,17 +1,22 @@
 'use strict';
 
-const { TEAMS, MOVES, otherTeam, alive, emptyTaps, createPlayers, resolveTurn } = require('./pvpRules');
+const { TEAMS, MOVES, otherTeam, emptyTaps, flipCoin, createKnights, resolveTurn } = require('./pvpRules');
+const { sumTaps } = require('./enemyRules');
 
 // In-memory PvP manager for the existing lobbySocket + enemyGame approach.
 // MUST be registered on the same Socket.IO server and share the same lobby Map.
+// Each team fights with one knight, and any guest on the team whose turn it is can tap.
 function createPvpGameManager(io, lobbies, options = {}) {
   const TURN_MS = options.turnMs ?? 5000;
   const FLIP_MS = options.flipMs ?? 3000;
   const PAUSE_MS = options.pauseMs ?? 2000;
   const MAX_TAPS_PER_MOVE = options.maxTapsPerMove ?? 250;
+  const TAPS_MS = options.tapsMs ?? 200;
   const games = new Map();
   const timers = new Map();
+  const tapTimers = new Map();
   const answer = (cb, value) => { if (typeof cb === 'function') cb(value); };
+  const teamPlayers = (code, team) => (lobbies.get(code)?.players ?? []).filter(p => p.team === team);
 
   function snapshot(game) {
     return {
@@ -21,13 +26,27 @@ function createPvpGameManager(io, lobbies, options = {}) {
       turnNumber: game.turnNumber,
       endsAt: game.endsAt,
       remainingMs: game.endsAt === null ? 0 : Math.max(0, game.endsAt - Date.now()),
-      players: game.players.map(p => ({ ...p, buffs: { ...p.buffs } })),
-      lastTurn: game.lastTurn ? { ...game.lastTurn, casualties: [...game.lastTurn.casualties] } : null,
+      knights: Object.fromEntries(TEAMS.map(team => [team, { ...game.knights[team], buffs: { ...game.knights[team].buffs } }])),
+      players: Object.fromEntries(TEAMS.map(team => [team, teamPlayers(game.code, team).map(p => p.name)])),
+      // The taps of the turn in progress, from the team whose turn it is.
+      taps: game.phase === 'turn'
+        ? sumTaps(teamPlayers(game.code, game.turn).map(p => game.taps.get(p.id)))
+        : emptyTaps(),
+      lastTurn: game.lastTurn ? { ...game.lastTurn, taps: { ...game.lastTurn.taps } } : null,
       winner: game.result?.winner ?? null,
     };
   }
+  // The lobby's room holds the phones and the host's screen.
   function broadcast(game) {
     io.to(game.code).emit('game:pvp:state', snapshot(game));
+  }
+  // Taps reach the screens at most five times a second.
+  function scheduleTaps(game) {
+    if (tapTimers.has(game.code)) return;
+    tapTimers.set(game.code, setTimeout(() => {
+      tapTimers.delete(game.code);
+      if (games.get(game.code) === game && game.phase === 'turn') broadcast(game);
+    }, TAPS_MS));
   }
   function schedule(game, delay, next) {
     clearTimeout(timers.get(game.code));
@@ -36,6 +55,15 @@ function createPvpGameManager(io, lobbies, options = {}) {
       next();
     }, Math.max(0, delay));
     timers.set(game.code, handle);
+  }
+  function finish(game, winner) {
+    game.phase = 'finished';
+    game.endsAt = null;
+    game.result = { code: game.code, winner, loser: otherTeam(winner), reason: 'pvp-defeat' };
+    clearTimeout(timers.get(game.code));
+    timers.delete(game.code);
+    broadcast(game);
+    io.to(game.code).emit('game:finished', game.result);
   }
   function startTurn(game) {
     if (game.phase === 'finished') return;
@@ -47,23 +75,17 @@ function createPvpGameManager(io, lobbies, options = {}) {
   }
   function finishTurn(game) {
     if (game.phase !== 'turn') return;
-    const resolved = resolveTurn(game.players, game.turn, game.taps);
-    game.players = resolved.players;
+    // A team whose players have all left loses.
+    const emptyTeam = TEAMS.find(team => teamPlayers(game.code, team).length === 0);
+    if (emptyTeam) return finish(game, otherTeam(emptyTeam));
+
+    const ids = teamPlayers(game.code, game.turn).map(p => p.id);
+    const resolved = resolveTurn(game.knights, game.turn, game.taps, ids);
+    game.knights = resolved.knights;
     game.lastTurn = { ...resolved.result, turnNumber: game.turnNumber };
-    game.taps.clear();
-    if (resolved.winner) {
-      game.phase = 'finished';
-      game.endsAt = null;
-      game.result = {
-        code: game.code, winner: resolved.winner,
-        loser: otherTeam(resolved.winner), reason: 'pvp-defeat',
-      };
-      clearTimeout(timers.get(game.code));
-      timers.delete(game.code);
-      broadcast(game);
-      io.to(game.code).emit('game:finished', game.result);
-      return;
-    }
+    game.taps = new Map();
+    if (resolved.winner) return finish(game, resolved.winner);
+
     game.phase = 'pause';
     game.endsAt = Date.now() + PAUSE_MS;
     broadcast(game);
@@ -73,18 +95,21 @@ function createPvpGameManager(io, lobbies, options = {}) {
       startTurn(game);
     });
   }
+  // The boss fights hand over each team's knight: its HP, max HP and item bonuses.
   function begin(lobby, pvpData) {
     const code = lobby?.code;
     if (!code || pvpData?.code !== code) throw new Error('Invalid PvP session.');
-    if (games.has(code)) return snapshot(games.get(code)); 
-    const players = createPlayers(pvpData);
-    const members = new Set(lobby.players.map(p => p.id));
-    if (players.some(p => !members.has(p.id))) throw new Error('PvP roster mismatch.');
+    if (games.has(code)) return snapshot(games.get(code));
     const game = {
-      code, players, phase: 'flip',
-      turn: options.firstTeam ? options.firstTeam() : (Math.random() < 0.5 ? 'red' : 'blue'),
-      turnNumber: 1, endsAt: Date.now() + FLIP_MS,
-      taps: new Map(), lastTurn: null, result: null,
+      code,
+      knights: createKnights(pvpData),
+      phase: 'flip',
+      turn: options.firstTeam ? options.firstTeam() : flipCoin(),
+      turnNumber: 1,
+      endsAt: Date.now() + FLIP_MS,
+      taps: new Map(),
+      lastTurn: null,
+      result: null,
     };
     if (!TEAMS.includes(game.turn)) throw new Error('Invalid coin flip.');
     games.set(code, game);
@@ -95,16 +120,19 @@ function createPvpGameManager(io, lobbies, options = {}) {
   function stop(code) {
     clearTimeout(timers.get(code));
     timers.delete(code);
+    clearTimeout(tapTimers.get(code));
+    tapTimers.delete(code);
     games.delete(code);
   }
   function register(socket) {
+    // The host can watch, and any guest in the lobby can read the match.
     function context(cb) {
       const code = socket.data.lobbyCode;
       const lobby = lobbies.get(code);
       const game = games.get(code);
-      const player = game?.players.find(p => p.id === socket.id);
-      if (!lobby || !game || !player || !lobby.players.some(p => p.id === socket.id)) {
-        answer(cb, { success: false, error: 'You are not a member of this PvP match.' });
+      const player = lobby?.players.find(p => p.id === socket.id);
+      if (!lobby || !game || (!player && lobby.hostId !== socket.id)) {
+        answer(cb, { success: false, error: 'You are not in this PvP match.' });
         return null;
       }
       return { game, player };
@@ -120,9 +148,8 @@ function createPvpGameManager(io, lobbies, options = {}) {
     socket.on('game:pvp:tap', (move, cb) => {
       const ctx = context(cb);
       if (!ctx) return;
-      if (ctx.game.phase !== 'turn' || !ctx.game.endsAt ||
-          Date.now() >= ctx.game.endsAt || ctx.game.turn !== ctx.player.team ||
-          ctx.player.hp <= 0 || !MOVES.includes(move)) {
+      if (!ctx.player || ctx.game.phase !== 'turn' || !ctx.game.endsAt ||
+          Date.now() >= ctx.game.endsAt || ctx.game.turn !== ctx.player.team || !MOVES.includes(move)) {
         return answer(cb, { success: false, error: 'Not accepting taps.' });
       }
       const taps = ctx.game.taps.get(ctx.player.id) || emptyTaps();
@@ -132,6 +159,7 @@ function createPvpGameManager(io, lobbies, options = {}) {
       taps[move]++;
       ctx.game.taps.set(ctx.player.id, taps);
       answer(cb, { success: true });
+      scheduleTaps(ctx.game);
     });
     socket.on('game:pvp:result:get', (code, cb) => {
       const ctx = context(cb);

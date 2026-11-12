@@ -1,93 +1,80 @@
 'use strict';
 
-// Pure PvP calculations. The server owns these values; clients never send damage or buffs.
+// Pure PvP rules, with no timers or sockets. Each team fights with one knight,
+// carried over from the boss fights with its HP and item bonuses. Teams take
+// turns. When a turn ends, its team's taps are divided by the team's player
+// count and multiplied by its knight's bonuses: attacks hit the other knight
+// through that knight's shield, heals go onto the team's own knight, and
+// blocks become its shield for the other team's next turn.
+const { sumTaps } = require('./enemyRules');
+
 const BASE = Object.freeze({ attack: 2, block: 0.5, heal: 0.5 });
 const TEAMS = Object.freeze(['red', 'blue']);
 const MOVES = Object.freeze(['attack', 'block', 'heal']);
 const round1 = value => Math.round((value + Number.EPSILON) * 10) / 10;
 const otherTeam = team => team === 'red' ? 'blue' : 'red';
-const alive = (players, team) => players.filter(p => p.team === team && p.hp > 0);
 const emptyTaps = () => ({ attack: 0, block: 0, heal: 0 });
 
-function createPlayers(pvpData) {
-  if (!pvpData || !Array.isArray(pvpData.players)) throw new Error('Missing PvP handoff.');
-  const seen = new Set();
-  const players = pvpData.players.map(player => {
-    if (!player || !player.id || !TEAMS.includes(player.team) || seen.has(player.id)) {
-      throw new Error('Invalid or duplicated PvP player.');
-    }
-    seen.add(player.id);
-    const maxHp = Number(player.maxHp);
-    const hp = Number(player.hp);
-    if (!Number.isFinite(maxHp) || maxHp <= 0 || !Number.isFinite(hp)) {
+// Picks the team that taps first.
+function flipCoin(random = Math.random) {
+  return random() < 0.5 ? 'red' : 'blue';
+}
+
+// Builds both knights from the boss fights' handoff, checking each value, since PvP trusts nothing a client sent.
+function createKnights(pvpData) {
+  if (!pvpData || !pvpData.knights) throw new Error('Missing PvP handoff.');
+  const knights = {};
+  for (const team of TEAMS) {
+    const knight = pvpData.knights[team];
+    const maxHp = Number(knight?.maxHp);
+    const hp = Number(knight?.hp);
+    if (!Number.isFinite(maxHp) || maxHp <= 0 || !Number.isFinite(hp) || hp <= 0) {
       throw new Error('Invalid PvP health.');
     }
     const buffs = {};
     for (const move of MOVES) {
-      const value = Number(player.buffs?.[move]);
-      if (!Number.isFinite(value) || value <= 0 || value > 100) throw new Error('Invalid player buff.');
+      const value = Number(knight.buffs?.[move]);
+      if (!Number.isFinite(value) || value <= 0 || value > 100) throw new Error('Invalid knight buff.');
       buffs[move] = value;
     }
-    return {
-      id: String(player.id), name: String(player.name ?? '').slice(0, 40),
-      team: player.team, hp: round1(Math.min(maxHp, Math.max(0, hp))),
-      maxHp, shield: 0, buffs,
-    };
-  });
-  if (!TEAMS.every(team => alive(players, team).length)) {
-    throw new Error('Both teams require a living fighter.');
+    knights[team] = { hp: round1(Math.min(maxHp, hp)), maxHp, shield: 0, buffs };
   }
-  return players;
+  return knights;
 }
 
-function resolveTurn(players, activeTeam, tapsById = new Map()) {
+// Ends the active team's turn. Only the taps of that team's current players
+// count, and they're divided by its player count, at least 1, so a bigger team
+// doesn't win on numbers alone. A shield soaks up the other team's next
+// attack, then resets, used or not.
+function resolveTurn(knights, activeTeam, tapsById, teamPlayerIds) {
   if (!TEAMS.includes(activeTeam)) throw new Error('Invalid attacking team.');
-  const roster = players.map(p => ({ ...p, buffs: { ...p.buffs } }));
-  const attackers = alive(roster, activeTeam);
-  const defenders = alive(roster, otherTeam(activeTeam));
-  if (!attackers.length || !defenders.length) throw new Error('Cannot resolve a turn with a wiped team.');
+  const foeTeam = otherTeam(activeTeam);
+  const own = knights[activeTeam];
+  const foe = knights[foeTeam];
+  const players = Math.max(1, teamPlayerIds.length);
+  const taps = sumTaps(teamPlayerIds.map(id => tapsById.get(id)));
 
-  let totalAttack = 0;
-  let totalHealed = 0;
-  let shieldsGranted = 0;
-  for (const player of attackers) {
-    const taps = tapsById.get(player.id) || emptyTaps();
-    totalAttack += Math.max(0, taps.attack || 0) * BASE.attack * player.buffs.attack;
-    const heal = Math.max(0, taps.heal || 0) * BASE.heal * player.buffs.heal;
-    const oldHp = player.hp;
-    player.hp = round1(Math.min(player.maxHp, player.hp + heal));
-    totalHealed += player.hp - oldHp;
-    player.shield = round1(Math.max(0, taps.block || 0) * BASE.block * player.buffs.block);
-    shieldsGranted += player.shield;
-  }
+  const attack = taps.attack / players * BASE.attack * own.buffs.attack;
+  const blocked = Math.min(foe.shield, attack);
+  const foeHp = round1(Math.max(0, foe.hp - (attack - blocked)));
+  const ownHp = round1(Math.min(own.maxHp, own.hp + taps.heal / players * BASE.heal * own.buffs.heal));
+  const shield = round1(taps.block / players * BASE.block * own.buffs.block);
 
-  const damagePerTarget = totalAttack / attackers.length;
-  let effectiveDamage = 0;
-  let blocked = 0;
-  const casualties = [];
-  for (const target of defenders) {
-    const absorbed = Math.min(target.shield, damagePerTarget);
-    const before = target.hp;
-    target.hp = round1(Math.max(0, before - Math.max(0, damagePerTarget - absorbed)));
-    target.shield = 0; 
-    effectiveDamage += before - target.hp;
-    blocked += absorbed;
-    if (target.hp === 0) casualties.push(target.id);
-  }
-  const result = {
-    team: activeTeam,
-    attackers: attackers.length,
-    defenders: defenders.length,
-    totalAttack: round1(totalAttack),
-    damagePerTarget: round1(damagePerTarget),
-    effectiveDamage: round1(effectiveDamage),
-    blocked: round1(blocked),
-    healed: round1(totalHealed),
-    shield: round1(shieldsGranted),
-    casualties,
+  return {
+    knights: {
+      [activeTeam]: { ...own, buffs: { ...own.buffs }, hp: ownHp, shield },
+      [foeTeam]: { ...foe, buffs: { ...foe.buffs }, hp: foeHp, shield: 0 },
+    },
+    result: {
+      team: activeTeam,
+      damage: round1(foe.hp - foeHp),
+      blocked: round1(blocked),
+      healed: round1(ownHp - own.hp),
+      shield,
+      taps,
+    },
+    winner: foeHp === 0 ? activeTeam : null,
   };
-  const winner = alive(roster, otherTeam(activeTeam)).length === 0 ? activeTeam : null;
-  return { players: roster, result, winner };
 }
 
-module.exports = { BASE, TEAMS, MOVES, round1, otherTeam, alive, emptyTaps, createPlayers, resolveTurn };
+module.exports = { BASE, TEAMS, MOVES, round1, otherTeam, emptyTaps, flipCoin, createKnights, resolveTurn };

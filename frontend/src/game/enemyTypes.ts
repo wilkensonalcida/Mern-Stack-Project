@@ -80,7 +80,8 @@ export type PvpPlayer = {
   maxHp: number;
   buffs: Buffs;
 };
-export type PvpReady = { code: string; players: PvpPlayer[] };
+// The boss fights' handoff to PvP: each team's knight with its HP and item bonuses.
+export type PvpReady = { code: string; knights: Record<TeamId, TeamKnight> };
 export type GameResult = {
   code: string;
   winner: TeamId;

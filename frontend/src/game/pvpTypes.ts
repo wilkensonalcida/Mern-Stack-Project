@@ -1,27 +1,26 @@
-import type { Buffs, GameResult, Move, TeamId } from './enemyTypes';
+import type { Buffs, GameResult, Move, TapCounts, TeamId } from './enemyTypes';
 
 export type PvpPhase = 'flip' | 'turn' | 'pause' | 'finished';
-export type PvpPlayer = {
-  id: string;
-  name: string;
-  team: TeamId;
+// Each team's knight in PvP, carried over from the boss fights. Its shield soaks up the other team's next attack.
+export type PvpKnight = {
   hp: number;
   maxHp: number;
   shield: number;
   buffs: Buffs;
 };
+// What a finished turn did.
 export type PvpTurnResult = {
   team: TeamId;
   turnNumber: number;
-  attackers: number; // living
-  defenders: number;
-  totalAttack: number;
-  damagePerTarget: number;
-  effectiveDamage: number;
+  // HP the other knight lost.
+  damage: number;
+  // Damage the other knight's shield soaked up.
   blocked: number;
+  // HP the team's own knight gained.
   healed: number;
+  // The team's shield for the other team's next turn.
   shield: number;
-  casualties: string[];
+  taps: TapCounts;
 };
 export type PvpState = {
   code: string;
@@ -30,7 +29,11 @@ export type PvpState = {
   turnNumber: number;
   endsAt: number | null;
   remainingMs: number;
-  players: PvpPlayer[];
+  knights: Record<TeamId, PvpKnight>;
+  // Each team's players' names.
+  players: Record<TeamId, string[]>;
+  // The taps of the turn in progress.
+  taps: TapCounts;
   lastTurn: PvpTurnResult | null;
   winner: TeamId | null;
 };

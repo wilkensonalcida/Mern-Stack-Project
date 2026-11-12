@@ -38,17 +38,12 @@ function publicLobby(lobby) {
 function registerLobbySockets(io) {
   const pvpGame = createPvpGameManager(io, lobbies);
   const enemyGame = createEnemyGameManager(io, lobbies, {
-    // PvE calls this AFTER both teams have defeated Skeleton and every
-    // living player has chosen their final item. begin() receives the actual
-    // per-player HP and multipliers, then PvE emits game:pvp-ready.
+    // PvE calls this AFTER both teams have defeated Skeleton and both teams'
+    // final item votes have closed. begin() receives each team knight's HP
+    // and multipliers, then PvE emits game:pvp-ready.
     onPvpReady: (lobby, pvpData) => {
       pvpGame.begin(lobby, pvpData);
-      console.info("[PVP INITIALIZED]", {
-        code: lobby.code,
-        players: pvpData.players.map(({ id, name, team, hp, buffs }) => ({
-          id, name, team, hp, buffs,
-        })),
-      });
+      console.info("[PVP INITIALIZED]", { code: lobby.code, knights: pvpData.knights });
     },
   });
 
