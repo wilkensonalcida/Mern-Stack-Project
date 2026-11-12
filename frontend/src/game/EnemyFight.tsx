@@ -145,9 +145,9 @@ export default function EnemyFight({ code, onPvpReady, onGameFinished }: Props) 
   }, [state?.stage, state?.lastRound?.round]);
 
   const player = state?.players.find(member => member.id === socketId);
-  const combatOpen = Boolean(connected && player && player.hp > 0 &&
-    state?.phase === 'combat' && state.endsAt !== null);
-  const canChoose = Boolean(connected && player && player.hp > 0 &&
+  const combatOpen = Boolean(connected && player && state && state.knight.hp > 0 &&
+    state.phase === 'combat' && state.endsAt !== null);
+  const canChoose = Boolean(connected && player &&
     state?.phase === 'selection' && player.selectionStage === state.stage &&
     player.selectedUpgrade == null && !pendingUpgrade);
   const seconds = localEndsAt === null ? '0.0' :
@@ -201,25 +201,8 @@ export default function EnemyFight({ code, onPvpReady, onGameFinished }: Props) 
     );
   }
 
-  if (player.hp <= 0) {
-    const survivors = state.players.filter(member => member.hp > 0).length;
-    return (
-      <PageLayout wide>
-        <section className="d-flex flex-column align-items-center justify-content-center text-center p-4"
-          style={{ minHeight: 'calc(100vh - 3rem)' }} role="status">
-          <h1 className="display-5">You were defeated</h1>
-          <p className="lead">Your teammates are continuing the fight.</p>
-          <p className="text-body-secondary">
-            {survivors} living teammate{survivors === 1 ? '' : 's'} remaining.
-            You will automatically follow the game into the next phase.
-          </p>
-        </section>
-      </PageLayout>
-    );
-  }
-
-  const livingTeam = state.players.filter(member => member.hp > 0);
-  const selectedCount = livingTeam.filter(member => member.selectedUpgrade != null).length;
+  const knight = state.knight;
+  const selectedCount = state.players.filter(member => member.selectedUpgrade != null).length;
   const offeredItems = player.upgradeOptions ?? [];
   const chosenName = offeredItems.find(item => item.id === player.selectedUpgrade)?.name
     ?? player.selectedUpgrade;
@@ -229,7 +212,7 @@ export default function EnemyFight({ code, onPvpReady, onGameFinished }: Props) 
     : state.endsAt === null ? 'Preparing next round…' : `Round ${state.round}`;
   const status = state.phase === 'selection'
     ? (player.selectedUpgrade != null
-      ? `You selected ${chosenName}. Waiting for all living players…`
+      ? `You selected ${chosenName}. Waiting for your team…`
       : 'Choose one item. Your offers belong to you, and your choice is permanent.')
     : state.phase === 'waiting' ? 'Enemy defeated! Waiting for the other team.'
     : state.phase === 'ready' ? 'Both teams finished their enemy fights.'
@@ -245,11 +228,11 @@ export default function EnemyFight({ code, onPvpReady, onGameFinished }: Props) 
             <div className="row align-items-center row-gap-3">
               <div className="col-md-4 order-2 order-md-1 text-center text-md-start">
                 <h2 className="h5">{state.team.toUpperCase()} team</h2>
-                <p className="mb-1">{player.name}: {player.hp.toFixed(1)} / {player.maxHp} HP</p>
-                <div className="progress" role="progressbar" aria-label="Your health"
-                  aria-valuenow={player.hp} aria-valuemin={0} aria-valuemax={player.maxHp}>
+                <p className="mb-1">Knight: {knight.hp.toFixed(1)} / {knight.maxHp} HP</p>
+                <div className="progress" role="progressbar" aria-label="Your knight's health"
+                  aria-valuenow={knight.hp} aria-valuemin={0} aria-valuemax={knight.maxHp}>
                   <div className="progress-bar bg-success"
-                    style={{ width: `${100 * player.hp / player.maxHp}%` }} />
+                    style={{ width: `${100 * knight.hp / knight.maxHp}%` }} />
                 </div>
               </div>
               <div className="col-md-4 order-1 order-md-2 text-center">
@@ -274,7 +257,7 @@ export default function EnemyFight({ code, onPvpReady, onGameFinished }: Props) 
 
         <p className="fs-5 text-center mt-3 mb-0" role="status" style={{ minHeight: '1.5em' }}>{status}</p>
         {state.phase === 'selection' && <p className="text-center text-body-secondary">
-          Your team: {selectedCount}/{livingTeam.length} living players selected.
+          Your team: {selectedCount}/{state.players.length} players selected.
           Both teams must complete their own choices before the next phase.
         </p>}
         {state.phase === 'selection' && player.selectedUpgrade == null && offeredItems.length === 0 &&
@@ -291,10 +274,10 @@ export default function EnemyFight({ code, onPvpReady, onGameFinished }: Props) 
             : <Skeleton animation={animation.foe} />)}
         </section>
         <div className="text-center text-body-secondary">
-          Team members: {state.players.map(member => `${member.name} (${member.hp.toFixed(1)} HP)`).join(' · ')}
+          Team members: {state.players.map(member => member.name).join(' · ')}
         </div>
         <div className="text-center small text-body-secondary">
-          Buffs: attack ×{player.buffs.attack.toFixed(2)}, block ×{player.buffs.block.toFixed(2)}, heal ×{player.buffs.heal.toFixed(2)}
+          Knight's buffs: attack ×{knight.buffs.attack.toFixed(2)}, block ×{knight.buffs.block.toFixed(2)}, heal ×{knight.buffs.heal.toFixed(2)}
         </div>
       </div>
 

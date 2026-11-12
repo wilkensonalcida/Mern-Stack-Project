@@ -28,7 +28,7 @@ function rollUpgradeOptions(count = 3) {
 function preparePlayerSelection(player, stage) {
   player.selectedUpgrade = null;
   player.selectionStage = stage;
-  player.upgradeOptions = player.hp > 0 ? rollUpgradeOptions(3) : [];
+  player.upgradeOptions = rollUpgradeOptions(3);
 }
 
 function clearPlayerSelection(player) {
@@ -38,7 +38,6 @@ function clearPlayerSelection(player) {
 }
 
 function isChosenForStage(player, stage) {
-  if (player.hp <= 0) return true; // Dead players are exempt, not counted as choices.
   if (player.selectionStage !== stage) return false;
   const id = player.selectedUpgrade;
   return typeof id === 'string' && ITEMS_BY_ID.has(id) &&
@@ -46,17 +45,18 @@ function isChosenForStage(player, stage) {
     player.upgradeOptions.some(item => item.id === id);
 }
 
-function allLivingPlayersSelected(lobby, game) {
+// Players share their team's knight, so nobody on a team sits a pick out.
+function allPlayersSelected(lobby, game) {
   return TEAMS.every(team => {
     const fight = game.teams[team];
     if (fight.phase !== 'selection') return false;
-    const living = lobby.players.filter(p => p.team === team && p.hp > 0);
-    return living.length > 0 && living.every(p => isChosenForStage(p, fight.stage));
+    const teamPlayers = lobby.players.filter(p => p.team === team);
+    return teamPlayers.length > 0 && teamPlayers.every(p => isChosenForStage(p, fight.stage));
   });
 }
 
-function choosePlayerUpgrade(player, stage, itemId) {
-  if (player.hp <= 0) return { success: false, error: 'Defeated players cannot choose.' };
+// Each pick adds its bonus to the team knight that the player fights with.
+function choosePlayerUpgrade(player, knight, stage, itemId) {
   if (player.selectionStage !== stage) return { success: false, error: 'Outdated selection stage.' };
   if (player.selectedUpgrade != null) return { success: false, error: 'Already selected an item.' };
   if (typeof itemId !== 'string' || !Array.isArray(player.upgradeOptions) ||
@@ -65,12 +65,12 @@ function choosePlayerUpgrade(player, stage, itemId) {
   }
   const item = ITEMS_BY_ID.get(itemId);
   if (!item) return { success: false, error: 'Unknown upgrade.' };
-  if (!player.buffs || !Number.isFinite(player.buffs[item.stat])) {
-    return { success: false, error: 'Player buffs are not initialized.' };
+  if (!knight?.buffs || !Number.isFinite(knight.buffs[item.stat])) {
+    return { success: false, error: 'Knight buffs are not initialized.' };
   }
-  player.buffs[item.stat] = Math.round((player.buffs[item.stat] + item.bonus) * 100) / 100;
+  knight.buffs[item.stat] = Math.round((knight.buffs[item.stat] + item.bonus) * 100) / 100;
   player.selectedUpgrade = item.id;
-  return { success: true, selectedUpgrade: item.id, stat: item.stat, multiplier: player.buffs[item.stat] };
+  return { success: true, selectedUpgrade: item.id, stat: item.stat, multiplier: knight.buffs[item.stat] };
 }
 
 module.exports = {
@@ -79,6 +79,6 @@ module.exports = {
   preparePlayerSelection,
   clearPlayerSelection,
   isChosenForStage,
-  allLivingPlayersSelected,
+  allPlayersSelected,
   choosePlayerUpgrade,
 };

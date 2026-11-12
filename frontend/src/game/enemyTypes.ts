@@ -16,13 +16,12 @@ export type UpgradeOption = {
 };
 export type EnemyPhase = 'combat' | 'waiting' | 'selection' | 'ready' | 'failed' | 'won';
 export type Buffs = { attack: number; block: number; heal: number };
+// Each team fights the bosses with one knight, which its players share.
+export type TeamKnight = { hp: number; maxHp: number; buffs: Buffs };
 export type EnemyPlayer = {
   id: string;
   name: string;
   team: TeamId;
-  hp: number;
-  maxHp: number;
-  buffs: Buffs;
   selectedUpgrade: Upgrade | null;
   selectionStage: number | null;
   upgradeOptions: UpgradeOption[];
@@ -30,9 +29,11 @@ export type EnemyPlayer = {
 export type RoundResult = {
   round: number;
   attack: number;
+  blocked: number;
+  healed: number;
   enemyDamage: number;
   enemyHp: number;
-  playerEffects: { id: string; blocked: number; healed: number; hp: number }[];
+  knightHp: number;
 };
 export type EnemyState = {
   code: string;
@@ -43,6 +44,7 @@ export type EnemyState = {
   round: number;
   endsAt: number | null;
   remainingMs: number;
+  knight: TeamKnight;
   players: EnemyPlayer[];
   lastRound: RoundResult | null;
 };

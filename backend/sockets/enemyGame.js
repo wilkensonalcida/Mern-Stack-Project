@@ -2,16 +2,15 @@ const ENEMIES = [
   { name: 'Goblin', hp: 100, damage: 10 },
   { name: 'Skeleton', hp: 150, damage: 15 },
 ];
-const BASE = { attack: 2, block: 1, heal: 1 };
 const MAX_TAPS_PER_MOVE = 250;
 const TEAMS = ['red', 'blue'];
 const otherTeam = team => team === 'red' ? 'blue' : 'red';
-const round1 = number => Math.round(number * 10) / 10;
+const { BASE, createKnight, resolveEnemyRound } = require('./enemyRules');
 const {
   preparePlayerSelection,
   clearPlayerSelection,
   choosePlayerUpgrade,
-  allLivingPlayersSelected,
+  allPlayersSelected,
 } = require('./upgradeSelection');
 
 function createEnemyGameManager(io, lobbies, options = {}) {
@@ -46,9 +45,6 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       id: player.id,
       name: player.name,
       team: player.team,
-      hp: player.hp,
-      maxHp: player.maxHp,
-      buffs: { ...player.buffs },
       selectedUpgrade: player.selectedUpgrade ?? null,
       selectionStage: player.selectionStage ?? null,
       upgradeOptions: player.id === viewerId
@@ -74,6 +70,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       round: fight.round,
       endsAt: fight.endsAt,
       remainingMs: fight.endsAt === null ? 0 : Math.max(0, fight.endsAt - Date.now()),
+      knight: { hp: fight.knight.hp, maxHp: fight.knight.maxHp, buffs: { ...fight.knight.buffs } },
       players: members(lobby, team).map(player => publicPlayer(player, viewerId)),
       lastRound: fight.lastRound,
     };
@@ -145,20 +142,25 @@ function createEnemyGameManager(io, lobbies, options = {}) {
 
   function maybeAdvanceAfterSelections(lobby, game) {
     if (game.finished || game.pvpSent) return;
-    if (!allLivingPlayersSelected(lobby, game)) return;
+    if (!allPlayersSelected(lobby, game)) return;
 
     const finalStage = TEAMS.every(team => game.teams[team].stage === ENEMIES.length - 1);
     if (finalStage) {
+      // PvP still takes one fighter per player, so each player brings a copy
+      // of the team knight's HP and item bonuses until PvP has team knights too.
       const players = lobby.players
         .filter(player => TEAMS.includes(player.team))
-        .map(player => ({
-          id: player.id,
-          name: player.name,
-          team: player.team,
-          hp: player.hp,
-          maxHp: player.maxHp,
-          buffs: { ...player.buffs },
-        }));
+        .map(player => {
+          const knight = game.teams[player.team].knight;
+          return {
+            id: player.id,
+            name: player.name,
+            team: player.team,
+            hp: knight.hp,
+            maxHp: knight.maxHp,
+            buffs: { ...knight.buffs },
+          };
+        });
       // Initialize server-authoritative PvP BEFORE broadcasting the handoff.
       // If initialization fails, do not leave browsers on an unplayable PvP page.
       const handoff = { code: lobby.code, players };
@@ -203,30 +205,30 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     const fight = game.teams[team];
     if (fight.phase !== 'combat' || fight.endsAt === null) return;
 
-    fight.endsAt = null; 
+    fight.endsAt = null;
     const spec = ENEMIES[fight.stage];
-    const alive = members(lobby, team).filter(player => player.hp > 0);
-    let attack = 0;
-    const playerEffects = [];
-
-    for (const player of alive) {
-      const taps = fight.taps.get(player.id) || { attack: 0, block: 0, heal: 0 };
-      attack += taps.attack * BASE.attack * player.buffs.attack;
-      const blocked = Math.min(spec.damage, taps.block * BASE.block * player.buffs.block);
-      const healed = taps.heal * BASE.heal * player.buffs.heal;
-      player.hp = round1(Math.min(player.maxHp, Math.max(0, player.hp - (spec.damage - blocked) + healed)));
-      playerEffects.push({ id: player.id, blocked: round1(blocked), healed: round1(healed), hp: player.hp });
-    }
-    fight.enemyHp = round1(Math.max(0, fight.enemyHp - attack));
+    const teamMembers = members(lobby, team);
+    const round = resolveEnemyRound({
+      knight: fight.knight,
+      enemyHp: fight.enemyHp,
+      enemyDamage: spec.damage,
+      tapCounts: teamMembers.map(player => fight.taps.get(player.id)),
+      playerCount: teamMembers.length,
+    });
+    fight.knight = round.knight;
+    fight.enemyHp = round.enemyHp;
     fight.lastRound = {
       round: fight.round,
-      attack: round1(attack),
+      attack: round.attack,
+      blocked: round.blocked,
+      healed: round.healed,
       enemyDamage: spec.damage,
       enemyHp: fight.enemyHp,
-      playerEffects,
+      knightHp: fight.knight.hp,
     };
 
-    if (!members(lobby, team).some(player => player.hp > 0)) {
+    // A team whose knight falls, or whose players have all left, loses.
+    if (fight.knight.hp <= 0 || teamMembers.length === 0) {
       fight.phase = 'failed';
       broadcast(lobby, game, team);
       finishGame(lobby, game, otherTeam(team), 'enemy-defeat');
@@ -254,16 +256,12 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       throw new Error('Everyone must pick a team.');
     }
 
-    for (const player of roster) {
-      player.hp = 100;
-      player.maxHp = 100;
-      player.buffs = { attack: 1, block: 1, heal: 1 };
-      clearPlayerSelection(player);
-    }
+    for (const player of roster) clearPlayerSelection(player);
     const makeFight = () => ({
       phase: 'combat',
       stage: 0,
       round: 0,
+      knight: createKnight(),
       enemyHp: ENEMIES[0].hp,
       endsAt: null,
       taps: new Map(),
@@ -307,7 +305,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       if (!ctx) return;
       if (ctx.game.finished || ctx.game.pvpSent ||
           ctx.fight.phase !== 'combat' || ctx.fight.endsAt === null ||
-          Date.now() >= ctx.fight.endsAt || ctx.player.hp <= 0 ||
+          Date.now() >= ctx.fight.endsAt || ctx.fight.knight.hp <= 0 ||
           !Object.hasOwn(BASE, move)) {
         return reply(cb, { success: false, error: 'Not accepting taps.' });
       }
@@ -331,7 +329,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
         return reply(cb, { success: false, error: 'Invalid stage or item request.' });
       }
 
-      const outcome = choosePlayerUpgrade(ctx.player, ctx.fight.stage, request.itemId);
+      const outcome = choosePlayerUpgrade(ctx.player, ctx.fight.knight, ctx.fight.stage, request.itemId);
       if (!outcome.success) return reply(cb, outcome);
 
       console.info('[BUFF ACCEPTED]', {
