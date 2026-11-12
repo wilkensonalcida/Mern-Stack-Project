@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import PageLayout from '../components/PageLayout'
 import { socket } from '../socket/socket'
-import type { GameResult } from '../game/enemyTypes'
+import { HostBossFights } from '../game/EnemyFight'
+import type { GameResult, HostBossState } from '../game/enemyTypes'
 
 import type {
   Lobby,
@@ -20,6 +21,8 @@ export default function HostPage() {
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false)
   const [result, setResult] = useState<GameResult | null>(null)
+  const [boss, setBoss] = useState<{ state: HostBossState, receivedAt: number } | null>(null)
+  const [pvpStarted, setPvpStarted] = useState(false)
 
   useEffect(() => {
     if (!code) return;
@@ -29,11 +32,35 @@ export default function HostPage() {
         setLobby(updatedLobby)
       }
     }
+
+    // Both teams' boss fights, sent each time either changes, and about five times a second while players tap.
+    function onBossState(state: HostBossState) {
+      if (state.code === code) {
+        setBoss({ state, receivedAt: Date.now() })
+        if (state.pvpStarted) setPvpStarted(true)
+      }
+    }
+
+    function loadBossState() {
+      socket.timeout(5000).emit(
+        "game:enemy:host:get",
+        code,
+        (err: Error | null, response: { success: boolean, state?: HostBossState }) => {
+          if (!err && response?.success && response.state) onBossState(response.state)
+        }
+      )
+    }
+
     // The host doesn't play, so it stays on this page, which swaps the lobby for the game.
     function onStarted(updatedLobby: Lobby) {
       if (updatedLobby.code === code) {
         setLobby(updatedLobby)
+        loadBossState()
       }
+    }
+
+    function onPvpReady(data: { code: string }) {
+      if (data.code === code) setPvpStarted(true)
     }
 
     function onFinished(finished: GameResult) {
@@ -48,6 +75,8 @@ export default function HostPage() {
 
     socket.on("game:updated", onUpdate)
     socket.on("game:started", onStarted)
+    socket.on("game:enemy:host", onBossState)
+    socket.on("game:pvp-ready", onPvpReady)
     socket.on("game:finished", onFinished)
     socket.on("game:cancelled", onCancelled)
   
@@ -62,12 +91,15 @@ export default function HostPage() {
           return
         }
         setLobby(response.lobby)
+        if (response.lobby.status === "playing") loadBossState()
       }
   )
 
   return () => {
     socket.off("game:updated", onUpdate)
     socket.off("game:started", onStarted)
+    socket.off("game:enemy:host", onBossState)
+    socket.off("game:pvp-ready", onPvpReady)
     socket.off("game:finished", onFinished)
     socket.off("game:cancelled", onCancelled)
   }
@@ -133,17 +165,22 @@ export default function HostPage() {
     )
   }
 
-  // After Start game, the phones play, and this screen follows the game.
+  // After Start game, the phones play, and this screen shows the game.
   if (lobby.status === "playing") {
+    if (boss && !pvpStarted && !result) {
+      return <HostBossFights state={boss.state} receivedAt={boss.receivedAt} onEndGame={cancelGame} />
+    }
+    // PvP and the results get their own displays in later steps. Until then, this card follows them.
+    const heading = result
+      ? `${result.winner === "red" ? "Red" : "Blue"} team wins!`
+      : pvpStarted ? "PvP in progress" : "Loading the game..."
     return (
       <PageLayout>
         <section className="card" aria-labelledby="game-heading">
           <div className="card-body p-4 text-center">
             <p className="text-body-secondary mb-1">Game session code {lobby.code}</p>
-            <h1 className="h3 card-title" id="game-heading">
-              {result ? `${result.winner === "red" ? "Red" : "Blue"} team wins!` : "Game in progress"}
-            </h1>
-            {!result && <p className="text-body-secondary">The players are fighting on their phones.</p>}
+            <h1 className="h3 card-title" id="game-heading">{heading}</h1>
+            {pvpStarted && !result && <p className="text-body-secondary">The knights are fighting on the phones.</p>}
             {error && <p className="text-danger" role="alert">{error}</p>}
             {result ? (
               <button className="btn btn-dark" type="button" onClick={backToDashboard}>Back to dashboard</button>

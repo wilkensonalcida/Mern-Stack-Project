@@ -48,6 +48,17 @@ export type EnemyState = {
   players: EnemyPlayer[];
   lastRound: RoundResult | null;
 };
+// What the host's screen gets: both teams' fights, each team's taps so far this round, and who has picked an item.
+export type TapCounts = { attack: number; block: number; heal: number };
+export type HostTeamView = Omit<EnemyState, 'code' | 'players'> & {
+  players: { id: string; name: string; picked: boolean }[];
+  taps: TapCounts;
+};
+export type HostBossState = {
+  code: string;
+  pvpStarted: boolean;
+  teams: Record<TeamId, HostTeamView>;
+};
 export type PvpPlayer = {
   id: string;
   name: string;

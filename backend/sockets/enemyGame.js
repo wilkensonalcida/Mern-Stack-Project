@@ -5,7 +5,7 @@ const ENEMIES = [
 const MAX_TAPS_PER_MOVE = 250;
 const TEAMS = ['red', 'blue'];
 const otherTeam = team => team === 'red' ? 'blue' : 'red';
-const { BASE, createKnight, resolveEnemyRound } = require('./enemyRules');
+const { BASE, createKnight, resolveEnemyRound, sumTaps } = require('./enemyRules');
 const {
   preparePlayerSelection,
   clearPlayerSelection,
@@ -17,9 +17,11 @@ function createEnemyGameManager(io, lobbies, options = {}) {
   const ROUND_MS = options.roundMs ?? 5000;
   const PAUSE_MS = options.pauseMs ?? 1500;
   const START_DELAY_MS = options.startDelayMs ?? 3000;
+  const HOST_TAPS_MS = options.hostTapsMs ?? 200;
 
   const games = new Map();
   const timers = new Map();
+  const hostTimers = new Map();
   const key = (code, team) => `${code}:${team}`;
   const members = (lobby, team) => lobby.players.filter(p => p.team === team);
   const reply = (cb, payload) => {
@@ -36,6 +38,8 @@ function createEnemyGameManager(io, lobbies, options = {}) {
 
   function stop(code) {
     clearTimers(code);
+    clearTimeout(hostTimers.get(code));
+    hostTimers.delete(code);
     games.delete(code);
   }
 
@@ -53,11 +57,11 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     };
   }
 
-  function snapshot(lobby, game, team, viewerId) {
+  // One team's fight, as its phones and the host's screen both see it.
+  function fightView(game, team) {
     const fight = game.teams[team];
     const spec = ENEMIES[fight.stage];
     return {
-      code: lobby.code,
       team,
       phase: fight.phase,
       stage: fight.stage,
@@ -71,20 +75,65 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       endsAt: fight.endsAt,
       remainingMs: fight.endsAt === null ? 0 : Math.max(0, fight.endsAt - Date.now()),
       knight: { hp: fight.knight.hp, maxHp: fight.knight.maxHp, buffs: { ...fight.knight.buffs } },
-      players: members(lobby, team).map(player => publicPlayer(player, viewerId)),
       lastRound: fight.lastRound,
     };
   }
 
-  function broadcast(lobby, game, team) {
+  function snapshot(lobby, game, team, viewerId) {
+    return {
+      code: lobby.code,
+      ...fightView(game, team),
+      players: members(lobby, team).map(player => publicPlayer(player, viewerId)),
+    };
+  }
+
+  // The host's screen shows both fights side by side, with each team's taps
+  // so far this round, and no player's private item offers.
+  function hostSnapshot(lobby, game) {
+    const teams = {};
+    for (const team of TEAMS) {
+      const teamPlayers = members(lobby, team);
+      teams[team] = {
+        ...fightView(game, team),
+        players: teamPlayers.map(player => ({
+          id: player.id,
+          name: player.name,
+          picked: player.selectedUpgrade != null,
+        })),
+        taps: sumTaps(teamPlayers.map(player => game.teams[team].taps.get(player.id))),
+      };
+    }
+    return { code: lobby.code, pvpStarted: game.pvpSent, teams };
+  }
+
+  function sendHost(lobby, game) {
+    io.to(lobby.hostId).emit('game:enemy:host', hostSnapshot(lobby, game));
+  }
+
+  function emitTeam(lobby, game, team) {
     for (const player of members(lobby, team)) {
       io.to(player.id).emit('game:enemy:state',
         snapshot(lobby, game, team, player.id));
     }
   }
 
+  function broadcast(lobby, game, team) {
+    emitTeam(lobby, game, team);
+    sendHost(lobby, game);
+  }
+
   function broadcastBoth(lobby, game) {
-    for (const team of TEAMS) broadcast(lobby, game, team);
+    for (const team of TEAMS) emitTeam(lobby, game, team);
+    sendHost(lobby, game);
+  }
+
+  // Taps reach the host's screen at most five times a second.
+  function scheduleHostTaps(lobby, game) {
+    if (hostTimers.has(lobby.code)) return;
+    hostTimers.set(lobby.code, setTimeout(() => {
+      hostTimers.delete(lobby.code);
+      if (games.get(lobby.code) === game) sendHost(lobby, game);
+    }, HOST_TAPS_MS));
   }
 
   function scheduleRound(lobby, game, team, delay) {
@@ -291,6 +340,17 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       return { lobby, game, player, fight: game.teams[player.team] };
     }
 
+    // The host isn't a player, so it reads both fights through its own event.
+    socket.on('game:enemy:host:get', (code, cb) => {
+      const lobby = lobbies.get(String(code ?? '').trim().toUpperCase());
+      if (!lobby || lobby.hostId !== socket.id) {
+        return reply(cb, { success: false, error: 'Only the host can watch this game.' });
+      }
+      const game = games.get(lobby.code);
+      if (!game) return reply(cb, { success: false, error: 'No boss fight is running.' });
+      reply(cb, { success: true, state: hostSnapshot(lobby, game) });
+    });
+
     socket.on('game:enemy:get', (code, cb) => {
       const ctx = context(cb);
       if (!ctx) return;
@@ -316,6 +376,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       taps[move]++;
       ctx.fight.taps.set(socket.id, taps);
       reply(cb, { success: true });
+      scheduleHostTaps(ctx.lobby, ctx.game);
     });
 
     socket.on('game:enemy:choose', (request, cb) => {
