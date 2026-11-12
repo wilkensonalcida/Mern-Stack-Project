@@ -6,6 +6,7 @@ COP 4331C MERN group project. Players join a hosted game, choose teams, and use 
 
 - React
 - React Router for page routes
+- Expo and React Native for the mobile app
 - TypeScript for type checking swag
 - Vite for the frontend dev server and build
 - Bootstrap using its prebuilt CSS
@@ -53,6 +54,25 @@ After **Start game**, the host's page shows the team fight.
 The Red and Blue teams take turns, and each turn gives one team 5 seconds to tap **Attack**, **Block**, and **Heal**, until one team's knight reaches 0 HP.
 Until players can tap from their own phones, the host's page has the tap buttons, and they tap for whichever team's turn it is.
 The fight's code lives in `frontend/src/game/`, and `fightRules.ts` holds its rules, with their numbers at the top.
+
+## Run the mobile app
+
+The mobile app in `mobile` uses Expo and React Native, in TypeScript.
+It creates an account, waits for the emailed verification link, logs in, and logs out, against the live API at `https://mern.alex84plus.xyz/api`.
+To use another API, set `EXPO_PUBLIC_API_URL`, such as `http://10.0.2.2:5001/api` for a local API from the Android emulator.
+
+From the repository root:
+
+```sh
+cd mobile
+npm ci
+npx expo start
+```
+
+Scan the QR code with the Expo Go app on a phone, or press `a` to open the app in a running Android emulator.
+The phone and the computer need the same Wi-Fi network, and on a network that blocks that, `npx expo start --tunnel` works instead.
+Run `npm run typecheck` in `mobile` to check the TypeScript code for errors.
+The app keeps its login token in the phone's encrypted storage through `expo-secure-store`, so it stays logged in until **Log out**.
 
 ## Contributers
 - Nathan Davis - Frontend
