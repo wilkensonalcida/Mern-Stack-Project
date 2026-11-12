@@ -6,6 +6,7 @@ const MAX_TAPS_PER_MOVE = 250;
 const TEAMS = ['red', 'blue'];
 const otherTeam = team => team === 'red' ? 'blue' : 'red';
 const { BASE, createKnight, resolveEnemyRound, sumTaps } = require('./enemyRules');
+const copyTotals = totals => ({ red: { ...totals.red }, blue: { ...totals.blue } });
 const {
   openVote,
   castVote,
@@ -188,6 +189,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       winner,
       loser: otherTeam(winner),
       reason,
+      totals: copyTotals(game.totals),
     };
     for (const team of TEAMS) {
       game.teams[team].endsAt = null;
@@ -250,7 +252,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       }
       // Initialize server-authoritative PvP BEFORE broadcasting the handoff.
       // If initialization fails, do not leave browsers on an unplayable PvP page.
-      const handoff = { code: lobby.code, knights };
+      const handoff = { code: lobby.code, knights, totals: copyTotals(game.totals) };
       if (typeof options.onPvpReady === 'function') {
         try {
           options.onPvpReady(lobby, handoff);
@@ -304,6 +306,8 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     });
     fight.knight = round.knight;
     fight.enemyHp = round.enemyHp;
+    // Each team's taps across the whole game, for the results.
+    game.totals[team] = sumTaps([game.totals[team], ...teamMembers.map(player => fight.taps.get(player.id))]);
     fight.lastRound = {
       round: fight.round,
       attack: round.attack,
@@ -360,6 +364,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       pvpSent: false,
       pvp: null,
       finished: null,
+      totals: { red: sumTaps([]), blue: sumTaps([]) },
     };
     games.set(lobby.code, game);
     for (const team of TEAMS) scheduleRound(lobby, game, team, START_DELAY_MS);

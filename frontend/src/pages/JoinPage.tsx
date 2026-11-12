@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { socket } from '../socket/socket'
 import PageLayout from '../components/PageLayout'
 import type { LobbyResponse } from '../socket/lobby'
 
 export default function JoinPage() {
   const navigate = useNavigate()
+  // The host's QR code links here with ?code=, so a scan only needs a nickname.
+  const [searchParams] = useSearchParams()
+  const linkedCode = (searchParams.get('code') ?? '').trim().toUpperCase().slice(0, 6)
 
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(linkedCode)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [joining, setJoining] = useState(false)
@@ -90,6 +93,7 @@ export default function JoinPage() {
               disabled={joining}
               placeholder="Enter your nickname"
               aria-label="Nickname"
+              autoFocus={Boolean(linkedCode)}
               />
             </div>
             <div className="mb-3">
@@ -104,13 +108,14 @@ export default function JoinPage() {
                 autoCapitalize="characters"
                 spellCheck={false}
                 maxLength={6}
+                value={code}
                 onChange={(event) => {
                   setCode(event.target.value.toUpperCase())
                   setError('')
                 }}
                 pattern=".*\S.*"
                 required
-                autoFocus
+                autoFocus={!linkedCode}
                 disabled={joining}
               />
             </div>

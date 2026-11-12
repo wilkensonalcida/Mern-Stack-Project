@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import Controller from '../game/Controller';
+import '../game/Controller.css';
 import PageLayout from '../components/PageLayout';
 import { socket } from '../socket/socket';
 import type { Lobby } from '../socket/lobby';
@@ -94,19 +95,21 @@ export default function PlayPage() {
     );
   }
   if (result) {
-    // Results screen placeholder
+    // The phone keeps its team's color, names the winner, and offers another game.
+    const myTeam = lobby?.players.find(player => player.id === currentSocketId)?.team ?? null;
+    const myTaps = myTeam && result.totals
+      ? result.totals[myTeam].attack + result.totals[myTeam].block + result.totals[myTeam].heal
+      : null;
     return (
-      <PageLayout>
-        <section className="card"><div className="card-body p-4 text-center">
-          <h1>Game Results</h1>
-          <h2>{result.winner.toUpperCase()} team wins!</h2>
-          <p>{result.reason === 'pvp-defeat' ? 'Victory in PvP combat.' : 'Victory during enemy combat.'}</p>
-          {error && <p role="alert" className="text-danger">{error}</p>}
-          <div className="d-flex justify-content-center gap-2">
-            <button className="btn btn-outline-dark" type="button" onClick={() => leaveGame('/login')}>Exit game</button>
-          </div>
-        </div></section>
-      </PageLayout>
+      <div className={`controller-page team-${myTeam ?? result.winner}`}>
+        <main className="controller justify-content-center text-center">
+          <h1 className="display-5 fw-bold">{result.winner === 'red' ? 'Red' : 'Blue'} team wins!</h1>
+          {myTeam && <p className="fs-3 fw-semibold">{myTeam === result.winner ? 'Your team won!' : 'Your team lost. Good fight!'}</p>}
+          {myTaps !== null && <p className="fs-5">Your team tapped {myTaps} times.</p>}
+          {error && <p role="alert" className="text-danger fw-semibold">{error}</p>}
+          <button className="btn btn-dark btn-lg" type="button" onClick={() => leaveGame('/join')}>Join another game</button>
+        </main>
+      </div>
     );
   }
   if (error && !lobby) return <PageLayout><p role="alert" className="text-danger">{error}</p></PageLayout>;

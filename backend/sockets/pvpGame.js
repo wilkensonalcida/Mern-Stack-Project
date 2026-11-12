@@ -59,7 +59,13 @@ function createPvpGameManager(io, lobbies, options = {}) {
   function finish(game, winner) {
     game.phase = 'finished';
     game.endsAt = null;
-    game.result = { code: game.code, winner, loser: otherTeam(winner), reason: 'pvp-defeat' };
+    game.result = {
+      code: game.code,
+      winner,
+      loser: otherTeam(winner),
+      reason: 'pvp-defeat',
+      totals: { red: { ...game.totals.red }, blue: { ...game.totals.blue } },
+    };
     clearTimeout(timers.get(game.code));
     timers.delete(game.code);
     broadcast(game);
@@ -83,6 +89,7 @@ function createPvpGameManager(io, lobbies, options = {}) {
     const resolved = resolveTurn(game.knights, game.turn, game.taps, ids);
     game.knights = resolved.knights;
     game.lastTurn = { ...resolved.result, turnNumber: game.turnNumber };
+    game.totals[game.turn] = sumTaps([game.totals[game.turn], resolved.result.taps]);
     game.taps = new Map();
     if (resolved.winner) return finish(game, resolved.winner);
 
@@ -95,7 +102,8 @@ function createPvpGameManager(io, lobbies, options = {}) {
       startTurn(game);
     });
   }
-  // The boss fights hand over each team's knight: its HP, max HP and item bonuses.
+  // The boss fights hand over each team's knight, with its HP, max HP and item
+  // bonuses, and each team's taps so far, which PvP keeps adding to for the results.
   function begin(lobby, pvpData) {
     const code = lobby?.code;
     if (!code || pvpData?.code !== code) throw new Error('Invalid PvP session.');
@@ -103,6 +111,7 @@ function createPvpGameManager(io, lobbies, options = {}) {
     const game = {
       code,
       knights: createKnights(pvpData),
+      totals: Object.fromEntries(TEAMS.map(team => [team, sumTaps([pvpData.totals?.[team]])])),
       phase: 'flip',
       turn: options.firstTeam ? options.firstTeam() : flipCoin(),
       turnNumber: 1,

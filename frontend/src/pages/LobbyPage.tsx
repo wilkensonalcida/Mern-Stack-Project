@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
+import PageLayout from "../components/PageLayout";
 import PlayerLobby from "../components/PlayerLobby";
 import { socket } from "../socket/socket";
 
@@ -15,6 +16,7 @@ export default function LobbyPage() {
 
     const [lobby, setLobby] = useState<Lobby | null>(null);
     const [error, setError] = useState("");
+    const [cancelled, setCancelled] = useState(false);
 
     useEffect(() => {
         if (!code) return;
@@ -53,7 +55,13 @@ export default function LobbyPage() {
             navigate(`/play/${updatedLobby.code}`);
         }
 
+        // The host cancelled the lobby, or left it.
+        function onCancelled() {
+            if (active) setCancelled(true);
+        }
+
         socket.on("game:started", onGameStarted);
+        socket.on("game:cancelled", onCancelled);
 
         socket.on("game:updated", updateLobby);
 
@@ -69,6 +77,7 @@ export default function LobbyPage() {
             socket.off("connect", loadLobby);
             socket.off("game:updated", updateLobby);
             socket.off("game:started", onGameStarted);
+            socket.off("game:cancelled", onCancelled);
         };
     }, [code]);
 
@@ -76,14 +85,31 @@ export default function LobbyPage() {
         socket.emit("game:team", teamId);
     };
 
-    if (error) return <p>{error}</p>;
-    if (!lobby) return <p>Loading lobby...</p>;
+    if (cancelled) {
+        return (
+            <PageLayout>
+                <section className="card"><div className="card-body p-4 text-center">
+                    <h1 className="h3">The host closed the lobby</h1>
+                    <Link className="btn btn-dark mt-2" to="/join">Join another game</Link>
+                </div></section>
+            </PageLayout>
+        );
+    }
+    if (error) return <PageLayout><p role="alert" className="text-danger">{error}</p></PageLayout>;
+    if (!lobby) return <PageLayout><p role="status">Loading lobby...</p></PageLayout>;
 
     const player: LobbyPlayer | undefined =
         lobby.players.find(p => p.id === socket.id);
 
     if (!player) {
-        return <p>You are not currently in this lobby.</p>;
+        return (
+            <PageLayout>
+                <section className="card"><div className="card-body p-4 text-center">
+                    <h1 className="h3">You're not in this lobby</h1>
+                    <Link className="btn btn-dark mt-2" to="/join">Join a game</Link>
+                </div></section>
+            </PageLayout>
+        );
     }
 
     const teams = [

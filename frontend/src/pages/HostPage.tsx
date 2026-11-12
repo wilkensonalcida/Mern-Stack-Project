@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import PageLayout from '../components/PageLayout'
 import { socket } from '../socket/socket'
+import { QRCodeSVG } from 'qrcode.react'
 import { HostBossFights } from '../game/EnemyFight'
 import TeamFight from '../game/TeamFight'
+import HostResults from '../game/HostResults'
 import type { GameResult, HostBossState } from '../game/enemyTypes'
 
 import type {
@@ -174,22 +176,16 @@ export default function HostPage() {
     if (boss && !result) {
       return <HostBossFights state={boss.state} receivedAt={boss.receivedAt} onEndGame={cancelGame} />
     }
-    // The results get their own display in a later step. Until then, this card shows them.
-    const heading = result
-      ? `${result.winner === "red" ? "Red" : "Blue"} team wins!`
-      : "Loading the game..."
+    if (result) {
+      return <HostResults result={result} lobby={lobby} error={error} onNewGame={backToDashboard} />
+    }
     return (
       <PageLayout>
         <section className="card" aria-labelledby="game-heading">
           <div className="card-body p-4 text-center">
             <p className="text-body-secondary mb-1">Game session code {lobby.code}</p>
-            <h1 className="h3 card-title" id="game-heading">{heading}</h1>
-            {error && <p className="text-danger" role="alert">{error}</p>}
-            {result ? (
-              <button className="btn btn-dark" type="button" onClick={backToDashboard}>Back to dashboard</button>
-            ) : (
-              <button className="btn btn-outline-dark" type="button" onClick={cancelGame}>End game</button>
-            )}
+            <h1 className="h3 card-title" id="game-heading">Loading the game...</h1>
+            <button className="btn btn-outline-dark" type="button" onClick={cancelGame}>End game</button>
           </div>
         </section>
       </PageLayout>
@@ -224,9 +220,9 @@ export default function HostPage() {
               {name}
             </h2>
             {players.length > 0 ? (
-              <ul className="d-fles fles-wrap jusitfy-content-center gap-2 list-unstyled mb-0">
+              <ul className="d-flex flex-wrap justify-content-center gap-2 list-unstyled mb-0">
                 {players.map(player => (
-                  <li className="border roundes px-2 py-1" key={player.id}>
+                  <li className="border rounded px-2 py-1" key={player.id}>
                     {player.name}
                   </li>
                 )
@@ -260,13 +256,9 @@ export default function HostPage() {
                 <p className="display-1 fw-bold mb-0">{lobby.code}</p>
               </div>
               <div className="col-md-3 order-3 d-flex justify-content-center justify-content-md-end">
-                {/* TODO (API): Show a QR code here that opens /play with this game code. */}
-                <div
-                  className="border rounded d-flex align-items-center justify-content-center small text-body-secondary"
-                  style={{ width: 176, height: 176 }}
-                >
-                  QR code
-                </div>
+                {/* Opens the join page on a phone with this code filled in, on whatever address the host is using. */}
+                <QRCodeSVG value={`${window.location.origin}/join?code=${lobby.code}`} size={176} marginSize={2}
+                  title={`Scan to join game ${lobby.code}`} role="img" aria-label={`QR code to join game ${lobby.code}`} />
               </div>
             </div>
           </div>

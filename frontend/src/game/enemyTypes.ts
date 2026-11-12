@@ -87,5 +87,7 @@ export type GameResult = {
   winner: TeamId;
   loser: TeamId;
   reason: 'enemy-defeat' | 'pvp-defeat';
+  // Each team's taps across the whole game.
+  totals?: Record<TeamId, TapCounts>;
 };
 export type Ack = { success: boolean; error?: string };

@@ -1,6 +1,9 @@
 import PageLayout from './PageLayout'
+import { moveIcons } from '../game/itemArt'
+import '../game/Controller.css'
 
 type TeamId = 'red' | 'blue'
+type Move = 'attack' | 'block' | 'heal'
 
 type PlayerLobbyProps = {
   sessionCode: string
@@ -13,7 +16,17 @@ type PlayerLobbyProps = {
   onSelectTeam: (team: TeamId) => void
 }
 
-// A player's phone shows only which team they're on. The host's screen shows who joined.
+const moves: Move[] = ['attack', 'block', 'heal']
+const moveNames: Record<Move, string> = { attack: 'Attack', block: 'Block', heal: 'Heal' }
+// One line on what each button does, so players learn the controls while they wait.
+const moveHints: Record<Move, string> = {
+  attack: 'Hits the boss, or the other knight',
+  block: "Blocks the boss's hit, or shields your knight",
+  heal: 'Heals your knight',
+}
+const teamButtons: Record<TeamId, string> = { red: 'btn-danger', blue: 'btn-primary' }
+
+// A player's phone in the lobby. The host's screen shows who joined.
 export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }: PlayerLobbyProps) {
 
   // Team selection comes from the server's lobby state
@@ -27,7 +40,39 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }
     onSelectTeam(id)
   }
 
-  
+  // Once a team is picked, the phone takes the team's color and shows its controls, locked until the game starts.
+  if (teamId === 'red' || teamId === 'blue') {
+    const team = teams.find((entry) => entry.id === teamId)
+    const other = teams.find((entry) => entry.id !== teamId)
+    return (
+      <div className={`controller-page team-${teamId}`}>
+        <main className="controller">
+          <header className="controller-header">
+            <h1 className="controller-team mb-0">{team?.name}</h1>
+            <span className="controller-name">{player.name}</span>
+          </header>
+          <p className="controller-status" role="status">Waiting for the host to start.</p>
+          <p className="text-center mb-0">Your buttons, which unlock when the game starts:</p>
+          <div className="controller-buttons">
+            {moves.map((move) => (
+              <div className={`controller-button controller-preview move-${move}`} key={move}>
+                <img src={moveIcons[move]} alt="" />
+                <span>
+                  <span className="controller-label">{moveNames[move]}</span>
+                  <span className="controller-detail">{moveHints[move]}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          {other && (
+            <button className="btn btn-outline-dark" type="button" onClick={() => selectTeam(other.id)}>
+              Switch to {other.name}
+            </button>
+          )}
+        </main>
+      </div>
+    )
+  }
 
   return (
     <PageLayout>
@@ -39,23 +84,15 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }
           </div>
           <div className="d-flex gap-2" role="group" aria-labelledby="lobby-heading">
             {teams.map((team) => (
-              // TODO (API): Have PlayPage send this team choice to the server, and only switch once it agrees.
-              // Show an error here if the request fails.
               <button
-                className={`btn btn-lg flex-fill text-nowrap ${teamId === team.id ? 'btn-dark' : 'btn-outline-dark'}`}
+                className={`btn btn-lg flex-fill text-nowrap ${teamButtons[team.id as TeamId] ?? 'btn-dark'}`}
                 type="button"
-                aria-pressed={teamId === team.id}
                 onClick={() => selectTeam(team.id)}
                 key={team.id}
               >
                 {team.name}
               </button>
             ))}
-          </div>
-           
-          {/* The waiting line appears once a team is picked. The status region stays, so screen readers announce it. */}
-          <div role="status">
-            {teamId && <p className="text-body-secondary text-center mt-3 mb-0">Waiting for the host to start the game.</p>}
           </div>
         </div>
       </section>

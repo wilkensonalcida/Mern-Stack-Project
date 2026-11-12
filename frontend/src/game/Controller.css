@@ -118,6 +118,11 @@
   opacity: 0.55;
   box-shadow: none;
 }
+/* The lobby's look at the controls: in color, so players learn them, but flat, since they don't work yet. */
+.controller-button.controller-preview {
+  opacity: 0.85;
+  box-shadow: none;
+}
 .controller-button:focus-visible {
   outline: 4px solid #212529;
   outline-offset: 3px;
