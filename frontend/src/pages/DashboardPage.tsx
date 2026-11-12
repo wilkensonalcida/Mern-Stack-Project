@@ -25,7 +25,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
 
     socket.timeout(5000).emit(
       "game:create",
-      { name },
+      {},
       (err: Error | null, response: LobbyResponse) => {
         setCreating(false)
         if(err || !response?.success || !response.lobby) {

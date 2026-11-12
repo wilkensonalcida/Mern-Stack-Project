@@ -66,8 +66,10 @@ function registerLobbySockets(io) {
     enemyGame.stop(code);
     pvpGame.stop(code);
 
-    for (const player of lobby.players) {
-      const memberSocket = io.sockets.sockets.get(player.id);
+    // The host isn't in the player list, so clear its socket too.
+    const memberIds = [lobby.hostId, ...lobby.players.map((player) => player.id)];
+    for (const id of memberIds) {
+      const memberSocket = io.sockets.sockets.get(id);
       if (!memberSocket) continue;
       memberSocket.leave(code);
       if (memberSocket.data.lobbyCode === code) {
@@ -88,6 +90,7 @@ function registerLobbySockets(io) {
     if (!oldCode) return;
 
     const oldLobby = lobbies.get(oldCode);
+    if (oldLobby?.hostId === socket.id) return;
     if (oldLobby?.players.some((player) => player.id === socket.id)) return;
 
     socket.leave(oldCode);
@@ -103,21 +106,20 @@ function registerLobbySockets(io) {
     delete socket.data.lobbyCode;
     if (!lobby) return;
 
-    const wasMember = lobby.players.some((player) => player.id === socket.id);
-    if (!wasMember) return;
-
-    const wasHost = lobby.hostId === socket.id;
-
-    // Preserve the original behavior when the host disconnects or explicitly
-    // leaves a WAITING lobby: cancel it for everyone and stop both engines.
-    if (wasHost && (disconnected || lobby.status === "waiting")) {
-      destroyLobby(code);
+    // The host isn't a player. When the host disconnects, or leaves a
+    // WAITING lobby, cancel it for everyone and stop both engines. When the
+    // host leaves a game that has started, such as from the results, the
+    // players keep their screens, and the lobby goes when the last one leaves.
+    if (lobby.hostId === socket.id) {
+      if (disconnected || lobby.status === "waiting") destroyLobby(code);
       return;
     }
 
+    const wasMember = lobby.players.some((player) => player.id === socket.id);
+    if (!wasMember) return;
+
     // On the results screen, an explicit game:leave must not delete the
-    // match while other players are still reading results. This also lets
-    // the host immediately create a new lobby without refreshing.
+    // match while other players are still reading results.
     lobby.players = lobby.players.filter((player) => player.id !== socket.id);
     if (lobby.players.length === 0) {
       destroyLobby(code, { notify: false });
@@ -125,7 +127,7 @@ function registerLobbySockets(io) {
     }
 
     io.to(code).emit("game:updated", publicLobby(lobby));
-    console.info("[LOBBY LEFT]", { code, socketId: socket.id, wasHost });
+    console.info("[LOBBY LEFT]", { code, socketId: socket.id });
   }
 
   io.on("connection", (socket) => {
@@ -135,9 +137,10 @@ function registerLobbySockets(io) {
     enemyGame.register(socket);
     pvpGame.register(socket);
 
-    // CREATE LOBBY — hosts must have a name. Login checks stay in the frontend
-    // and existing auth routes; this handler preserves the original contract.
-    socket.on("game:create", (data, callback) => {
+    // CREATE LOBBY: the host's screen shows the game and doesn't play, so
+    // hostId alone marks the host, and players holds only the guests. Login
+    // checks stay in the frontend and existing auth routes.
+    socket.on("game:create", (_data, callback) => {
       if (typeof callback !== "function") return;
       clearStaleMembership(socket);
 
@@ -145,17 +148,12 @@ function registerLobbySockets(io) {
         return reply(callback, { success: false, error: "Already in a lobby" });
       }
 
-      const name = String(data?.name ?? "").trim().slice(0, 40);
-      if (!name) {
-        return reply(callback, { success: false, error: "Player name required" });
-      }
-
       const code = generateCode();
       const lobby = {
         code,
         hostId: socket.id,
         status: "waiting",
-        players: [{ id: socket.id, name, team: null }],
+        players: [],
       };
 
       lobbies.set(code, lobby);
@@ -187,6 +185,9 @@ function registerLobbySockets(io) {
       if (socket.data.lobbyCode && socket.data.lobbyCode !== code) {
         return reply(callback, { success: false, error: "Already in another lobby" });
       }
+      if (lobby.hostId === socket.id) {
+        return reply(callback, { success: false, error: "The host can't join as a player" });
+      }
 
       if (!lobby.players.some((player) => player.id === socket.id)) {
         lobby.players.push({ id: socket.id, name, team: null });
@@ -207,7 +208,9 @@ function registerLobbySockets(io) {
       if (!lobby) {
         return reply(callback, { success: false, error: "Lobby not found" });
       }
-      if (!lobby.players.some((player) => player.id === socket.id)) {
+      const isMember = lobby.hostId === socket.id ||
+        lobby.players.some((player) => player.id === socket.id);
+      if (!isMember) {
         return reply(callback, { success: false, error: "Not a member of this lobby" });
       }
       reply(callback, { success: true, lobby: publicLobby(lobby) });
@@ -240,6 +243,7 @@ function registerLobbySockets(io) {
 
     // START GAME — unchanged frontend contract. Initialize PvE first;
     // later PvE calls the onPvpReady callback above to start PvP.
+    // The team checks cover only the guests, since the host isn't in players.
     socket.on("game:start", (code, callback) => {
       if (typeof callback !== "function") return;
       const sessionCode = normalizeCode(code);

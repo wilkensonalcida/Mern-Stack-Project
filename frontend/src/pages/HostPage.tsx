@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import PageLayout from '../components/PageLayout'
 import { socket } from '../socket/socket'
+import type { GameResult } from '../game/enemyTypes'
 
 import type {
   Lobby,
@@ -18,12 +19,8 @@ export default function HostPage() {
   const[lobby, setLobby] = useState<Lobby | null>(null)
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false)
+  const [result, setResult] = useState<GameResult | null>(null)
 
-  const [teamError, setTeamError] = useState("");
-  const [selectingTeam, setSelectingTeam] = useState(false);
-
-  
-  
   useEffect(() => {
     if (!code) return;
 
@@ -32,10 +29,16 @@ export default function HostPage() {
         setLobby(updatedLobby)
       }
     }
-    // The host stays on this page, which swaps the lobby for the fight.
+    // The host doesn't play, so it stays on this page, which swaps the lobby for the game.
     function onStarted(updatedLobby: Lobby) {
       if (updatedLobby.code === code) {
-        navigate(`/play/${updatedLobby.code}`);
+        setLobby(updatedLobby)
+      }
+    }
+
+    function onFinished(finished: GameResult) {
+      if (finished.code === code) {
+        setResult(finished)
       }
     }
 
@@ -45,6 +48,7 @@ export default function HostPage() {
 
     socket.on("game:updated", onUpdate)
     socket.on("game:started", onStarted)
+    socket.on("game:finished", onFinished)
     socket.on("game:cancelled", onCancelled)
   
   socket.timeout(5000).emit(
@@ -64,36 +68,10 @@ export default function HostPage() {
   return () => {
     socket.off("game:updated", onUpdate)
     socket.off("game:started", onStarted)
+    socket.off("game:finished", onFinished)
     socket.off("game:cancelled", onCancelled)
   }
   }, [code, navigate])
-
-  function selectTeam(team: TeamId) {
-    if (!lobby || selectingTeam) return;
-  
-    setSelectingTeam(true);
-    setTeamError("");
-  
-    socket.timeout(5000).emit(
-      "game:team",
-      team,
-      (
-        err: Error | null,
-        response: {
-          success: boolean;
-          error?: string;
-        }
-      ) => {
-        setSelectingTeam(false);
-  
-        if (err || !response?.success) {
-          setTeamError(
-            response?.error || "Unable to select team."
-          );
-        }
-      }
-    );
-  }
 
   function startGame() {
     if(!lobby || starting) return;
@@ -123,6 +101,21 @@ export default function HostPage() {
     navigate('/')
   }
 
+  // After the game, the host leaves without ending the lobby, so the players keep their results.
+  function backToDashboard() {
+    setError("")
+    socket.timeout(5000).emit(
+      "game:leave",
+      (err: Error | null, response: { success: boolean, error?: string }) => {
+        if (err || !response?.success) {
+          setError(response?.error || "Unable to leave the game.")
+          return
+        }
+        navigate('/')
+      }
+    )
+  }
+
   if(error && !lobby) {
     return (
       <PageLayout>
@@ -140,7 +133,28 @@ export default function HostPage() {
     )
   }
 
-  
+  // After Start game, the phones play, and this screen follows the game.
+  if (lobby.status === "playing") {
+    return (
+      <PageLayout>
+        <section className="card" aria-labelledby="game-heading">
+          <div className="card-body p-4 text-center">
+            <p className="text-body-secondary mb-1">Game session code {lobby.code}</p>
+            <h1 className="h3 card-title" id="game-heading">
+              {result ? `${result.winner === "red" ? "Red" : "Blue"} team wins!` : "Game in progress"}
+            </h1>
+            {!result && <p className="text-body-secondary">The players are fighting on their phones.</p>}
+            {error && <p className="text-danger" role="alert">{error}</p>}
+            {result ? (
+              <button className="btn btn-dark" type="button" onClick={backToDashboard}>Back to dashboard</button>
+            ) : (
+              <button className="btn btn-outline-dark" type="button" onClick={cancelGame}>End game</button>
+            )}
+          </div>
+        </section>
+      </PageLayout>
+    )
+  }
 
   const playerCount = lobby.players.length
 
@@ -154,12 +168,6 @@ export default function HostPage() {
     p => p.team === null
   )
   const isHost = lobby.hostId === socket.id
-
-  const currentHost = lobby.players.find(
-    player => player.id === lobby.hostId
-  );
-
-  const hostTeam = currentHost?.team;
 
   const canStart = !starting &&  isHost && redPlayers.length > 0 && bluePlayers.length > 0 && unassignedPlayers.length === 0;
   
@@ -180,10 +188,6 @@ export default function HostPage() {
                 {players.map(player => (
                   <li className="border roundes px-2 py-1" key={player.id}>
                     {player.name}
-                    {player.id === lobby?.hostId && (
-                      <span className="text-body-secondary">
-                        {""}(Host)</span>
-                    )}
                   </li>
                 )
               )}
@@ -227,33 +231,12 @@ export default function HostPage() {
             </div>
           </div>
         </section>
-        <section className="card mt-3">
-          <div className="card-body text-center">
-            <h2 className="h5 mb-3">
-              Choose your team
-            </h2>
-
-            <div className="d-flex gap-3 justify-content-center">
-              {(["red", "blue"] as TeamId[]).map(team => {
-                const isSelected = hostTeam === team;
-
-                return (
-                  <button key={team} type="button" className={`btn btn-lg ${isSelected? "btn-dark": "btn-outline-dark"}`} onClick={() => selectTeam(team)} disabled={ selectingTeam || !isHost}>
-                    {team === "red" ? "Red" : "Blue"} Team
-                    {" "}
-                  </button>
-                );
-              })}
-            </div>
-            {teamError && (<p className="text-danger mt-3" role="alert">{teamError}</p>)}
-          </div>
-        </section>
         <section className="flex-grow-1 d-flex flex-column justify-content-center py-4" aria-label="Players">
           {/* Players who just joined wait here until they pick a team. */}
           {unassignedPlayers.length > 0 && (
             <ul className="d-flex flex-wrap justify-content-center gap-2 list-unstyled mb-3" aria-label="Waiting for a team">
               {unassignedPlayers.map(player => (
-                <li className="border rounded px-2 py-1" key={player.id}>{player.name}{player.id === lobby.hostId && " (Host)"}</li>
+                <li className="border rounded px-2 py-1" key={player.id}>{player.name}</li>
               ))}
             </ul>
           )}
