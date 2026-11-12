@@ -74,6 +74,8 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       round: fight.round,
       endsAt: fight.endsAt,
       remainingMs: fight.endsAt === null ? 0 : Math.max(0, fight.endsAt - Date.now()),
+      // How long until the next round opens, while one is waiting to.
+      nextRoundInMs: fight.endsAt === null && fight.startsAt ? Math.max(0, fight.startsAt - Date.now()) : 0,
       knight: { hp: fight.knight.hp, maxHp: fight.knight.maxHp, buffs: { ...fight.knight.buffs } },
       lastRound: fight.lastRound,
     };
@@ -136,7 +138,9 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     }, HOST_TAPS_MS));
   }
 
+  // Call before broadcasting, so phones can count down to the round.
   function scheduleRound(lobby, game, team, delay) {
+    game.teams[team].startsAt = Date.now() + delay;
     const k = key(lobby.code, team);
     clearTimeout(timers.get(k));
     timers.set(k, setTimeout(() => {
@@ -151,6 +155,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     if (fight.phase !== 'combat' || fight.endsAt !== null) return;
 
     fight.round++;
+    fight.startsAt = null;
     fight.endsAt = Date.now() + ROUND_MS;
     fight.taps = new Map();
     broadcast(lobby, game, team);
@@ -243,8 +248,8 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       fight.taps = new Map();
       for (const player of members(lobby, team)) clearPlayerSelection(player);
     }
-    broadcastBoth(lobby, game);
     for (const team of TEAMS) scheduleRound(lobby, game, team, PAUSE_MS);
+    broadcastBoth(lobby, game);
   }
 
   function finishRound(code, team) {
@@ -291,8 +296,8 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       return;
     }
 
-    broadcast(lobby, game, team); 
     scheduleRound(lobby, game, team, PAUSE_MS);
+    broadcast(lobby, game, team);
   }
 
   function begin(lobby) {
@@ -312,6 +317,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       round: 0,
       knight: createKnight(),
       enemyHp: ENEMIES[0].hp,
+      startsAt: null,
       endsAt: null,
       taps: new Map(),
       lastRound: null,
@@ -323,8 +329,8 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       finished: null,
     };
     games.set(lobby.code, game);
-    broadcastBoth(lobby, game);
     for (const team of TEAMS) scheduleRound(lobby, game, team, START_DELAY_MS);
+    broadcastBoth(lobby, game);
   }
 
   function register(socket) {

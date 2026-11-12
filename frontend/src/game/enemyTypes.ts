@@ -44,6 +44,8 @@ export type EnemyState = {
   round: number;
   endsAt: number | null;
   remainingMs: number;
+  // How long until the next round opens, while one is waiting to.
+  nextRoundInMs: number;
   knight: TeamKnight;
   players: EnemyPlayer[];
   lastRound: RoundResult | null;

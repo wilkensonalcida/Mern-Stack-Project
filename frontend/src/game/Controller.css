@@ -1,0 +1,186 @@
+/* The phone controller: the screen tinted in the team's color, and three big buttons for thumbs. */
+.controller-page {
+  --team-tint: #f8d7da;
+  --team-ink: #842029;
+  --team-strong: #b02a37;
+  min-height: 100dvh;
+  background: var(--team-tint);
+  color: var(--team-ink);
+  /* Mashing the buttons never zooms, selects text, or opens the long press menu. */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.controller-page.team-blue {
+  --team-tint: #cfe2ff;
+  --team-ink: #084298;
+  --team-strong: #0a58ca;
+}
+
+.controller {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 1rem;
+}
+
+.controller-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+.controller-bar > div {
+  height: 100%;
+  background: var(--team-strong);
+}
+
+.controller-banner {
+  background: #212529;
+  color: #fff;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.controller-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+.controller-team {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.controller-name {
+  font-size: 1.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.controller-status {
+  font-size: 1.75rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0;
+  min-height: 2.5rem;
+}
+.controller-status.tone-red { color: #b02a37; }
+.controller-status.tone-blue { color: #0a58ca; }
+
+.controller-countdown {
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  margin: 0;
+}
+
+.controller-buttons {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 60dvh;
+}
+
+.controller-button {
+  --move-color: #475569;
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  border: 0;
+  border-radius: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--move-color);
+  color: #fff;
+  text-align: left;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.controller-button.move-attack { --move-color: #c2410c; }
+.controller-button.move-block { --move-color: #475569; }
+.controller-button.move-heal { --move-color: #15803d; }
+.controller-button:disabled {
+  filter: grayscale(1);
+  opacity: 0.55;
+  box-shadow: none;
+}
+.controller-button:focus-visible {
+  outline: 4px solid #212529;
+  outline-offset: 3px;
+}
+.controller-button img {
+  width: clamp(3.5rem, 18vw, 5.5rem);
+  height: clamp(3.5rem, 18vw, 5.5rem);
+  object-fit: contain;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.controller-label {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.controller-detail {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+.controller-count {
+  margin-left: auto;
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.controller-button.picked {
+  outline: 5px solid var(--team-ink);
+  outline-offset: 3px;
+  filter: none;
+  opacity: 1;
+}
+
+.controller-plus {
+  position: absolute;
+  right: 22%;
+  top: 25%;
+  font-size: 1.75rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .controller-button.tapped {
+    animation: controller-squish 150ms ease-out;
+  }
+  .controller-plus {
+    animation: controller-plus-one 600ms ease-out forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .controller-plus {
+    display: none;
+  }
+}
+@keyframes controller-squish {
+  0% { transform: scale(1); filter: brightness(1); }
+  40% { transform: scale(0.95); filter: brightness(1.3); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@keyframes controller-plus-one {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-3rem); opacity: 0; }
+}

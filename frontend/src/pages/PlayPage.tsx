@@ -1,36 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import EnemyFight from '../game/EnemyFight';
-import TeamFight from '../game/TeamFight';
+import { Link, useNavigate, useParams } from 'react-router';
+import Controller from '../game/Controller';
 import PageLayout from '../components/PageLayout';
 import { socket } from '../socket/socket';
 import type { Lobby } from '../socket/lobby';
-import type { GameResult, PvpReady } from '../game/enemyTypes';
+import type { GameResult } from '../game/enemyTypes';
 
-type GamePhase = 'enemy' | 'pvp' | 'results';
 type LobbyAck = { success: boolean; lobby?: Lobby; error?: string };
 type ResultAck = { success: boolean; result?: GameResult; error?: string };
 
+// A guest's phone after Start game: the controller, then the result. The host's screen shows the fight.
 export default function PlayPage() {
   const { code = '' } = useParams<{ code: string }>();
   const normalizedCode = code.trim().toUpperCase();
   const navigate = useNavigate();
   const [lobby, setLobby] = useState<Lobby | null>(null);
-  const [gamePhase, setGamePhase] = useState<GamePhase>('enemy');
-  const [pvpData, setPvpData] = useState<PvpReady | null>(null);
   const [result, setResult] = useState<GameResult | null>(null);
+  const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState('');
   const [currentSocketId, setCurrentSocketId] = useState<string | null>(socket.id ?? null);
 
-  const onPvpReady = useCallback((data: PvpReady) => {
-    if (data.code !== normalizedCode) return;
-    setPvpData(data);
-    setGamePhase('pvp');
-  }, [normalizedCode]);
   const onFinished = useCallback((data: GameResult) => {
     if (data.code !== normalizedCode) return;
     setResult(data);
-    setGamePhase('results');
   }, [normalizedCode]);
 
   function leaveGame(destination: string) {
@@ -72,43 +64,66 @@ export default function PlayPage() {
           });
       }
     }
-    
+    // The host ended the game, so the lobby is gone.
+    const onCancelled = () => {
+      if (mounted) setCancelled(true);
+    };
+
     socket.on('game:finished', onFinished);
+    socket.on('game:cancelled', onCancelled);
     socket.on('connect', load);
     if (socket.connected) load();
     else socket.connect();
     return () => {
       mounted = false;
       socket.off('game:finished', onFinished);
+      socket.off('game:cancelled', onCancelled);
       socket.off('connect', load);
     };
   }, [normalizedCode, onFinished]);
 
   if (!normalizedCode) return <PageLayout><p>Invalid game code.</p></PageLayout>;
-  if (error && !lobby) return <PageLayout><p role="alert" className="text-danger">{error}</p></PageLayout>;
-  if (gamePhase === 'enemy') {
-    return <EnemyFight code={normalizedCode} onPvpReady={onPvpReady} onGameFinished={onFinished} />;
+  if (cancelled && !result) {
+    return (
+      <PageLayout>
+        <section className="card"><div className="card-body p-4 text-center">
+          <h1 className="h3">The host ended the game</h1>
+          <Link className="btn btn-dark mt-2" to="/join">Join another game</Link>
+        </div></section>
+      </PageLayout>
+    );
   }
-  if (gamePhase === 'pvp') {
-    if (!lobby || !pvpData) return <PageLayout><p>Loading PvP data…</p></PageLayout>;
-    return <TeamFight lobby={lobby} pvpData={pvpData}
-      onGameFinished={onFinished} onEndGame={() => { /* results only after server victory */ }} />;
-  }
-  // Results screen placeholder
-  const host = !!lobby && currentSocketId === lobby.hostId;
-  return (
-    <PageLayout>
-      <section className="card"><div className="card-body p-4 text-center">
-        <h1>Game Results</h1>
-        {result ? <>
+  if (result) {
+    // Results screen placeholder
+    return (
+      <PageLayout>
+        <section className="card"><div className="card-body p-4 text-center">
+          <h1>Game Results</h1>
           <h2>{result.winner.toUpperCase()} team wins!</h2>
           <p>{result.reason === 'pvp-defeat' ? 'Victory in PvP combat.' : 'Victory during enemy combat.'}</p>
-        </> : <p>Waiting for the server's final result…</p>}
-        <div className="d-flex justify-content-center gap-2">
-          {host && <button className="btn btn-dark" type="button" onClick={() => leaveGame('/')}>Dashboard</button>}
-          <button className="btn btn-outline-dark" type="button" onClick={() => leaveGame('/login')}>Exit game</button>
-        </div>
-      </div></section>
-    </PageLayout>
-  );
+          {error && <p role="alert" className="text-danger">{error}</p>}
+          <div className="d-flex justify-content-center gap-2">
+            <button className="btn btn-outline-dark" type="button" onClick={() => leaveGame('/login')}>Exit game</button>
+          </div>
+        </div></section>
+      </PageLayout>
+    );
+  }
+  if (error && !lobby) return <PageLayout><p role="alert" className="text-danger">{error}</p></PageLayout>;
+  if (!lobby) return <PageLayout><p role="status">Loading the game…</p></PageLayout>;
+
+  // A phone whose connection dropped comes back as a new connection, which the game doesn't know.
+  const me = lobby.players.find(player => player.id === currentSocketId);
+  if (!me?.team) {
+    return (
+      <PageLayout>
+        <section className="card"><div className="card-body p-4 text-center">
+          <h1 className="h3">You're not in this game</h1>
+          <p>A phone that loses its connection can't rejoin a game that has started.</p>
+          <Link className="btn btn-dark" to="/join">Join a game</Link>
+        </div></section>
+      </PageLayout>
+    );
+  }
+  return <Controller code={normalizedCode} team={me.team} nickname={me.name} />;
 }
