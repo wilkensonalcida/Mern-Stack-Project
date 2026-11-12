@@ -56,9 +56,9 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }
           <div className="controller-buttons">
             {moves.map((move) => (
               <div className={`controller-button controller-preview move-${move}`} key={move}>
-                <img src={moveIcons[move]} alt="" />
-                <span>
-                  <span className="controller-label">{moveNames[move]}</span>
+                <span className="controller-art"><img src={moveIcons[move]} alt="" /></span>
+                <span className="controller-label">
+                  {moveNames[move]}
                   <span className="controller-detail">{moveHints[move]}</span>
                 </span>
               </div>

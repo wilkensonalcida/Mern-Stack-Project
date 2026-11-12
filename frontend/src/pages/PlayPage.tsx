@@ -102,7 +102,7 @@ export default function PlayPage() {
       : null;
     return (
       <div className={`controller-page team-${myTeam ?? result.winner}`}>
-        <main className="controller justify-content-center text-center">
+        <main className="controller justify-content-center text-center px-3">
           <h1 className="display-5 fw-bold">{result.winner === 'red' ? 'Red' : 'Blue'} team wins!</h1>
           {myTeam && <p className="fs-3 fw-semibold">{myTeam === result.winner ? 'Your team won!' : 'Your team lost. Good fight!'}</p>}
           {myTaps !== null && <p className="fs-5">Your team tapped {myTaps} times.</p>}

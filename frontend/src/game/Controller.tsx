@@ -271,19 +271,25 @@ export default function Controller({ code, team, nickname }: Props) {
 
   return (
     <div className={`controller-page team-${team}`} onContextMenu={event => event.preventDefault()}>
-      <div className="controller-bar" aria-hidden="true">
-        <div style={{ width: `${Math.min(100, barWidth)}%` }} />
-      </div>
       <main className="controller">
-        {!connected && <p className="controller-banner" role="alert">Reconnecting…</p>}
         <header className="controller-header">
-          <h1 className="controller-team mb-0">{teamNames[team]} team</h1>
+          <h1 className="controller-team">{teamNames[team]} team</h1>
           <span className="controller-name">{nickname}</span>
         </header>
-        <p className={`controller-status ${tone ? `tone-${tone}` : ''}`} role="status">{status}</p>
-        {countdown !== undefined && <p className="controller-countdown" aria-hidden="true">{countdown}</p>}
+        <div className="controller-timer" aria-hidden="true">
+          <div style={{ width: `${Math.min(100, barWidth)}%` }} />
+        </div>
+        {connected ? (
+          <p className={`controller-status ${status.length <= 10 ? 'is-big' : ''} ${tone ? `tone-${tone}` : ''}`} role="status">{status}</p>
+        ) : (
+          // While the connection is down the tiles are locked, so the status says so instead of the last state.
+          <p className="controller-status is-offline" role="status">Reconnecting…</p>
+        )}
+        {connected && countdown !== undefined && (
+          <p className={`controller-countdown ${tone ? `tone-${tone}` : ''}`} aria-hidden="true">{countdown}</p>
+        )}
 
-        <div className="controller-buttons">
+        <div className={`controller-buttons ${screen.kind === 'vote' ? 'is-vote' : ''}`}>
           {screen.kind === 'vote'
             ? screen.vote.offers.map((item, slot) => {
                 const chosen = screen.vote.closed ? screen.vote.pick === item.id : screen.myVote === item.id;
@@ -295,12 +301,14 @@ export default function Controller({ code, team, nickname }: Props) {
                     aria-pressed={chosen}
                     disabled={!voting && !chosen}
                     onClick={() => vote(item.id)}>
-                    <img src={itemIcons[item.id]} alt="" />
-                    <span>
-                      <span className="controller-label">{item.name}</span>
+                    <span className="controller-art"><img src={itemIcons[item.id]} alt="" /></span>
+                    <span className="controller-label">
+                      {item.name}
                       <span className="controller-detail">+{Math.round(item.bonus * 100)}% {item.stat}</span>
                     </span>
-                    <span className="controller-count" aria-label={`${votes} ${votes === 1 ? 'vote' : 'votes'}`}>{votes}</span>
+                    <span className="controller-tally">
+                      <span className="controller-count" aria-label={`${votes} ${votes === 1 ? 'vote' : 'votes'}`}>{votes}</span>
+                    </span>
                   </button>
                 );
               })
@@ -312,16 +320,21 @@ export default function Controller({ code, team, nickname }: Props) {
                   onPointerDown={() => tap(move, slot)}
                   // Enter and Space press a focused button with no pointer, which reports detail 0.
                   onClick={event => { if (event.detail === 0) tap(move, slot); }}>
-                  <img src={moveIcons[move]} alt="" />
+                  <span className="controller-art"><img src={moveIcons[move]} alt="" /></span>
                   <span className="controller-label">{moveNames[move]}</span>
-                  {counts && <span className="controller-count">{counts[move]}</span>}
-                  {floats.filter(float => float.slot === slot).map(float => (
-                    <span key={float.id} className="controller-plus" aria-hidden="true">+1</span>
-                  ))}
+                  {counts && (
+                    <span className="controller-tally">
+                      {/* Keyed by the count, so the pill bumps each time the server takes a tap. */}
+                      <span key={counts[move]} className={`controller-count ${counts[move] > 0 ? 'bump' : ''}`}>{counts[move]}</span>
+                      {floats.filter(float => float.slot === slot).map(float => (
+                        <span key={float.id} className="controller-plus" aria-hidden="true">+1</span>
+                      ))}
+                    </span>
+                  )}
                 </button>
               ))}
         </div>
-        {error && <p className="text-danger text-center fw-semibold mb-0" role="alert">{error}</p>}
+        {error && <p className="controller-error" role="alert">{error}</p>}
       </main>
     </div>
   );

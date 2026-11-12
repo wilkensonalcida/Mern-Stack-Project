@@ -1,0 +1,9 @@
+/* Fredoka, the game's typeface, served from the app so it loads on any network.
+   Its license is in assets/fonts/OFL.txt. */
+@font-face {
+  font-family: 'Fredoka';
+  src: url('./assets/fonts/fredoka-latin.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
