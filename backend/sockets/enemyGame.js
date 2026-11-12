@@ -7,10 +7,12 @@ const TEAMS = ['red', 'blue'];
 const otherTeam = team => team === 'red' ? 'blue' : 'red';
 const { BASE, createKnight, resolveEnemyRound, sumTaps } = require('./enemyRules');
 const {
-  preparePlayerSelection,
-  clearPlayerSelection,
-  choosePlayerUpgrade,
-  allPlayersSelected,
+  openVote,
+  castVote,
+  voteCounts,
+  everyoneVoted,
+  decideVote,
+  applyPick,
 } = require('./upgradeSelection');
 
 function createEnemyGameManager(io, lobbies, options = {}) {
@@ -18,6 +20,9 @@ function createEnemyGameManager(io, lobbies, options = {}) {
   const PAUSE_MS = options.pauseMs ?? 1500;
   const START_DELAY_MS = options.startDelayMs ?? 3000;
   const HOST_TAPS_MS = options.hostTapsMs ?? 200;
+  const VOTE_MS = options.voteMs ?? 10000;
+  // How long both teams' picks stay up before the next fight.
+  const REVEAL_MS = options.revealMs ?? 2000;
 
   const games = new Map();
   const timers = new Map();
@@ -29,8 +34,8 @@ function createEnemyGameManager(io, lobbies, options = {}) {
   };
 
   function clearTimers(code) {
-    for (const team of TEAMS) {
-      const k = key(code, team);
+    for (const slot of [...TEAMS, 'reveal']) {
+      const k = key(code, slot);
       clearTimeout(timers.get(k));
       timers.delete(k);
     }
@@ -43,24 +48,31 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     games.delete(code);
   }
 
-  // Each client sees its own item offers only; teammates see completion status.
-  function publicPlayer(player, viewerId) {
+  function publicPlayer(player) {
+    return { id: player.id, name: player.name, team: player.team };
+  }
+
+  // A team's item vote: its three offers, the votes of the players still on
+  // the team, the time left, and the pick once it closes.
+  function voteView(vote, playerIds) {
+    if (!vote) return null;
     return {
-      id: player.id,
-      name: player.name,
-      team: player.team,
-      selectedUpgrade: player.selectedUpgrade ?? null,
-      selectionStage: player.selectionStage ?? null,
-      upgradeOptions: player.id === viewerId
-        ? (player.upgradeOptions ?? []).map(item => ({ ...item }))
-        : [],
+      stage: vote.stage,
+      offers: vote.offers.map(item => ({ ...item })),
+      counts: voteCounts(vote, playerIds),
+      voters: playerIds.filter(id => vote.votes.has(id)).length,
+      players: playerIds.length,
+      remainingMs: vote.closed ? 0 : Math.max(0, vote.endsAt - Date.now()),
+      closed: vote.closed,
+      pick: vote.pick,
     };
   }
 
   // One team's fight, as its phones and the host's screen both see it.
-  function fightView(game, team) {
+  function fightView(lobby, game, team) {
     const fight = game.teams[team];
     const spec = ENEMIES[fight.stage];
+    const playerIds = members(lobby, team).map(player => player.id);
     return {
       team,
       phase: fight.phase,
@@ -78,31 +90,34 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       nextRoundInMs: fight.endsAt === null && fight.startsAt ? Math.max(0, fight.startsAt - Date.now()) : 0,
       knight: { hp: fight.knight.hp, maxHp: fight.knight.maxHp, buffs: { ...fight.knight.buffs } },
       lastRound: fight.lastRound,
+      vote: voteView(fight.vote, playerIds),
     };
   }
 
   function snapshot(lobby, game, team, viewerId) {
     return {
       code: lobby.code,
-      ...fightView(game, team),
-      players: members(lobby, team).map(player => publicPlayer(player, viewerId)),
+      ...fightView(lobby, game, team),
+      players: members(lobby, team).map(publicPlayer),
+      myVote: game.teams[team].vote?.votes.get(viewerId) ?? null,
     };
   }
 
   // The host's screen shows both fights side by side, with each team's taps
-  // so far this round, and no player's private item offers.
+  // so far this round, and who has voted in the item vote.
   function hostSnapshot(lobby, game) {
     const teams = {};
     for (const team of TEAMS) {
+      const fight = game.teams[team];
       const teamPlayers = members(lobby, team);
       teams[team] = {
-        ...fightView(game, team),
+        ...fightView(lobby, game, team),
         players: teamPlayers.map(player => ({
           id: player.id,
           name: player.name,
-          picked: player.selectedUpgrade != null,
+          voted: fight.vote?.votes.has(player.id) ?? false,
         })),
-        taps: sumTaps(teamPlayers.map(player => game.teams[team].taps.get(player.id))),
+        taps: sumTaps(teamPlayers.map(player => fight.taps.get(player.id))),
       };
     }
     return { code: lobby.code, pvpStarted: game.pvpSent, teams };
@@ -181,7 +196,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
     broadcastBoth(lobby, game);
     io.to(lobby.code).emit('game:finished', game.finished);
   }
-  // The waiting room.
+  // Once both bosses are down, each team votes on an item for its knight.
   function maybeBeginSelection(lobby, game) {
     if (game.finished || game.pvpSent) return;
     if (!TEAMS.every(team => game.teams[team].phase === 'waiting')) return;
@@ -189,14 +204,41 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       const fight = game.teams[team];
       fight.phase = 'selection';
       fight.endsAt = null;
-      for (const player of members(lobby, team)) preparePlayerSelection(player, fight.stage);
+      fight.vote = openVote(fight.stage, Date.now() + VOTE_MS);
+      const k = key(lobby.code, team);
+      clearTimeout(timers.get(k));
+      timers.set(k, setTimeout(() => closeVote(lobby.code, team), VOTE_MS));
     }
     broadcastBoth(lobby, game);
   }
 
-  function maybeAdvanceAfterSelections(lobby, game) {
-    if (game.finished || game.pvpSent) return;
-    if (!allPlayersSelected(lobby, game)) return;
+  // A team's vote closes when every player on it has voted, or when its time
+  // runs out. Its pick goes onto the knight, and once both teams have picked,
+  // the picks stay up for a moment before the next fight.
+  function closeVote(code, team) {
+    const lobby = lobbies.get(code);
+    const game = games.get(code);
+    if (!lobby || !game || game.finished || game.pvpSent) return;
+    const fight = game.teams[team];
+    if (fight.phase !== 'selection' || !fight.vote || fight.vote.closed) return;
+    clearTimeout(timers.get(key(code, team)));
+
+    const pick = decideVote(fight.vote, members(lobby, team).map(player => player.id));
+    applyPick(fight.knight, pick);
+    fight.vote.closed = true;
+    fight.vote.pick = pick;
+    console.info('[TEAM PICK]', { code, team, stage: fight.stage, pick, buffs: fight.knight.buffs });
+    broadcast(lobby, game, team);
+
+    if (TEAMS.every(t => game.teams[t].vote?.closed)) {
+      const k = key(code, 'reveal');
+      clearTimeout(timers.get(k));
+      timers.set(k, setTimeout(() => advanceAfterVotes(lobby, game), REVEAL_MS));
+    }
+  }
+
+  function advanceAfterVotes(lobby, game) {
+    if (games.get(lobby.code) !== game || game.finished || game.pvpSent) return;
 
     const finalStage = TEAMS.every(team => game.teams[team].stage === ENEMIES.length - 1);
     if (finalStage) {
@@ -246,7 +288,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       fight.endsAt = null;
       fight.lastRound = null;
       fight.taps = new Map();
-      for (const player of members(lobby, team)) clearPlayerSelection(player);
+      fight.vote = null;
     }
     for (const team of TEAMS) scheduleRound(lobby, game, team, PAUSE_MS);
     broadcastBoth(lobby, game);
@@ -310,7 +352,6 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       throw new Error('Everyone must pick a team.');
     }
 
-    for (const player of roster) clearPlayerSelection(player);
     const makeFight = () => ({
       phase: 'combat',
       stage: 0,
@@ -321,6 +362,7 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       endsAt: null,
       taps: new Map(),
       lastRound: null,
+      vote: null,
     });
     const game = {
       teams: { red: makeFight(), blue: makeFight() },
@@ -385,31 +427,26 @@ function createEnemyGameManager(io, lobbies, options = {}) {
       scheduleHostTaps(ctx.lobby, ctx.game);
     });
 
+    // A vote for one of the team's three items, which the player can change until the vote closes.
     socket.on('game:enemy:choose', (request, cb) => {
       const ctx = context(cb);
       if (!ctx) return;
-      if (ctx.game.finished || ctx.game.pvpSent || ctx.fight.phase !== 'selection') {
-        return reply(cb, { success: false, error: 'Selection phase is closed.' });
+      if (ctx.game.finished || ctx.game.pvpSent || ctx.fight.phase !== 'selection' ||
+          !ctx.fight.vote || ctx.fight.vote.closed) {
+        return reply(cb, { success: false, error: 'The vote is closed.' });
       }
       if (!request || !Number.isInteger(request.stage) ||
           request.stage !== ctx.fight.stage || typeof request.itemId !== 'string') {
         return reply(cb, { success: false, error: 'Invalid stage or item request.' });
       }
 
-      const outcome = choosePlayerUpgrade(ctx.player, ctx.fight.knight, ctx.fight.stage, request.itemId);
+      const outcome = castVote(ctx.fight.vote, socket.id, request.itemId);
       if (!outcome.success) return reply(cb, outcome);
+      reply(cb, { success: true, vote: outcome.itemId });
 
-      console.info('[BUFF ACCEPTED]', {
-        code: ctx.lobby.code,
-        socketId: socket.id,
-        playerId: ctx.player.id,
-        team: ctx.player.team,
-        stage: ctx.fight.stage,
-        itemId: outcome.selectedUpgrade,
-      });
-      reply(cb, { success: true, selectedUpgrade: outcome.selectedUpgrade });
-      broadcast(ctx.lobby, ctx.game, ctx.player.team);
-      maybeAdvanceAfterSelections(ctx.lobby, ctx.game);
+      const playerIds = members(ctx.lobby, ctx.player.team).map(player => player.id);
+      if (everyoneVoted(ctx.fight.vote, playerIds)) closeVote(ctx.lobby.code, ctx.player.team);
+      else broadcast(ctx.lobby, ctx.game, ctx.player.team);
     });
 
     socket.on('game:pvp:get', (code, cb) => {

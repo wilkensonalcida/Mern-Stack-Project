@@ -1,28 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { socket } from '../socket/socket';
-import type { Ack, EnemyState, Move, TeamId, Upgrade, UpgradeOption } from './enemyTypes';
+import type { Ack, EnemyState, Move, TeamId, TeamVote, Upgrade } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
-// Alex's item drawings. The plain sword, the eagle shield and the potion stand for the moves,
-// and in the item pick each item shows its own drawing.
-import attackIcon from '../../sprites/items/sword1.png';
-import heatedBladeIcon from '../../sprites/items/sword2.png';
-import blockIcon from '../../sprites/items/shield1.png';
-import woodShieldIcon from '../../sprites/items/shield2.png';
-import gauzeIcon from '../../sprites/items/heal1.png';
-import healIcon from '../../sprites/items/heal2.png';
+import { itemIcons, moveIcons } from './itemArt';
 import './Controller.css';
 
 const moves: Move[] = ['attack', 'block', 'heal'];
 const moveNames: Record<Move, string> = { attack: 'Attack', block: 'Block', heal: 'Heal' };
-const moveIcons: Record<Move, string> = { attack: attackIcon, block: blockIcon, heal: healIcon };
-const itemIcons: Record<Upgrade, string> = {
-  sharpened_blade: attackIcon,
-  heated_blade: heatedBladeIcon,
-  metal_shield: blockIcon,
-  wood_shield: woodShieldIcon,
-  healing_potion: healIcon,
-  gauze: gauzeIcon,
-};
 const teamNames: Record<TeamId, string> = { red: 'Red', blue: 'Blue' };
 const otherTeam = (team: TeamId): TeamId => (team === 'red' ? 'blue' : 'red');
 const noTaps = (): Record<Move, number> => ({ attack: 0, block: 0, heal: 0 });
@@ -30,12 +14,12 @@ const wholeSeconds = (ms: number) => (ms > 0 ? Math.ceil(ms / 1000) : undefined)
 
 type StateAck = Ack & { state?: EnemyState };
 type TapEvent = 'game:enemy:tap' | 'game:pvp:tap';
-// What the phone shows right now: a tap window that's open, buttons locked under a status line, or the item pick.
+// What the phone shows right now: a tap window that's open, buttons locked under a status line, or the item vote.
 type Screen =
   | { kind: 'loading' }
   | { kind: 'open'; key: string; remaining: number; total: number; event: TapEvent }
   | { kind: 'locked'; status: string; tone?: TeamId; countdown?: number; key?: string }
-  | { kind: 'pick'; options: UpgradeOption[]; picked: Upgrade | null; stage: number };
+  | { kind: 'vote'; vote: TeamVote; myVote: Upgrade | null; remaining: number; total: number };
 
 type Props = { code: string; team: TeamId; nickname: string };
 
@@ -44,11 +28,12 @@ export default function Controller({ code, team, nickname }: Props) {
   const [boss, setBoss] = useState<{ state: EnemyState; at: number } | null>(null);
   const [pvp, setPvp] = useState<{ state: PvpState; at: number } | null>(null);
   const [connected, setConnected] = useState(socket.connected);
-  // Each window's length, from the first state that showed it open, so the bar starts full.
+  // Each window's and vote's length, from the first state that showed it open, so the bar starts full.
   const [lengths, setLengths] = useState<Record<string, number>>({});
   // The taps the server accepted in the latest window. They count only after the server says so.
   const [tally, setTally] = useState({ key: '', counts: noTaps() });
-  const [picking, setPicking] = useState(false);
+  // A vote this phone just sent, shown at once until the server's state catches up.
+  const [sentVote, setSentVote] = useState<Upgrade | null>(null);
   const [error, setError] = useState('');
   const [now, setNow] = useState(Date.now());
   const [floats, setFloats] = useState<{ id: number; slot: number }[]>([]);
@@ -58,14 +43,19 @@ export default function Controller({ code, team, nickname }: Props) {
 
   useEffect(() => {
     let mounted = true;
-    const openWindow = (key: string, remainingMs: number) => {
+    const noteLength = (key: string, remainingMs: number) => {
       setLengths(known => (key in known ? known : { ...known, [key]: Math.max(remainingMs, 1) }));
+    };
+    const openWindow = (key: string, remainingMs: number) => {
+      noteLength(key, remainingMs);
       setTally(current => (current.key === key ? current : { key, counts: noTaps() }));
     };
     const onBoss = (next: EnemyState) => {
       if (!mounted || next.code !== code) return;
       setBoss({ state: next, at: Date.now() });
       if (next.phase === 'combat' && next.endsAt !== null) openWindow(`b${next.stage}:${next.round}`, next.remainingMs);
+      if (next.vote && !next.vote.closed) noteLength(`v${next.vote.stage}`, next.vote.remainingMs);
+      setSentVote(sent => (next.vote && !next.vote.closed && sent && sent !== next.myVote ? sent : null));
     };
     const onPvp = (next: PvpState) => {
       if (!mounted || next.code !== code) return;
@@ -198,8 +188,11 @@ export default function Controller({ code, team, nickname }: Props) {
       case 'waiting':
         return { kind: 'locked', status: `${enemy} down! Waiting for ${teamNames[otherTeam(team)].toLowerCase()}.` };
       case 'selection': {
-        const me = state.players.find(player => player.id === socket.id);
-        return { kind: 'pick', options: me?.upgradeOptions ?? [], picked: me?.selectedUpgrade ?? null, stage: state.stage };
+        const vote = state.vote;
+        if (!vote) return { kind: 'locked', status: 'Getting your items…' };
+        const left = vote.closed ? 0 : Math.max(0, vote.remainingMs - (now - boss.at));
+        const key = `v${vote.stage}`;
+        return { kind: 'vote', vote, myVote: sentVote ?? state.myVote, remaining: left, total: lengths[key] ?? left };
       }
       case 'ready':
         return { kind: 'locked', status: 'Both bosses are down. PvP is next!' };
@@ -212,6 +205,7 @@ export default function Controller({ code, team, nickname }: Props) {
 
   const screen = readScreen();
   const open = connected && screen.kind === 'open';
+  const voting = connected && screen.kind === 'vote' && !screen.vote.closed && screen.remaining > 0;
 
   // The button squishes and flashes, a +1 floats up, and the phone buzzes where it can.
   function feedback(slot: number) {
@@ -239,20 +233,23 @@ export default function Controller({ code, team, nickname }: Props) {
     });
   }
 
-  function choose(itemId: Upgrade, stage: number) {
-    if (picking || !connected) return;
-    setPicking(true);
+  // A vote can change until it closes, so every tap sends the latest choice.
+  function vote(itemId: Upgrade) {
+    if (!voting || screen.kind !== 'vote') return;
+    setSentVote(itemId);
     setError('');
-    socket.timeout(5000).emit('game:enemy:choose', { stage, itemId }, (err: Error | null, response: Ack) => {
-      setPicking(false);
-      if (err || !response?.success) setError(response?.error || 'Your pick did not save. Try again.');
+    socket.timeout(5000).emit('game:enemy:choose', { stage: screen.vote.stage, itemId }, (err: Error | null, response: Ack) => {
+      if (err || !response?.success) {
+        setSentVote(null);
+        setError(response?.error || 'Your vote did not count. Try again.');
+      }
     });
   }
 
   press.current = slot => {
-    if (screen.kind === 'pick') {
-      const item = screen.options[slot];
-      if (item && screen.picked === null) choose(item.id, screen.stage);
+    if (screen.kind === 'vote') {
+      const item = screen.vote.offers[slot];
+      if (item) vote(item.id);
     } else if (open) {
       tap(moves[slot], slot);
     }
@@ -261,17 +258,19 @@ export default function Controller({ code, team, nickname }: Props) {
   let status = '';
   let tone: TeamId | undefined;
   let countdown: number | undefined;
+  const itemName = (vote: TeamVote, id: Upgrade | null) => vote.offers.find(item => item.id === id)?.name ?? 'an item';
   if (screen.kind === 'loading') status = 'Loading…';
   else if (screen.kind === 'open') status = 'Tap!';
   else if (screen.kind === 'locked') ({ status, tone, countdown } = screen);
-  else if (screen.picked) {
-    const name = screen.options.find(item => item.id === screen.picked)?.name ?? 'your item';
-    status = `You picked ${name}. Waiting for your team.`;
-  } else status = screen.options.length ? 'Pick an item for your knight.' : 'Getting your items…';
+  else if (screen.vote.closed) status = `Your team picked ${itemName(screen.vote, screen.vote.pick)}.`;
+  else if (screen.myVote) status = `You voted ${itemName(screen.vote, screen.myVote)}. Tap another to switch.`;
+  else status = "Vote for your knight's item.";
 
   const countKey = screen.kind === 'open' ? screen.key : screen.kind === 'locked' ? screen.key : undefined;
   const counts = countKey ? tallied(countKey) : null;
-  const barWidth = screen.kind === 'open' ? (100 * screen.remaining) / screen.total : 0;
+  const barWidth = screen.kind === 'open' || (screen.kind === 'vote' && !screen.vote.closed)
+    ? (100 * screen.remaining) / screen.total
+    : 0;
 
   return (
     <div className={`controller-page team-${team}`} onContextMenu={event => event.preventDefault()}>
@@ -288,20 +287,26 @@ export default function Controller({ code, team, nickname }: Props) {
         {countdown !== undefined && <p className="controller-countdown" aria-hidden="true">{countdown}</p>}
 
         <div className="controller-buttons">
-          {screen.kind === 'pick'
-            ? screen.options.map((item, slot) => (
-                <button key={item.id} type="button"
-                  ref={element => { buttons.current[slot] = element; }}
-                  className={`controller-button move-${item.stat} ${screen.picked === item.id ? 'picked' : ''}`}
-                  disabled={!connected || picking || screen.picked !== null}
-                  onClick={() => choose(item.id, screen.stage)}>
-                  <img src={itemIcons[item.id]} alt="" />
-                  <span>
-                    <span className="controller-label">{item.name}</span>
-                    <span className="controller-detail">+{Math.round(item.bonus * 100)}% {item.stat}</span>
-                  </span>
-                </button>
-              ))
+          {screen.kind === 'vote'
+            ? screen.vote.offers.map((item, slot) => {
+                const chosen = screen.vote.closed ? screen.vote.pick === item.id : screen.myVote === item.id;
+                const votes = screen.vote.counts[item.id] ?? 0;
+                return (
+                  <button key={item.id} type="button"
+                    ref={element => { buttons.current[slot] = element; }}
+                    className={`controller-button move-${item.stat} ${chosen ? 'picked' : ''}`}
+                    aria-pressed={chosen}
+                    disabled={!voting && !chosen}
+                    onClick={() => vote(item.id)}>
+                    <img src={itemIcons[item.id]} alt="" />
+                    <span>
+                      <span className="controller-label">{item.name}</span>
+                      <span className="controller-detail">+{Math.round(item.bonus * 100)}% {item.stat}</span>
+                    </span>
+                    <span className="controller-count" aria-label={`${votes} ${votes === 1 ? 'vote' : 'votes'}`}>{votes}</span>
+                  </button>
+                );
+              })
             : moves.map((move, slot) => (
                 <button key={move} type="button"
                   ref={element => { buttons.current[slot] = element; }}

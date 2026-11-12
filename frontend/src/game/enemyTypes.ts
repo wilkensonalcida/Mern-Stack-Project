@@ -22,9 +22,17 @@ export type EnemyPlayer = {
   id: string;
   name: string;
   team: TeamId;
-  selectedUpgrade: Upgrade | null;
-  selectionStage: number | null;
-  upgradeOptions: UpgradeOption[];
+};
+// A team's item vote after a boss: its three offers, how many votes each has, and the pick once it closes.
+export type TeamVote = {
+  stage: number;
+  offers: UpgradeOption[];
+  counts: Record<string, number>;
+  voters: number;
+  players: number;
+  remainingMs: number;
+  closed: boolean;
+  pick: Upgrade | null;
 };
 export type RoundResult = {
   round: number;
@@ -49,11 +57,14 @@ export type EnemyState = {
   knight: TeamKnight;
   players: EnemyPlayer[];
   lastRound: RoundResult | null;
+  vote: TeamVote | null;
+  // The item this phone voted for, in the vote that's open.
+  myVote: Upgrade | null;
 };
-// What the host's screen gets: both teams' fights, each team's taps so far this round, and who has picked an item.
+// What the host's screen gets: both teams' fights, each team's taps so far this round, and who has voted.
 export type TapCounts = { attack: number; block: number; heal: number };
-export type HostTeamView = Omit<EnemyState, 'code' | 'players'> & {
-  players: { id: string; name: string; picked: boolean }[];
+export type HostTeamView = Omit<EnemyState, 'code' | 'players' | 'myVote'> & {
+  players: { id: string; name: string; voted: boolean }[];
   taps: TapCounts;
 };
 export type HostBossState = {

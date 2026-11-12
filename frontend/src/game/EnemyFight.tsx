@@ -3,7 +3,8 @@ import Knight, { type KnightAnimation } from './Knight';
 import Goblin from './Goblin';
 import Skeleton from './Skeleton';
 import type { EnemyAnimation } from './AnimateEnemy';
-import type { HostBossState, HostTeamView, RoundResult, TeamId } from './enemyTypes';
+import type { HostBossState, HostTeamView, RoundResult, TeamId, TeamVote } from './enemyTypes';
+import { itemIcons } from './itemArt';
 
 // After each round, the knight swings if its team attacked and the enemy flinches, or the enemy attacks.
 function useRoundAnimation(stage: number | undefined, lastRound: RoundResult | null | undefined) {
@@ -44,13 +45,38 @@ function columnStatus(view: HostTeamView, other: TeamId): string {
     case 'combat': return view.endsAt !== null ? `Round ${view.round}` : 'Get ready';
     case 'waiting': return `${view.enemy?.name ?? 'Boss'} down! Waiting for ${teamNames[other].toLowerCase()}`;
     case 'selection': {
-      const picked = view.players.filter(player => player.picked).length;
-      return `Picking items: ${picked}/${view.players.length}`;
+      const vote = view.vote;
+      if (!vote) return 'Item vote';
+      if (vote.closed) return `Picked ${vote.offers.find(item => item.id === vote.pick)?.name ?? 'an item'}`;
+      return `Voting: ${vote.voters}/${vote.players}`;
     }
     case 'ready': return 'Ready for PvP';
     case 'won': return 'Wins!';
     case 'failed': return 'Knight down';
   }
+}
+
+// A team's item vote on the host's screen: the three offers with their votes, and the pick once it closes.
+function VoteTiles({ vote, mirrored }: { vote: TeamVote; mirrored: boolean }) {
+  return (
+    <ul className={`row row-cols-3 g-2 list-unstyled mb-2 ${mirrored ? 'flex-row-reverse' : ''}`} aria-label="Item vote">
+      {vote.offers.map(item => {
+        const picked = vote.closed && vote.pick === item.id;
+        const votes = vote.counts[item.id] ?? 0;
+        return (
+          <li className="col" key={item.id}>
+            <div className={`h-100 text-center rounded-3 p-2 border ${picked ? 'border-dark border-4' : ''} ${vote.closed && !picked ? 'opacity-50' : ''}`}>
+              <img src={itemIcons[item.id]} alt="" width={64} height={64} style={{ objectFit: 'contain' }} />
+              <p className="fw-semibold mb-0">{item.name}</p>
+              <p className="small text-body-secondary mb-1">+{Math.round(item.bonus * 100)}% {item.stat}</p>
+              <p className="fs-4 fw-bold mb-0">{votes} {votes === 1 ? 'vote' : 'votes'}</p>
+              {picked && <p className="small fw-semibold mb-0">Picked</p>}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 type ColumnProps = { view: HostTeamView; other: TeamId; secondsLeft: number | null; mirrored: boolean };
@@ -98,6 +124,7 @@ function BossFightColumn({ view, other, secondsLeft, mirrored }: ColumnProps) {
             Attack {view.taps.attack} · Block {view.taps.block} · Heal {view.taps.heal}
           </p>
         </>}
+        {view.phase === 'selection' && view.vote && <VoteTiles vote={view.vote} mirrored={mirrored} />}
         {lastRound && <p className="mb-1">
           Last round: {lastRound.attack.toFixed(1)} damage, {lastRound.blocked.toFixed(1)} blocked, {lastRound.healed.toFixed(1)} healed
         </p>}
@@ -123,9 +150,13 @@ export function HostBossFights({ state, receivedAt, onEndGame }: HostBossFightsP
     const interval = window.setInterval(() => setNow(Date.now()), 100);
     return () => window.clearInterval(interval);
   }, []);
-  const secondsLeft = (view: HostTeamView) => view.endsAt === null
-    ? null
-    : Math.max(0, (view.remainingMs - (now - receivedAt)) / 1000);
+  // A round's time left, or an open item vote's.
+  const secondsLeft = (view: HostTeamView) => {
+    const remaining = view.endsAt !== null ? view.remainingMs
+      : view.phase === 'selection' && view.vote && !view.vote.closed ? view.vote.remainingMs
+      : null;
+    return remaining === null ? null : Math.max(0, (remaining - (now - receivedAt)) / 1000);
+  };
 
   return (
     <main className="container-fluid px-4 pt-4" style={{ paddingBottom: 88 }}>

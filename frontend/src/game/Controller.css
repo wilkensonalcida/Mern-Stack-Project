@@ -146,9 +146,9 @@
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+/* A ring, not an outline, since Bootstrap removes the outline from a button a tap has focused. */
 .controller-button.picked {
-  outline: 5px solid var(--team-ink);
-  outline-offset: 3px;
+  box-shadow: 0 0 0 4px var(--team-tint), 0 0 0 9px var(--team-ink);
   filter: none;
   opacity: 1;
 }
