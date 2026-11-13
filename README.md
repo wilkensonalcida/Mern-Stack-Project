@@ -37,7 +37,7 @@ The frontend uses React Router for these pages:
 | --- | --- | --- |
 | `/` when logged out | `LoginPage.tsx` | Log in to host a game, or go to `/join` |
 | `/` when logged in | `DashboardPage.tsx` | Create a lobby, which opens `/host/<code>`, or log out |
-| `/join` | `JoinPage.tsx` | Enter a nickname and a session code without an account, then go to `/lobby/<code>` |
+| `/join` | `JoinPage.tsx` | Without an account, enter a game code, which the server checks, then a nickname at `/join?code=<code>`, which the host lobby's QR code opens, then go to `/lobby/<code>` |
 | `/lobby/:code` | `LobbyPage.tsx` | Choose a team, then wait for the host to start the game |
 | `/play/:code` | `PlayPage.tsx` | A player's phone during the game: the controller, then the result |
 | `/login` | `LoginPage.tsx` | Log in to host a game |

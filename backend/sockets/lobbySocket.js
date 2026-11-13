@@ -159,6 +159,21 @@ function registerLobbySockets(io) {
       console.info("[LOBBY CREATED]", { code, hostId: socket.id });
     });
 
+    // CHECK A CODE — public, so a phone asks for a nickname only once its code names a lobby that's still open.
+    // It joins nothing, and its errors match game:join's.
+    socket.on("game:check", (data, callback) => {
+      if (typeof callback !== "function") return;
+      const lobby = lobbies.get(normalizeCode(data?.code));
+
+      if (!lobby) {
+        return reply(callback, { success: false, error: "Lobby not found" });
+      }
+      if (lobby.status !== "waiting") {
+        return reply(callback, { success: false, error: "Game already started" });
+      }
+      reply(callback, { success: true, code: lobby.code });
+    });
+
     // JOIN LOBBY — remains PUBLIC: guests only need a code and nickname.
     socket.on("game:join", (data, callback) => {
       if (typeof callback !== "function") return;

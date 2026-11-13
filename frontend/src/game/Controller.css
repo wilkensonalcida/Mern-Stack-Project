@@ -485,3 +485,17 @@
 @keyframes controller-bump {
   40% { transform: scale(1.12); }
 }
+
+/* The way back from the nickname step to the code step. */
+.phone-switch {
+  margin: 18px 16px 0;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+.phone-switch a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
