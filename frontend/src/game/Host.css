@@ -215,8 +215,8 @@
   background: var(--ink);
 }
 .stage {
-  /* As big as two fighters can stand side by side in a half, so the arena isn't empty sky. */
-  --sprite: clamp(170px, min(calc(25vw - 30px), 52vh), 360px);
+  /* As big as two fighters can stand side by side in a half, with a 40 px gap between their readouts. */
+  --sprite: clamp(170px, min(calc(25vw - 42px), 52vh), 360px);
   --floor: clamp(64px, 10vh, 92px);
   display: flex;
   flex-direction: column;
@@ -283,7 +283,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-around;
-  gap: 14px;
+  gap: 40px;
   padding: 0 20px;
   background: linear-gradient(to bottom,
     transparent calc(100% - var(--floor)),
@@ -631,5 +631,6 @@
 }
 .stage-offers .stage-offer-tile { flex: 1; justify-content: center; }
 .stage.is-voting .stage-fighter { min-width: 190px; }
+.stage.is-voting .stage-floor { gap: 14px; }
 /* The offers grow to fill the arena while the vote is on. */
 .stage-offers .stage-offer-tile { min-height: clamp(170px, 30vh, 290px); }
