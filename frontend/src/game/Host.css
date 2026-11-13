@@ -229,14 +229,16 @@
 .stage-band {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
+  align-items: center;
   gap: 6px 20px;
+  /* Holds its height while no timer shows, so the arena doesn't shift between states. */
+  min-height: clamp(64px, 9.5vh, 90px);
+  box-sizing: border-box;
   padding: clamp(12px, 2vh, 18px) 26px clamp(14px, 2.4vh, 22px);
   background: var(--team);
   color: #fff;
 }
 .stage-band h2 {
-  grid-column: 1 / -1;
   display: flex;
   align-items: baseline;
   gap: 14px;
@@ -253,13 +255,6 @@
   white-space: nowrap;
   font-size: 20px;
   font-weight: 500;
-}
-.stage-status {
-  margin: 0;
-  font-size: clamp(32px, 3.3vw, 50px);
-  font-weight: 700;
-  line-height: 1;
-  text-wrap: balance;
 }
 .stage-timer {
   margin: 0;
@@ -634,3 +629,20 @@
 .stage.is-voting .stage-floor { gap: 14px; }
 /* The offers grow to fill the arena while the vote is on. */
 .stage-offers .stage-offer-tile { min-height: clamp(170px, 30vh, 290px); }
+
+/* On the boss fights, the fight's state takes the arena's sky as its big line, and the band keeps the team and the time. */
+.stage-headline {
+  position: absolute;
+  top: clamp(12px, 3.5vh, 36px);
+  left: 0;
+  right: 0;
+  padding: 0 20px;
+  text-align: center;
+}
+.stage-headline .stage-moment { position: static; padding: 0; }
+.stage-next {
+  margin: 10px 0 0;
+  font-size: clamp(22px, 2.2vw, 32px);
+  font-weight: 700;
+  color: var(--muted);
+}

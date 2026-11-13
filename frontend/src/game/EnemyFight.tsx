@@ -86,9 +86,13 @@ function VoteOffers({ vote }: { vote: TeamVote }) {
   );
 }
 
-// The big line across the arena when a team's boss goes down; the band says what's next.
-function stageMoment(view: HostTeamView): string | null {
-  return view.phase === 'waiting' ? `${view.enemy?.name ?? 'Boss'} down!` : null;
+// The big line across the top of the arena: the fight's state, or the boss going down,
+// with what's next under it.
+function stageHeadline(view: HostTeamView, other: TeamId): { line: string; next: string | null } {
+  if (view.phase === 'waiting') {
+    return { line: `${view.enemy?.name ?? 'Boss'} down!`, next: `Waiting for ${teamNames[other].toLowerCase()}` };
+  }
+  return { line: columnStatus(view, other), next: null };
 }
 
 type StageProps = { view: HostTeamView; other: TeamId; secondsLeft: number | null; mirrored: boolean };
@@ -99,7 +103,7 @@ function BossStage({ view, other, secondsLeft, mirrored }: StageProps) {
   const animation = useRoundAnimation(view.stage, view.lastRound);
   const bossDown = view.phase === 'waiting' || view.phase === 'selection' || view.phase === 'ready';
   const voting = view.phase === 'selection' && Boolean(view.vote);
-  const moment = stageMoment(view);
+  const headline = stageHeadline(view, other);
   const { knight, enemy, lastRound } = view;
   const windowOpen = view.phase === 'combat' && view.endsAt !== null;
   const showResult = lastRound !== null && lastRound !== undefined && !windowOpen && view.phase !== 'selection';
@@ -112,12 +116,14 @@ function BossStage({ view, other, secondsLeft, mirrored }: StageProps) {
           {teamNames[view.team]} team
           <span className="stage-players">{view.players.map(player => player.name).join(', ')}</span>
         </h2>
-        <p className="stage-status" role="status">{columnStatus(view, other)}</p>
         {secondsLeft !== null && <p className="stage-timer" role="timer">{secondsLeft.toFixed(1)} s</p>}
       </header>
 
       <div className="stage-arena">
-        {moment && <p className="stage-moment" key={moment}>{moment}</p>}
+        <div className="stage-headline" role="status">
+          <p className="stage-moment" key={headline.line}>{headline.line}</p>
+          {headline.next && <p className="stage-next">{headline.next}</p>}
+        </div>
         <div className="stage-floor">
           <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp}>
             <Knight animation={bossDown ? 'victory' : animation.knight} mirrored={mirrored}
