@@ -31,6 +31,17 @@
   --team: var(--blue);
   --team-deep: var(--blue-deep);
 }
+/* Before a team is picked, and between games, the header is ink. */
+.controller-page.team-none {
+  --team: var(--ink);
+  --team-deep: #111827;
+}
+/* The join form needs text selection and the long press menu back, for typing and pasting a code. */
+.controller-page.is-form {
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
 
 .controller {
   min-height: 100dvh;
@@ -252,6 +263,204 @@
 }
 
 .controller-page ::selection { background: var(--team); color: #fff; }
+
+/* The team pick: one big tile per team, with who's already on it. */
+.controller-button.team-tile {
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+.controller-button.team-tile.pick-red { --move: var(--red); }
+.controller-button.team-tile.pick-blue { --move: var(--blue); }
+.controller-button.team-tile .controller-label { flex: none; font-size: 40px; }
+.controller-button.team-tile .controller-detail {
+  margin: 0;
+  max-width: 100%;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.controller-name.is-code {
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.phone-heading {
+  margin: 22px 16px 0;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.phone-note {
+  margin: 8px 16px 0;
+  text-align: center;
+  text-wrap: balance;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* The join form. */
+.phone-form {
+  display: grid;
+  gap: 8px;
+  margin: 22px 16px 0;
+}
+.phone-label {
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.phone-input {
+  width: 100%;
+  height: 60px;
+  padding: 0 18px;
+  border: 3px solid #c9ced6;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.phone-input::placeholder { color: #6b7280; font-weight: 500; }
+.phone-input:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 4px rgb(31 41 55 / 0.15);
+}
+.phone-input:disabled { background: var(--ground); }
+.phone-input.is-code {
+  height: 72px;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.phone-input.is-code::placeholder {
+  font-size: 20px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.phone-form .phone-button { margin-top: 14px; }
+.phone-error {
+  margin: 14px 16px 0;
+  text-align: center;
+  color: var(--error);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* One message between games, with the way onward at the bottom. */
+.phone-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.phone-title {
+  margin: 0;
+  font-family: inherit;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-wrap: balance;
+  color: var(--ink);
+}
+.phone-body {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-wrap: pretty;
+  color: var(--muted);
+}
+.phone-actions {
+  margin-top: auto;
+  padding: 16px 16px 0;
+}
+.phone-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60px;
+  padding: 0 20px 4px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: inset 0 -5px 0 rgb(0 0 0 / 0.3), 0 8px 16px -6px rgb(31 41 55 / 0.4);
+  -webkit-tap-highlight-color: transparent;
+}
+.phone-button:hover { color: #fff; }
+.phone-button:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.3); }
+.phone-button:disabled { background: var(--locked); box-shadow: none; transform: none; }
+.phone-button:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
+/* Switching teams: the other team's color, as an outline, so it reads as secondary to the controls. */
+.phone-button.is-outline {
+  background: #fff;
+  color: var(--switch);
+  box-shadow: inset 0 0 0 3px var(--switch), 0 4px 0 rgb(0 0 0 / 0.08);
+}
+.phone-button.is-outline:hover { color: var(--switch); }
+.phone-button.is-outline.to-red { --switch: var(--red); }
+.phone-button.is-outline.to-blue { --switch: var(--blue); }
+
+/* The results: the winner on a tile in its team's color, then how this phone's team did. */
+.result-banner {
+  margin: 22px 16px 0;
+  padding: 30px 20px 36px;
+  border-radius: 16px;
+  background: var(--win);
+  color: #fff;
+  text-align: center;
+  box-shadow: inset 0 -6px 0 rgb(0 0 0 / 0.18), 0 10px 18px -6px rgb(31 41 55 / 0.38);
+}
+.result-banner.win-red { --win: var(--red); }
+.result-banner.win-blue { --win: var(--blue); }
+.result-banner h1 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.result-verdict {
+  margin: 30px 16px 0;
+  text-align: center;
+  text-wrap: balance;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.result-taps {
+  margin: 10px 16px 0;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.result-taps strong {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 
 /* On touch the tile sinks into its bottom edge, a +1 pops above the count, and the count bumps when it rises. */
 @media (prefers-reduced-motion: no-preference) {

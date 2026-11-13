@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import PageLayout from "../components/PageLayout";
+import PhoneMessage from "../components/PhoneMessage";
 import PlayerLobby from "../components/PlayerLobby";
 import { socket } from "../socket/socket";
 
@@ -87,28 +87,32 @@ export default function LobbyPage() {
 
     if (cancelled) {
         return (
-            <PageLayout>
-                <section className="card"><div className="card-body p-4 text-center">
-                    <h1 className="h3">The host closed the lobby</h1>
-                    <Link className="btn btn-dark mt-2" to="/join">Join another game</Link>
-                </div></section>
-            </PageLayout>
+            <PhoneMessage
+                title="The host closed the lobby"
+                action={<Link className="phone-button" to="/join">Join another game</Link>}
+            />
         );
     }
-    if (error) return <PageLayout><p role="alert" className="text-danger">{error}</p></PageLayout>;
-    if (!lobby) return <PageLayout><p role="status">Loading lobby...</p></PageLayout>;
+    if (error) {
+        return (
+            <PhoneMessage
+                title={error}
+                live="alert"
+                action={<Link className="phone-button" to="/join">Join a game</Link>}
+            />
+        );
+    }
+    if (!lobby) return <PhoneMessage title="Loading the lobby…" live="status" />;
 
     const player: LobbyPlayer | undefined =
         lobby.players.find(p => p.id === socket.id);
 
     if (!player) {
         return (
-            <PageLayout>
-                <section className="card"><div className="card-body p-4 text-center">
-                    <h1 className="h3">You're not in this lobby</h1>
-                    <Link className="btn btn-dark mt-2" to="/join">Join a game</Link>
-                </div></section>
-            </PageLayout>
+            <PhoneMessage
+                title="You're not in this lobby"
+                action={<Link className="phone-button" to="/join">Join a game</Link>}
+            />
         );
     }
 
