@@ -10,6 +10,12 @@ type CheckResult = { success: true } | { success: false; error: string }
 
 // Errors that mean the code no longer names an open lobby, which send a phone back to the code step.
 const codeErrors = ['Lobby not found', 'Game already started']
+// The server's reasons, in the join screen's own words, with what to do next.
+const friendlyErrors: Record<string, string> = {
+  'Lobby not found': 'No game has that code. Check the code on the big screen.',
+  'Game already started': 'That game already started. Join the next one.',
+}
+const friendly = (message: string) => friendlyErrors[message] ?? message
 
 // Sends a request once the socket is connected, connecting it first when it isn't.
 function whenConnected(send: () => void, fail: () => void) {
@@ -64,7 +70,7 @@ export default function JoinPage() {
   // and leaves the address so the step can't check it again.
   const refuse = useCallback((sessionCode: string, message: string) => {
     setCode(sessionCode)
-    setError(message)
+    setError(friendly(message))
     navigate('/join', { replace: true })
   }, [navigate])
 
@@ -91,7 +97,7 @@ export default function JoinPage() {
     checkCode(sessionCode, (result) => {
       setBusy(false)
       if (!result.success) {
-        setError(result.error)
+        setError(friendly(result.error))
         return
       }
       setChecked(sessionCode)

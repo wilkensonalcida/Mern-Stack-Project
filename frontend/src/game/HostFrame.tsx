@@ -24,6 +24,11 @@ export function HostFrame({ action, children }: HostFrameProps) {
   );
 }
 
+// HP, damage, and shields as whole numbers when they are, and to one decimal place when they aren't.
+export function formatNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
 // A host screen with one message, such as while the lobby loads.
 export function HostMessage({ title, live, action }: { title: string; live?: 'status' | 'alert'; action?: ReactNode }) {
   return (
@@ -47,7 +52,7 @@ type TapCountsProps = {
 export function TapCounts({ label, taps, tone }: TapCountsProps) {
   const total = taps.attack + taps.block + taps.heal;
   return (
-    <div className={`host-taps ${tone ? `team-${tone} is-toned` : ''}`}>
+    <div className={`host-taps ${tone ? `team-${tone}` : ''}`}>
       <p className="host-taps-total">
         <span className="host-taps-label">{label}</span>
         <span className="host-taps-number">{total}</span>

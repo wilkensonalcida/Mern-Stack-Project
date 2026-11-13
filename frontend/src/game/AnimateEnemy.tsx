@@ -31,5 +31,6 @@ export default function AnimatedEnemy({ sheet, frameSize, animation, label, mirr
     return () => cancelAnimationFrame(frame)
   }, [sprite, frameSize])
   return <canvas ref={canvasRef} width={frameSize} height={frameSize} role="img" aria-label={label}
-    style={{ width: size ?? `min(250px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined }} />
+    // The sheets have small marks at their frames' top and side edges, so a 2% crop hides them and keeps the feet.
+    style={{ width: size ?? `min(250px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined, clipPath: 'inset(2% 2% 0 2%)' }} />
 }

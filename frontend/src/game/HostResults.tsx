@@ -1,11 +1,10 @@
 import type { Lobby } from '../socket/lobby';
-import type { GameResult, Move, TeamId } from './enemyTypes';
+import type { GameResult, TeamId } from './enemyTypes';
+import Knight from './Knight';
 import { HostFrame } from './HostFrame';
 
 const teamNames: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' };
-const moveNames: Record<Move, string> = { attack: 'Attack', block: 'Block', heal: 'Heal' };
 const teams: TeamId[] = ['red', 'blue'];
-const moves: Move[] = ['attack', 'block', 'heal'];
 
 type Props = {
   result: GameResult;
@@ -14,7 +13,8 @@ type Props = {
   onNewGame: () => void;
 };
 
-// The host's screen when the game ends: the winner on a tile in its color, and each team's taps across the game.
+// The host's screen when the game ends: the winner's color fills the screen, with its knight in a spotlight,
+// and each team's taps across the game in a line below.
 export default function HostResults({ result, lobby, error, onNewGame }: Props) {
   const how = result.reason === 'pvp-defeat'
     ? `${teamNames[result.winner]}'s knight won the final fight.`
@@ -22,41 +22,30 @@ export default function HostResults({ result, lobby, error, onNewGame }: Props) 
 
   return (
     <HostFrame>
-      <main className="host-results">
-        <section className={`host-winner team-${result.winner}`} aria-labelledby="results-heading">
-          <h1 id="results-heading">{teamNames[result.winner]} wins!</h1>
-          <p>{how}</p>
-        </section>
-
+      <main className={`stage-results team-${result.winner}`}>
+        <h1 id="results-heading">{teamNames[result.winner]} wins!</h1>
+        <p className="stage-results-how">{how}</p>
+        <div className="stage-spotlight">
+          <Knight animation="victory" mirrored={result.winner === 'blue'} label={`${teamNames[result.winner]}'s knight`} size="82%" />
+        </div>
         {result.totals && (
-          <div className="host-result-grid">
+          <ul className="stage-tally" aria-label="Taps across the game">
             {teams.map(team => {
               const taps = result.totals![team];
               const total = taps.attack + taps.block + taps.heal;
               const players = lobby.players.filter(player => player.team === team).map(player => player.name);
-              const won = team === result.winner;
               return (
-                <section className={`host-card host-result team-${team} ${won ? 'is-winner' : ''}`} key={team} aria-labelledby={`${team}-results`}>
-                  <header className="host-card-head">
-                    <h2 id={`${team}-results`}>{teamNames[team]}</h2>
-                    {won && <span className="host-winner-chip">Winner</span>}
-                  </header>
-                  <p className="host-players">{players.join(', ') || 'Nobody left'}</p>
-                  <p className="host-result-total">{total}</p>
-                  <p className="host-result-unit">taps</p>
-                  <ul className="host-move-chips" aria-label={`${teamNames[team]}'s taps, by move`}>
-                    {moves.map(move => <li className={`move-${move}`} key={move}>{moveNames[move]} {taps[move]}</li>)}
-                  </ul>
-                </section>
+                <li className={`team-${team}`} key={team}>
+                  <strong>{teamNames[team]}</strong>
+                  <span>{players.join(', ') || 'Nobody left'}</span>
+                  <span className="tally-taps">{total} taps</span>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-
         {error && <p className="host-error" role="alert">{error}</p>}
-        <div className="host-results-actions">
-          <button className="host-start" type="button" onClick={onNewGame}>New game</button>
-        </div>
+        <button className="host-start is-light" type="button" onClick={onNewGame}>New game</button>
       </main>
     </HostFrame>
   );

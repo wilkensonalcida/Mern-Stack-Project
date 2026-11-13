@@ -59,7 +59,8 @@ export default function Knight({ animation, mirrored = false, label, size }: Kni
       height={FRAME_SIZE}
       role="img"
       aria-label={label}
-      style={{ width: size ?? `min(${FRAME_SIZE}px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined }}
+      // The sheet has small marks at its frames' top and side edges, so a 2% crop hides them and keeps the feet.
+      style={{ width: size ?? `min(${FRAME_SIZE}px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined, clipPath: 'inset(2% 2% 0 2%)' }}
     />
   )
 }

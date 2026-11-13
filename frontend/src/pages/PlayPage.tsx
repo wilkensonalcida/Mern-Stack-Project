@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import Controller from '../game/Controller';
+import Knight from '../game/Knight';
 import '../game/Controller.css';
 import PhoneMessage from '../components/PhoneMessage';
 import { socket } from '../socket/socket';
 import type { Lobby } from '../socket/lobby';
-import type { GameResult } from '../game/enemyTypes';
+import type { GameResult, TeamId } from '../game/enemyTypes';
 
 type LobbyAck = { success: boolean; lobby?: Lobby; error?: string };
 type ResultAck = { success: boolean; result?: GameResult; error?: string };
@@ -89,27 +90,29 @@ export default function PlayPage() {
     return <PhoneMessage title="The host ended the game" action={joinLink('Join another game')} />;
   }
   if (result) {
-    // The phone keeps its team's color, puts the winner on a tile in theirs, and offers another game.
+    // The phone fills with its team's color, with its knight in a spotlight and one verdict.
     const mine = lobby?.players.find(player => player.id === currentSocketId);
     const myTeam = mine?.team ?? null;
     const myTaps = myTeam && result.totals
       ? result.totals[myTeam].attack + result.totals[myTeam].block + result.totals[myTeam].heal
       : null;
+    const teamName = (team: TeamId) => (team === 'red' ? 'Red team' : 'Blue team');
+    const won = myTeam === result.winner;
+    const verdict = myTeam === null ? `${teamName(result.winner)} wins!` : won ? 'Your team won!' : 'Your team lost. Good fight!';
+    const shown = myTeam ?? result.winner;
     return (
-      <div className={`controller-page team-${myTeam ?? result.winner}`}>
-        <main className="controller">
-          <header className="controller-header">
-            <span className="controller-team">{myTeam ? `${myTeam === 'red' ? 'Red' : 'Blue'} team` : 'Fight Me Bro'}</span>
-            {mine && <span className="controller-name">{mine.name}</span>}
-          </header>
-          <div className={`result-banner win-${result.winner}`}>
-            <h1>{result.winner === 'red' ? 'Red' : 'Blue'} team wins!</h1>
+      <div className={`controller-page team-${shown} is-result`}>
+        <main className="controller result-screen">
+          <p className="result-who">{mine && myTeam ? `${mine.name}, ${teamName(myTeam)}` : 'Fight Me Bro'}</p>
+          <div className="result-spot">
+            <Knight animation={myTeam === null || won ? 'victory' : 'idle'} mirrored={shown === 'blue'}
+              label={`${teamName(shown)}'s knight`} size="82%" />
           </div>
-          {myTeam && <p className="result-verdict">{myTeam === result.winner ? 'Your team won!' : 'Your team lost. Good fight!'}</p>}
+          <h1 className="result-verdict">{verdict}</h1>
           {myTaps !== null && <p className="result-taps">Your team tapped <strong>{myTaps}</strong> times.</p>}
           {error && <p className="controller-error" role="alert">{error}</p>}
           <div className="phone-actions">
-            <button className="phone-button" type="button" onClick={() => leaveGame('/join')}>Join another game</button>
+            <button className="phone-button is-light" type="button" onClick={() => leaveGame('/join')}>Join another game</button>
           </div>
         </main>
       </div>
