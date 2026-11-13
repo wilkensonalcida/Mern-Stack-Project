@@ -24,9 +24,15 @@ export function HostFrame({ action, children }: HostFrameProps) {
   );
 }
 
-// HP, damage, and shields as whole numbers when they are, and to one decimal place when they aren't.
-export function formatNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+// The projector shows whole numbers (Nathan, 2026-11-13: "Whole numbers"). HP rounds up,
+// so a knight or boss that's still standing never shows 0.
+export function formatHp(value: number): string {
+  return String(Math.ceil(value));
+}
+
+// Damage, blocks, heals, and shields round to the nearest whole number.
+export function formatAmount(value: number): string {
+  return String(Math.round(value));
 }
 
 // A host screen with one message, such as while the lobby loads.

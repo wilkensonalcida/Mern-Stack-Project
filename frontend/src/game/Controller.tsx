@@ -156,7 +156,7 @@ export default function Controller({ code, team, nickname }: Props) {
         if (state.phase === 'pause') {
           return { kind: 'locked', status: 'Your turn next. Get ready.', tone: team, countdown: wholeSeconds(left) };
         }
-        return { kind: 'locked', status: `${teamNames[state.turn]}'s turn. Get ready.`, tone: state.turn };
+        return { kind: 'locked', status: `${teamNames[state.turn]} team's turn. Watch the big screen.`, tone: state.turn };
       }
       if (state.phase === 'turn' && left > 0) {
         return { kind: 'open', key, remaining: left, total: lengths[key] ?? left, event: 'game:pvp:tap' };

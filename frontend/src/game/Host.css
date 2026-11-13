@@ -215,7 +215,8 @@
   background: var(--ink);
 }
 .stage {
-  --sprite: clamp(170px, min(19vw, 36vh), 330px);
+  /* As big as two fighters can stand side by side in a half, so the arena isn't empty sky. */
+  --sprite: clamp(170px, min(calc(25vw - 30px), 52vh), 360px);
   --floor: clamp(64px, 10vh, 92px);
   display: flex;
   flex-direction: column;
@@ -223,7 +224,7 @@
   background: var(--ground);
 }
 /* While its team votes, the knight steps aside for the three offers. */
-.stage.is-voting { --sprite: clamp(130px, min(12vw, 24vh), 230px); }
+.stage.is-voting { --sprite: clamp(130px, min(12vw, 30vh), 230px); }
 
 .stage-band {
   display: grid;
@@ -378,13 +379,13 @@
 .stage-offer-art {
   display: grid;
   place-items: center;
-  width: clamp(56px, 8vh, 72px);
-  height: clamp(56px, 8vh, 72px);
+  width: clamp(56px, 9vh, 88px);
+  height: clamp(56px, 9vh, 88px);
   border-radius: 50%;
   background: #fff;
 }
 .stage-offer-art img { width: 80%; height: 80%; object-fit: contain; }
-.stage-offer-name { margin-top: 2px; font-size: 20px; font-weight: 700; line-height: 1.05; }
+.stage-offer-name { margin-top: 4px; font-size: clamp(20px, 1.6vw, 23px); font-weight: 700; line-height: 1.05; }
 .stage-offer-effect { font-size: 19px; font-weight: 700; }
 .stage-offer .stage-plate { display: flex; justify-content: center; }
 .stage-offer-votes {
@@ -629,4 +630,6 @@
   gap: 12px;
 }
 .stage-offers .stage-offer-tile { flex: 1; justify-content: center; }
-.stage.is-voting .stage-fighter { min-width: 196px; }
+.stage.is-voting .stage-fighter { min-width: 190px; }
+/* The offers grow to fill the arena while the vote is on. */
+.stage-offers .stage-offer-tile { min-height: clamp(170px, 30vh, 290px); }

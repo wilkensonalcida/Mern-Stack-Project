@@ -5,7 +5,7 @@ import Skeleton from './Skeleton';
 import type { EnemyAnimation } from './AnimateEnemy';
 import type { HostBossState, HostTeamView, RoundResult, TeamId, TeamVote } from './enemyTypes';
 import { itemIcons } from './itemArt';
-import { HostFrame, TapCounts, formatNumber } from './HostFrame';
+import { HostFrame, TapCounts, formatAmount, formatHp } from './HostFrame';
 
 // After each round, the knight swings if its team attacked and the enemy flinches, or the enemy attacks.
 function useRoundAnimation(stage: number | undefined, lastRound: RoundResult | null | undefined) {
@@ -35,7 +35,7 @@ function Fighter({ children, label, hp, maxHp, boss = false }: { children: React
     <div className={`stage-fighter ${boss ? 'is-boss' : ''}`}>
       {children}
       <div className="stage-plate">
-        <p className="stage-plate-label"><span>{label}</span><span className="stage-plate-value">{formatNumber(hp)} / {maxHp} HP</span></p>
+        <p className="stage-plate-label"><span>{label}</span><span className="stage-plate-value">{formatHp(hp)} / {maxHp} HP</span></p>
         <div className="stage-hp" role="progressbar" aria-label={`${label} health`}
           aria-valuenow={hp} aria-valuemin={0} aria-valuemax={maxHp}>
           <div style={{ width: `${(100 * hp) / maxHp}%` }} />
@@ -139,7 +139,7 @@ function BossStage({ view, other, secondsLeft, mirrored }: StageProps) {
             The last round means little once the vote opens. */}
         {showResult
           ? <p className="stage-result">
-              Last round: {formatNumber(lastRound.attack)} damage, {formatNumber(lastRound.blocked)} blocked, {formatNumber(lastRound.healed)} healed
+              Last round: {formatAmount(lastRound.attack)} damage, {formatAmount(lastRound.blocked)} blocked, {formatAmount(lastRound.healed)} healed
             </p>
           : view.phase === 'combat' && <TapCounts label="Taps this round" taps={view.taps} />}
         <p className="host-muted">

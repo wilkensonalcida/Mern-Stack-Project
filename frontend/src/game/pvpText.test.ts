@@ -40,7 +40,12 @@ describe('describeTurn', () => {
     expect(describeTurn(turn({}))).toBe("Red team's turn changed nothing.");
   });
 
-  it('shows one decimal place for uneven amounts', () => {
-    expect(describeTurn(turn({ damage: 6.7 }))).toBe('Red team hit Blue team for 6.7.');
+  it('rounds amounts to whole numbers', () => {
+    expect(describeTurn(turn({ damage: 6.7, healed: 1.5 }))).toBe('Red team hit Blue team for 7 and healed 2.');
+  });
+
+  it('leaves out a part that rounds to 0', () => {
+    expect(describeTurn(turn({ damage: 6.7, healed: 0.4, blocked: 0.3 }))).toBe('Red team hit Blue team for 7.');
+    expect(describeTurn(turn({ healed: 0.2 }))).toBe("Red team's turn changed nothing.");
   });
 });

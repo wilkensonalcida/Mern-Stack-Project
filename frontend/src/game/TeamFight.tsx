@@ -4,7 +4,7 @@ import type { TeamId } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
 import Knight, { type KnightAnimation } from './Knight';
 import { describeTurn } from './pvpText';
-import { HostFrame, HostMessage, TapCounts, formatNumber } from './HostFrame';
+import { HostFrame, HostMessage, TapCounts, formatAmount, formatHp } from './HostFrame';
 
 const teamNames: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' };
 const otherTeam = (team: TeamId): TeamId => (team === 'red' ? 'blue' : 'red');
@@ -84,8 +84,8 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
           <div style={{ width: `${(100 * knight.hp) / knight.maxHp}%` }} />
         </div>
         <p className="pvp-hp-row">
-          <span className="stage-plate-value">{formatNumber(knight.hp)} / {knight.maxHp} HP</span>
-          {knight.shield > 0 && <span className="pvp-shield">Shield {formatNumber(knight.shield)}</span>}
+          <span className="stage-plate-value">{formatHp(knight.hp)} / {knight.maxHp} HP</span>
+          {Math.round(knight.shield) > 0 && <span className="pvp-shield">Shield {formatAmount(knight.shield)}</span>}
         </p>
       </section>
     );
@@ -125,13 +125,14 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
           </div>
         </section>
 
-        <footer className="stage-foot" role="status">
-          {state.phase === 'turn'
-            ? <TapCounts label="Taps this turn" taps={state.taps} tone={state.turn} />
-            : state.phase === 'flip'
-              ? <p>{teamNames[state.turn]} taps first.</p>
+        {/* The coin flip's big line says who goes first, so the strip stays away until the first turn. */}
+        {state.phase !== 'flip' && (
+          <footer className="stage-foot" role="status">
+            {state.phase === 'turn'
+              ? <TapCounts label="Taps this turn" taps={state.taps} tone={state.turn} />
               : last && <p>{describeTurn(last)}</p>}
-        </footer>
+          </footer>
+        )}
       </main>
     </HostFrame>
   );
