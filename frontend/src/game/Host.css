@@ -1,0 +1,501 @@
+/* The host's screen on a laptop or projector: an ink bar, then the game, sized to read from the back of the room.
+   The palette and type come from theme.css, shared with the phones. */
+.host-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.host-page ::selection { background: var(--ink); color: #fff; }
+
+.host-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 60px;
+  padding: 0 24px;
+  background: var(--ink);
+  color: #fff;
+}
+.host-brand {
+  font-size: 24px;
+  font-weight: 700;
+}
+.host-bar-button {
+  padding: 8px 18px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+}
+.host-bar-button:hover { background: #374151; }
+.host-bar-button:disabled { border-color: #9ca3af; color: #9ca3af; background: transparent; }
+.host-bar-button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.host-muted { color: var(--muted); }
+
+/* A white card, the base of every panel on these screens. */
+.host-card {
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+/* A card's top strip in its team's color. */
+.host-card-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 22px;
+  background: var(--team);
+  color: #fff;
+}
+.host-card-head h2 {
+  flex: none;
+  margin: 0;
+  font: inherit;
+  font-size: clamp(24px, 2.2vw, 32px);
+  font-weight: 700;
+  line-height: 1.1;
+}
+.host-card-head .host-players {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* The big ink button: Start game and New game. */
+.host-start {
+  min-width: 240px;
+  min-height: 64px;
+  padding: 0 32px 4px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  box-shadow: inset 0 -5px 0 rgb(0 0 0 / 0.3), 0 8px 16px -6px rgb(31 41 55 / 0.4);
+}
+.host-start:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.3); }
+.host-start:disabled { background: var(--locked); box-shadow: none; }
+.host-start:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
+
+/* The lobby: where to join and the code across the top, then the two teams filling in. */
+.host-lobby {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 28px clamp(24px, 4vw, 64px) 124px;
+}
+.host-join {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 32px;
+}
+.host-join-label {
+  margin: 0;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.host-join-url {
+  margin: 4px 0 0;
+  font-size: clamp(22px, 2vw, 30px);
+  font-weight: 700;
+}
+.host-join-code { text-align: center; }
+.host-code {
+  margin: 0;
+  font-size: clamp(72px, 9vw, 128px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+.host-qr { justify-self: end; line-height: 0; }
+.host-teams {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.host-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.host-waiting p { margin: 0; font-size: 20px; color: var(--muted); }
+.host-team-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.host-team-count {
+  margin-left: auto;
+  min-width: 48px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--team-deep);
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.host-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.host-team .host-chips { padding: 20px 22px 24px; }
+.host-chip {
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--track);
+  font-size: clamp(20px, 1.8vw, 26px);
+  font-weight: 600;
+}
+.host-team .host-chip { color: var(--team-deep); box-shadow: inset 0 0 0 2px var(--team); }
+.host-empty { margin: 0; padding: 20px 22px 24px; font-size: 22px; color: var(--muted); }
+.host-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+  padding: 14px clamp(24px, 4vw, 64px);
+  background: var(--ground);
+  box-shadow: 0 -2px 0 var(--track);
+}
+.host-count { font-size: 22px; font-weight: 600; color: var(--muted); }
+
+/* The boss fights: red's fight on the left, blue's mirrored on the right, so the bosses meet in the middle. */
+.host-fights {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(14px, 2.6vh, 24px);
+  padding: clamp(14px, 2.6vh, 24px);
+}
+.host-panel {
+  display: flex;
+  flex-direction: column;
+  --sprite: clamp(150px, min(19vw, 34vh), 320px);
+}
+/* While its team votes, the knight shrinks to make room for the three offers. */
+.host-panel.is-voting { --sprite: clamp(96px, min(10vw, 14vh), 180px); }
+.host-status-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: clamp(10px, 2vh, 18px) 22px 0;
+}
+.host-status {
+  margin: 0;
+  font-size: clamp(26px, 2.4vw, 36px);
+  font-weight: 700;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.host-timer {
+  margin: 0;
+  font-size: clamp(32px, 3.2vw, 48px);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.host-arena {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 16px;
+  padding: 12px 22px 18px;
+}
+.host-panel.is-mirrored .host-arena { flex-direction: row-reverse; }
+.host-fighter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: var(--sprite);
+  /* Wide enough for the health label on one line, even when the sprite is small. */
+  min-width: 210px;
+}
+.host-hp { width: 100%; }
+.host-hp-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.host-hp-value { font-variant-numeric: tabular-nums; }
+.host-hp-track {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--track);
+  overflow: hidden;
+}
+.host-hp-track > div { height: 100%; border-radius: 7px; background: var(--heal); }
+.host-hp.is-boss .host-hp-track > div { background: var(--ink); }
+
+.host-taps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding: 14px 22px;
+  box-shadow: inset 0 2px 0 var(--ground);
+}
+.host-taps-total {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+}
+.host-taps-label { font-size: 20px; font-weight: 600; color: var(--muted); }
+.host-taps-number {
+  font-size: clamp(40px, 4vw, 60px);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.host-taps.is-toned .host-taps-number { color: var(--team); }
+.host-move-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.host-move-chips li {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--move);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A team's item vote: its three offers, in their moves' colors, with the votes so far. */
+.host-votes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 0;
+  padding: 12px 22px 14px;
+  list-style: none;
+  box-shadow: inset 0 2px 0 var(--ground);
+}
+.host-vote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 10px 16px;
+  border-radius: 16px;
+  background: var(--move);
+  color: #fff;
+  text-align: center;
+  box-shadow: var(--tile-shadow);
+}
+.host-vote-art {
+  display: grid;
+  place-items: center;
+  width: clamp(52px, 7.5vh, 68px);
+  height: clamp(52px, 7.5vh, 68px);
+  border-radius: 50%;
+  background: #fff;
+}
+.host-vote-art img { width: 80%; height: 80%; object-fit: contain; }
+.host-vote-name { margin-top: 4px; font-size: 20px; font-weight: 700; line-height: 1.1; }
+.host-vote-effect { font-size: 19px; font-weight: 700; }
+.host-vote-count {
+  margin-top: 6px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.host-vote.is-picked { box-shadow: 0 0 0 4px #fff, 0 0 0 8px var(--ink), var(--tile-shadow); }
+.host-vote.is-faded { --move: var(--locked); box-shadow: none; }
+.host-vote.is-faded img { filter: grayscale(1); opacity: 0.6; }
+.host-panel-foot {
+  padding: 12px 22px 18px;
+  box-shadow: inset 0 2px 0 var(--ground);
+  font-size: 18px;
+}
+.host-panel-foot p { margin: 0; }
+.host-panel-foot .host-muted { margin-top: 2px; font-size: 16px; }
+
+/* PvP: the scoreboard across the top, the two knights facing each other, then the turn. */
+.host-pvp {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+.host-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, auto) 1fr;
+  gap: 24px;
+  align-items: stretch;
+}
+.host-score-body { padding: 14px 22px 18px; }
+.host-score-body .host-hp-track { height: 20px; border-radius: 10px; }
+.host-score-body .host-hp-track > div { border-radius: 10px; background: var(--team); }
+.host-score-hp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+.host-shield {
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--block);
+  color: #fff;
+  font-size: 18px;
+}
+.host-score-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+.host-pvp-heading {
+  margin: 0;
+  font: inherit;
+  font-size: clamp(30px, 3vw, 44px);
+  font-weight: 700;
+  line-height: 1.05;
+  text-wrap: balance;
+  color: var(--team);
+}
+.host-pvp-arena {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  --sprite: clamp(180px, min(22vw, 36vh), 340px);
+}
+.host-pvp-arena .host-fighter-spot { width: var(--sprite); aspect-ratio: 1 / 1; }
+.host-pvp-line {
+  display: flex;
+  justify-content: center;
+  min-height: 84px;
+  text-align: center;
+}
+.host-pvp-line .host-taps { box-shadow: none; padding: 0; justify-content: center; }
+.host-pvp-line > p {
+  margin: 0;
+  max-width: 900px;
+  font-size: clamp(22px, 2vw, 30px);
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+/* The end: the winner on a tile in its color, then each team's taps. */
+.host-results {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 3vh, 28px);
+  padding: clamp(16px, 3vh, 28px) clamp(24px, 6vw, 120px) clamp(20px, 4vh, 36px);
+}
+.host-winner {
+  padding: clamp(18px, 3vh, 28px) 32px clamp(22px, 3.8vh, 34px);
+  border-radius: 24px;
+  background: var(--team);
+  color: #fff;
+  text-align: center;
+  box-shadow: var(--tile-shadow);
+}
+.host-winner h1 {
+  margin: 0;
+  font: inherit;
+  font-size: clamp(48px, min(6vw, 10vh), 96px);
+  font-weight: 700;
+  line-height: 1;
+}
+.host-winner p { margin: 12px 0 0; font-size: clamp(22px, 2vw, 30px); font-weight: 600; }
+.host-result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+.host-result { text-align: center; }
+.host-result.is-winner { box-shadow: 0 0 0 4px var(--ground), 0 0 0 8px var(--team), var(--card-shadow); }
+.host-result .host-card-head { justify-content: center; }
+.host-winner-chip {
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--team-deep);
+  font-size: 18px;
+  font-weight: 700;
+}
+.host-result .host-players { margin: 16px 22px 0; font-size: 20px; color: var(--muted); }
+.host-result-total {
+  margin: 10px 0 0;
+  font-size: clamp(52px, min(6vw, 10vh), 96px);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.host-result-unit { margin: 0 0 14px; font-size: 22px; font-weight: 600; color: var(--muted); }
+.host-result .host-move-chips { justify-content: center; padding: 0 22px 24px; }
+.host-results-actions { display: flex; justify-content: center; }
+.host-error { margin: 0; text-align: center; font-size: 20px; font-weight: 700; color: var(--error); }
+
+/* One message, such as while the lobby loads. */
+.host-message {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px;
+  text-align: center;
+}
+.host-message h1 { margin: 0; font: inherit; font-size: 40px; font-weight: 700; }

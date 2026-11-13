@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import PageLayout from '../components/PageLayout'
 import { socket } from '../socket/socket'
 import { QRCodeSVG } from 'qrcode.react'
 import { HostBossFights } from '../game/EnemyFight'
 import TeamFight from '../game/TeamFight'
 import HostResults from '../game/HostResults'
+import { HostFrame, HostMessage } from '../game/HostFrame'
 import type { GameResult, HostBossState } from '../game/enemyTypes'
 
 import type {
@@ -153,19 +153,16 @@ export default function HostPage() {
 
   if(error && !lobby) {
     return (
-      <PageLayout>
-        <p className="text-danger">{error}</p>
-        <button className="btn btn-outline-dark" onClick={(() => navigate('/'))}>Back to dashboard</button>
-      </PageLayout>
+      <HostMessage
+        title={error}
+        live="alert"
+        action={<button className="host-start" type="button" onClick={() => navigate('/')}>Back to dashboard</button>}
+      />
     )
   }
 
   if(!lobby){
-    return (
-      <PageLayout>
-        <p>Loading lobby...</p>
-      </PageLayout>
-    )
+    return <HostMessage title="Loading the lobby…" live="status" />
   }
 
   // After Start game, the phones play, and this screen shows the game.
@@ -180,15 +177,12 @@ export default function HostPage() {
       return <HostResults result={result} lobby={lobby} error={error} onNewGame={backToDashboard} />
     }
     return (
-      <PageLayout>
-        <section className="card" aria-labelledby="game-heading">
-          <div className="card-body p-4 text-center">
-            <p className="text-body-secondary mb-1">Game session code {lobby.code}</p>
-            <h1 className="h3 card-title" id="game-heading">Loading the game...</h1>
-            <button className="btn btn-outline-dark" type="button" onClick={cancelGame}>End game</button>
-          </div>
-        </section>
-      </PageLayout>
+      <HostFrame action={<button className="host-bar-button" type="button" onClick={cancelGame}>End game</button>}>
+        <main className="host-message" role="status">
+          <h1>Loading the game…</h1>
+          <p className="host-muted mb-0">Game code {lobby.code}</p>
+        </main>
+      </HostFrame>
     )
   }
 
@@ -213,85 +207,65 @@ export default function HostPage() {
     players: LobbyPlayer[]
   ) {
     return (
-      <div className="col-6" key={teamId}>
-        <section className="card h-100">
-          <div className="card-body">
-            <h2 className="h6 card-title text-center mb-2">
-              {name}
-            </h2>
-            {players.length > 0 ? (
-              <ul className="d-flex flex-wrap justify-content-center gap-2 list-unstyled mb-0">
-                {players.map(player => (
-                  <li className="border rounded px-2 py-1" key={player.id}>
-                    {player.name}
-                  </li>
-                )
-              )}
-              </ul>
-            ) : (
-              <p className="text-body-secondary text-center mb-0">
-                No players yet.
-              </p>
-            )}
-          </div>
-        </section>
-      </div>
+      <section className={`host-card host-team team-${teamId}`} key={teamId} aria-labelledby={`${teamId}-team`}>
+        <header className="host-card-head">
+          <h2 id={`${teamId}-team`}>{name}</h2>
+          <span className="host-team-count" aria-label={`${players.length} ${players.length === 1 ? 'player' : 'players'}`}>{players.length}</span>
+        </header>
+        {players.length > 0 ? (
+          <ul className="host-chips">
+            {players.map(player => <li className="host-chip" key={player.id}>{player.name}</li>)}
+          </ul>
+        ) : (
+          <p className="host-empty">No players yet.</p>
+        )}
+      </section>
     )
   }
-  
+
   return (
-    <PageLayout wide>
-      {/* Fills the screen above the bar. 3rem is the page's own padding, and 88 pixels leave room for the bar. */}
-      <div className="d-flex flex-column" style={{ minHeight: 'calc(100vh - 3rem)', paddingBottom: 88 }}>
-        <section className="card" aria-labelledby="code-heading">
-          <div className="card-body py-4">
-            {/* Where to join sits at the left edge and the QR code at the right, so the code stays in the middle. */}
-            <div className="row align-items-center row-gap-3">
-              <div className="col-md-3 order-2 order-md-1 text-center text-md-start">
-                <p className="text-body-secondary mb-0">Join at</p>
-                <p className="fs-5 fw-semibold mb-0">{window.location.host}/join</p>
-              </div>
-              <div className="col-md-6 order-1 order-md-2 text-center">
-                <h1 className="fs-6 fw-normal text-body-secondary mb-1" id="code-heading">Game session code</h1>
-                <p className="display-1 fw-bold mb-0">{lobby.code}</p>
-              </div>
-              <div className="col-md-3 order-3 d-flex justify-content-center justify-content-md-end">
-                {/* Opens the join page on a phone with this code filled in, on whatever address the host is using. */}
-                <QRCodeSVG value={`${window.location.origin}/join?code=${lobby.code}`} size={176} marginSize={2}
-                  title={`Scan to join game ${lobby.code}`} role="img" aria-label={`QR code to join game ${lobby.code}`} />
-              </div>
-            </div>
+    <HostFrame action={<button className="host-bar-button" type="button" onClick={cancelGame} disabled={!isHost}>Cancel match</button>}>
+      <main className="host-lobby">
+        <section className="host-card host-join" aria-labelledby="code-heading">
+          {/* Where to join sits at the left and the QR code at the right, so the code stays in the middle. */}
+          <div>
+            <p className="host-join-label">Join at</p>
+            <p className="host-join-url">{window.location.host}/join</p>
+          </div>
+          <div className="host-join-code">
+            <h1 className="host-join-label" id="code-heading">Game code</h1>
+            <p className="host-code">{lobby.code}</p>
+          </div>
+          <div className="host-qr">
+            {/* Opens the join page on a phone at the nickname step, on whatever address the host is using. */}
+            <QRCodeSVG value={`${window.location.origin}/join?code=${lobby.code}`} size={200} marginSize={2}
+              title={`Scan to join game ${lobby.code}`} role="img" aria-label={`QR code to join game ${lobby.code}`} />
           </div>
         </section>
-        <section className="flex-grow-1 d-flex flex-column justify-content-center py-4" aria-label="Players">
+        <section className="host-teams" aria-label="Players">
           {/* Players who just joined wait here until they pick a team. */}
           {unassignedPlayers.length > 0 && (
-            <ul className="d-flex flex-wrap justify-content-center gap-2 list-unstyled mb-3" aria-label="Waiting for a team">
-              {unassignedPlayers.map(player => (
-                <li className="border rounded px-2 py-1" key={player.id}>{player.name}</li>
-              ))}
-            </ul>
+            <div className="host-waiting">
+              <p>Picking a team:</p>
+              <ul className="host-chips" aria-label="Picking a team">
+                {unassignedPlayers.map(player => <li className="host-chip" key={player.id}>{player.name}</li>)}
+              </ul>
+            </div>
           )}
-          <div className="row g-3">
+          <div className="host-team-grid">
             {renderTeam("red", "Red team", redPlayers)}
             {renderTeam("blue", "Blue team", bluePlayers)}
           </div>
         </section>
-        {/* With the bar's room, this matches the code banner's height on wider screens, */}
-        {/* so the players sit at the middle of the screen, not the middle of the space below the code. */}
-        <div className="d-none d-md-block flex-shrink-0" aria-hidden="true" style={{ height: 139 }} />
-      </div>
+      </main>
 
-      {/* Stays at the bottom of the screen: cancel on the left, the player count and start on the right. */}
-      <div className="position-fixed bottom-0 start-0 end-0 p-3 bg-body d-flex justify-content-between align-items-center gap-3">
-        <button className="btn btn-outline-dark text-nowrap" type="button" onClick={cancelGame} disabled={!isHost}>Cancel match</button>
-        <div className="d-flex align-items-center gap-3">
-          <span className="fs-5 text-body-secondary text-nowrap" role="status">
-            {playerCount} {playerCount === 1 ? 'player' : 'players'}
-          </span>
-          <button className="btn btn-dark px-md-5 text-nowrap" type="button" onClick={startGame} disabled={!canStart}>{starting ? 'Starting game...' : 'Start game'}</button>
-        </div>
-      </div>
-    </PageLayout>
+      {/* Stays at the bottom of the screen: the player count and Start game. */}
+      <footer className="host-footer">
+        <span className="host-count" role="status">
+          {playerCount} {playerCount === 1 ? 'player' : 'players'}
+        </span>
+        <button className="host-start" type="button" onClick={startGame} disabled={!canStart}>{starting ? 'Starting game…' : 'Start game'}</button>
+      </footer>
+    </HostFrame>
   )
 }

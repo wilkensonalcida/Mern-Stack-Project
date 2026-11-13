@@ -1,40 +1,12 @@
-/* The phone controller: a solid team header, one status line, and three big move tiles for thumbs. */
+/* The phone controller: a solid team header, one status line, and three big move tiles for thumbs.
+   The palette and type come from theme.css, shared with the host's screen. */
 .controller-page {
-  --ground: #f4f5f7;
-  --ink: #1f2937;
-  --muted: #4b5563;
-  --track: #d9dde3;
-  --red: #d92b3a;
-  --red-deep: #a81d2b;
-  --blue: #1a63d6;
-  --blue-deep: #124aa6;
-  --team: var(--red);
-  --team-deep: var(--red-deep);
-  --attack: #e25a12;
-  --block: #3d4f63;
-  --heal: #1f9a4b;
-  --locked: #7d8592;
-  --error: #b42318;
   min-height: 100dvh;
-  background: var(--ground);
-  color: var(--ink);
-  font-family: 'Fredoka', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  font-weight: 600;
-  -webkit-font-smoothing: antialiased;
   /* Mashing the tiles never zooms, selects text, or opens the long press menu. */
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-}
-.controller-page.team-blue {
-  --team: var(--blue);
-  --team-deep: var(--blue-deep);
-}
-/* Before a team is picked, and between games, the header is ink. */
-.controller-page.team-none {
-  --team: var(--ink);
-  --team-deep: #111827;
 }
 /* The join form needs text selection and the long press menu back, for typing and pasting a code. */
 .controller-page.is-form {

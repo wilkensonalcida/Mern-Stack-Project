@@ -19,10 +19,12 @@ type KnightProps = {
   // The sheet's knight faces right, so the knight on the right is mirrored to face the other.
   mirrored?: boolean
   label: string
+  // How wide to draw it, as a CSS length; the host's screen draws it bigger.
+  size?: string
 }
 
 // Draws one knight from Alex's sheet and plays the animation the fight asks for.
-export default function Knight({ animation, mirrored = false, label }: KnightProps) {
+export default function Knight({ animation, mirrored = false, label, size }: KnightProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [sprite] = useState(() => new Sprite(knightSheet, FRAME_SIZE, FRAME_SIZE, animations))
 
@@ -57,7 +59,7 @@ export default function Knight({ animation, mirrored = false, label }: KnightPro
       height={FRAME_SIZE}
       role="img"
       aria-label={label}
-      style={{ width: `min(${FRAME_SIZE}px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined }}
+      style={{ width: size ?? `min(${FRAME_SIZE}px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined }}
     />
   )
 }
