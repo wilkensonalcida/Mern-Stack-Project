@@ -7,15 +7,15 @@
   --ink: #1b1714;
   --cream: #fffaf2;
   --muted: #5b524b;
-  /* Team paints: the red team's rust and the blue team's woad. */
-  --red: #a26355;
-  --red-deep: #7a4337;
-  --blue: #4d6a8a;
-  --blue-deep: #33495f;
-  /* One paint per move: copper, steel, and moss. */
-  --attack: #bf7139;
-  --block: #80878f;
-  --heal: #6f8f4e;
+  /* Team paints, from Alex's drawings: the red of her potion and a slate blue. */
+  --red: #b24f37;
+  --red-deep: #7f3627;
+  --blue: #4b6584;
+  --blue-deep: #34475d;
+  /* One paint per move, each from Alex's drawings: the heated blade's orange, the sword's steel, and the Goblin's green. */
+  --attack: #bc6940;
+  --block: #4b5761;
+  --heal: #799766;
   /* Health bars take the red of Alex's potion. */
   --health: #a73f26;
   --error: #a73f26;
