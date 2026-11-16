@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { socket } from '../socket/socket';
 import type { Ack, EnemyState, Move, TeamId, TeamVote, Upgrade } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
@@ -266,26 +266,31 @@ export default function Controller({ code, team, nickname }: Props) {
   const barWidth = screen.kind === 'open' || (screen.kind === 'vote' && !screen.vote.closed)
     ? (100 * screen.remaining) / screen.total
     : 0;
+  // A word about the other team sits on that team's paint, since this phone is already its own team's color.
+  const otherTone = connected && tone && tone !== team ? tone : undefined;
 
   return (
-    <div className={`controller-page team-${team}`} onContextMenu={event => event.preventDefault()}>
+    <div className={`controller-page is-play team-${team}`} onContextMenu={event => event.preventDefault()}>
       <main className="controller">
         <header className="controller-header">
           <h1 className="controller-team">{teamNames[team]} team</h1>
           <span className="controller-name">{nickname}</span>
         </header>
-        <div className="controller-timer" aria-hidden="true">
-          <div style={{ width: `${Math.min(100, barWidth)}%` }} />
+        <div className={`controller-word ${otherTone ? `tone-${otherTone}` : ''}`}>
+          {connected ? (
+            <p className={`controller-status ${status.length <= 10 ? 'is-big' : ''}`} role="status">{status}</p>
+          ) : (
+            // While the connection is down the swatches are locked, so the word says so instead of the last state.
+            <p className="controller-status is-offline" role="status">Reconnecting…</p>
+          )}
+          {/* The clock: a brush stroke under the word that drains as the window or the vote runs out. */}
+          <div className="controller-clock" aria-hidden="true">
+            <i style={{ '--left': `${Math.min(100, barWidth)}%` } as CSSProperties} />
+          </div>
+          {connected && countdown !== undefined && (
+            <p className="controller-countdown" aria-hidden="true">{countdown}</p>
+          )}
         </div>
-        {connected ? (
-          <p className={`controller-status ${status.length <= 10 ? 'is-big' : ''} ${tone ? `tone-${tone}` : ''}`} role="status">{status}</p>
-        ) : (
-          // While the connection is down the tiles are locked, so the status says so instead of the last state.
-          <p className="controller-status is-offline" role="status">Reconnecting…</p>
-        )}
-        {connected && countdown !== undefined && (
-          <p className={`controller-countdown ${tone ? `tone-${tone}` : ''}`} aria-hidden="true">{countdown}</p>
-        )}
 
         <div className={`controller-buttons ${screen.kind === 'vote' ? 'is-vote' : ''}`}>
           {screen.kind === 'vote'
@@ -307,6 +312,7 @@ export default function Controller({ code, team, nickname }: Props) {
                     <span className="controller-tally">
                       <span className="controller-count" aria-label={`${votes} ${votes === 1 ? 'vote' : 'votes'}`}>{votes}</span>
                     </span>
+                    {chosen && <span className="controller-ring" aria-hidden="true" />}
                   </button>
                 );
               })

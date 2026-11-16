@@ -1,36 +1,70 @@
-/* The game's palette and type, shared by the phones and the host's screen. */
+/* The game's palette, lettering, and brush shapes, shared by the phones and the host's screen.
+   Alex's Canvas, drenched: a team's dry brush paint fills the ground, each move keeps one paint,
+   and ink and lettering sit on top, the way her drawings sit on painted grounds in her sheets. */
 .controller-page,
 .host-page {
-  --ground: #f4f5f7;
-  --ink: #1f2937;
-  --muted: #4b5563;
-  --track: #d9dde3;
-  --red: #d92b3a;
-  --red-deep: #a81d2b;
-  --blue: #1a63d6;
-  --blue-deep: #124aa6;
-  --team: var(--red);
-  --team-deep: var(--red-deep);
-  --attack: #e25a12;
-  --block: #3d4f63;
-  --heal: #1f9a4b;
-  --locked: #7d8592;
-  --error: #b42318;
-  --tile-shadow: inset 0 -6px 0 rgb(0 0 0 / 0.18), 0 10px 18px -6px rgb(31 41 55 / 0.38);
-  --card-shadow: 0 10px 24px -12px rgb(31 41 55 / 0.3);
-  background: var(--ground);
+  --canvas: #fbfaf8;
+  --ink: #1b1714;
+  --cream: #fffaf2;
+  --muted: #5b524b;
+  /* Team paints: the red team's rust and the blue team's woad. */
+  --red: #a26355;
+  --red-deep: #7a4337;
+  --blue: #4d6a8a;
+  --blue-deep: #33495f;
+  /* One paint per move: copper, steel, and moss. */
+  --attack: #bf7139;
+  --block: #80878f;
+  --heal: #6f8f4e;
+  /* Health bars take the red of Alex's potion. */
+  --health: #a73f26;
+  --error: #a73f26;
+  --track: #d9d3cb;
+  --locked: #b9b4ad;
+  --ground: var(--canvas);
+  --team: var(--ink);
+  --team-deep: #000;
+  --letters: 'Caveat Brush', 'Patrick Hand', cursive;
+  --text: 'Patrick Hand', 'Caveat Brush', cursive;
+  /* The brush shapes, rendered once as images so phones never filter them live: Alex's grain to lay
+     over a paint, a swatch with her dry brush edge, a torn scrap of white canvas, and one brush stroke. */
+  --grain: url('../assets/art/grain.webp');
+  --swatch-mask: url('../assets/art/swatch.webp');
+  --scrap-mask: url('../assets/art/scrap.webp');
+  --stroke-mask: url('../assets/art/stroke.webp');
+  --card-shadow: 0 10px 24px -12px rgb(27 23 20 / 0.3);
+  background: var(--canvas);
   color: var(--ink);
-  font-family: 'Fredoka', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  font-weight: 600;
+  font-family: var(--text);
+  font-weight: 400;
+  font-synthesis: none;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Anything inside takes its team's color, or ink before a team is picked. */
+/* Anything inside takes its team's paint, or ink before a team is picked. */
 .team-red { --team: var(--red); --team-deep: var(--red-deep); }
 .team-blue { --team: var(--blue); --team-deep: var(--blue-deep); }
-.team-none { --team: var(--ink); --team-deep: #111827; }
+.team-none { --team: var(--ink); --team-deep: #000; }
 
-/* One color per move. */
-.move-attack { --move: var(--attack); }
-.move-block { --move: var(--block); }
-.move-heal { --move: var(--heal); }
+/* One paint per move. --move is the same paint under the name the host's stage reads. */
+.move-attack { --paint: var(--attack); --move: var(--attack); }
+.move-block { --paint: var(--block); --move: var(--block); }
+.move-heal { --paint: var(--heal); --move: var(--heal); }
+
+/* The brush shapes as classes. Each takes its color from --paint, and a swatch lays the grain over it.
+   Pseudo-elements use the same variables directly. */
+.paint-swatch {
+  background: var(--grain) center / cover, var(--paint, var(--team));
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.canvas-scrap {
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+.brush-stroke {
+  background: var(--paint, var(--cream));
+  -webkit-mask: var(--stroke-mask) center / 100% 100% no-repeat;
+  mask: var(--stroke-mask) center / 100% 100% no-repeat;
+}
