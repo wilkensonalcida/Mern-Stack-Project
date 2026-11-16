@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { socket } from '../socket/socket'
 import PhoneMessage from '../components/PhoneMessage'
@@ -68,6 +68,11 @@ export default function JoinPage() {
   const [checked, setChecked] = useState(handedOver ?? '')
 
   const onNicknameStep = Boolean(linkedCode) && (checked === linkedCode || handedOver === linkedCode)
+  // The code whose nickname step is showing, so a join that lands after the guest went back is undone.
+  const showingCode = useRef('')
+  useEffect(() => {
+    showingCode.current = onNicknameStep ? linkedCode : ''
+  }, [onNicknameStep, linkedCode])
 
   // A code the server turns down goes back to the code step, filled in, with the server's reason,
   // and leaves the address so the step can't check it again.
@@ -111,6 +116,7 @@ export default function JoinPage() {
   function joinLobby(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     const nickname = name.trim()
+    const joinCode = linkedCode
     if (busy || !nickname) return
 
     setBusy(true)
@@ -118,9 +124,15 @@ export default function JoinPage() {
     whenConnected(
       () => socket.timeout(5000).emit(
         'game:join',
-        { code: linkedCode, name: nickname },
+        { code: joinCode, name: nickname },
         (err: Error | null, response: LobbyResponse) => {
           setBusy(false)
+          // The guest went back for another code while this join was on its way, so it's undone,
+          // or the server would keep the phone in a lobby it isn't showing and refuse every other code.
+          if (showingCode.current !== joinCode) {
+            if (response?.success) socket.emit('game:leave')
+            return
+          }
           if (err) {
             setError('Server not responding.')
             return
@@ -128,7 +140,7 @@ export default function JoinPage() {
           if (!response?.success || !response.lobby) {
             const message = response?.error || 'Unable to join the game.'
             // A lobby that closed or started since the check sends the phone back for another code.
-            if (codeErrors.includes(message)) refuse(linkedCode, message)
+            if (codeErrors.includes(message)) refuse(joinCode, message)
             else setError(friendly(message))
             return
           }
