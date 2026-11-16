@@ -11,6 +11,9 @@ const teamNames: Record<TeamId, string> = { red: 'Red', blue: 'Blue' };
 const otherTeam = (team: TeamId): TeamId => (team === 'red' ? 'blue' : 'red');
 const noTaps = (): Record<Move, number> => ({ attack: 0, block: 0, heal: 0 });
 const wholeSeconds = (ms: number) => (ms > 0 ? Math.ceil(ms / 1000) : undefined);
+// The vote opens the moment the last boss falls, often under a thumb that's still mashing. Its tiles
+// stay locked this long first, so a tap meant for the fight can't cast a vote.
+const VOTE_LOCK_MS = 1500;
 
 type StateAck = Ack & { state?: EnemyState };
 type TapEvent = 'game:enemy:tap' | 'game:pvp:tap';
@@ -19,7 +22,7 @@ type Screen =
   | { kind: 'loading' }
   | { kind: 'open'; key: string; remaining: number; total: number; event: TapEvent }
   | { kind: 'locked'; status: string; tone?: TeamId; countdown?: number; key?: string }
-  | { kind: 'vote'; vote: TeamVote; myVote: Upgrade | null; remaining: number; total: number };
+  | { kind: 'vote'; vote: TeamVote; myVote: Upgrade | null; remaining: number; total: number; locked: boolean; enemy: string };
 
 type Props = { code: string; team: TeamId; nickname: string };
 
@@ -30,6 +33,8 @@ export default function Controller({ code, team, nickname }: Props) {
   const [connected, setConnected] = useState(socket.connected);
   // Each window's and vote's length, from the first state that showed it open, so the bar starts full.
   const [lengths, setLengths] = useState<Record<string, number>>({});
+  // When this phone first saw each vote open, for the lock at its start.
+  const [voteSeenAt, setVoteSeenAt] = useState<Record<string, number>>({});
   // The taps the server accepted in the latest window. They count only after the server says so.
   const [tally, setTally] = useState({ key: '', counts: noTaps() });
   // A vote this phone just sent, shown at once until the server's state catches up.
@@ -54,7 +59,11 @@ export default function Controller({ code, team, nickname }: Props) {
       if (!mounted || next.code !== code) return;
       setBoss({ state: next, at: Date.now() });
       if (next.phase === 'combat' && next.endsAt !== null) openWindow(`b${next.stage}:${next.round}`, next.remainingMs);
-      if (next.vote && !next.vote.closed) noteLength(`v${next.vote.stage}`, next.vote.remainingMs);
+      if (next.vote && !next.vote.closed) {
+        const key = `v${next.vote.stage}`;
+        noteLength(key, next.vote.remainingMs);
+        setVoteSeenAt(known => (key in known ? known : { ...known, [key]: Date.now() }));
+      }
       setSentVote(sent => (next.vote && !next.vote.closed && sent && sent !== next.myVote ? sent : null));
     };
     const onPvp = (next: PvpState) => {
@@ -189,7 +198,9 @@ export default function Controller({ code, team, nickname }: Props) {
         if (!vote) return { kind: 'locked', status: 'Getting your items…' };
         const left = vote.closed ? 0 : Math.max(0, vote.remainingMs - (now - boss.at));
         const key = `v${vote.stage}`;
-        return { kind: 'vote', vote, myVote: sentVote ?? state.myVote, remaining: left, total: lengths[key] ?? left };
+        const seenAt = voteSeenAt[key];
+        const locked = !vote.closed && seenAt !== undefined && now - seenAt < VOTE_LOCK_MS;
+        return { kind: 'vote', vote, myVote: sentVote ?? state.myVote, remaining: left, total: lengths[key] ?? left, locked, enemy };
       }
       case 'ready':
         return { kind: 'locked', status: 'Both bosses are down. PvP is next!' };
@@ -202,7 +213,7 @@ export default function Controller({ code, team, nickname }: Props) {
 
   const screen = readScreen();
   const open = connected && screen.kind === 'open';
-  const voting = connected && screen.kind === 'vote' && !screen.vote.closed && screen.remaining > 0;
+  const voting = connected && screen.kind === 'vote' && !screen.vote.closed && !screen.locked && screen.remaining > 0;
 
   // The button squishes and flashes, a +1 floats up, and the phone buzzes where it can.
   function feedback(slot: number) {
@@ -260,6 +271,7 @@ export default function Controller({ code, team, nickname }: Props) {
   else if (screen.kind === 'open') status = 'Tap!';
   else if (screen.kind === 'locked') ({ status, tone, countdown } = screen);
   else if (screen.vote.closed) status = `Your team picked ${itemName(screen.vote, screen.vote.pick)}.`;
+  else if (screen.locked) status = `${screen.enemy} down! Vote next.`;
   else if (screen.myVote) status = `You voted ${itemName(screen.vote, screen.myVote)}. Tap another to switch.`;
   else status = "Vote for your knight's item.";
 
