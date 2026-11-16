@@ -21,8 +21,8 @@ const moves: Move[] = ['attack', 'block', 'heal']
 const moveNames: Record<Move, string> = { attack: 'Attack', block: 'Block', heal: 'Heal' }
 // One line on what each button does, so players learn the controls while they wait.
 const moveHints: Record<Move, string> = {
-  attack: 'Hits the boss, or the other knight',
-  block: "Blocks the boss's hit, or shields your knight",
+  attack: 'Hits the enemy',
+  block: 'Blocks the next hit',
   heal: 'Heals your knight',
 }
 const teamLabels: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' }
@@ -52,10 +52,15 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam, 
             <h1 className="controller-team">{teamLabels[teamId]}</h1>
             <span className="controller-name">{player.name}</span>
           </header>
-          {offline
-            ? <p className="controller-status is-offline" role="status">Reconnecting…</p>
-            : <p className="controller-status" role="status">Waiting for the host to start.</p>}
-          <p className="phone-note">Your buttons, which unlock when the game starts:</p>
+          <div className="controller-word" role="status">
+            {offline
+              ? <p className="controller-status is-offline">Reconnecting…</p>
+              : <>
+                  <p className="controller-status size-m">You're in</p>
+                  <p className="controller-note">Waiting for the host to start</p>
+                </>}
+          </div>
+          <p className="phone-note">Your buttons unlock when the game starts</p>
           <div className="controller-buttons">
             {moves.map((move) => (
               <div className={`controller-button controller-preview move-${move}`} key={move}>
@@ -70,7 +75,7 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam, 
           {other && isTeam(other.id) && (
             <div className="phone-actions">
               <button className={`phone-button is-outline to-${other.id}`} type="button" disabled={offline} onClick={() => selectTeam(other.id)}>
-                Switch to {teamLabels[other.id]}
+                Switch to {teamLabels[other.id].toLowerCase()}
               </button>
             </div>
           )}
@@ -87,7 +92,7 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam, 
           <span className="controller-team">Fight Me Bro</span>
           <span className="controller-name is-code" aria-label={`Game code ${sessionCode}`}>{sessionCode}</span>
         </header>
-        <h1 className="phone-heading" id="lobby-heading">Choose a team</h1>
+        <h1 className="phone-heading" id="lobby-heading">Pick a team</h1>
         <div className="controller-buttons" role="group" aria-labelledby="lobby-heading">
           {teams.filter((team) => isTeam(team.id)).map((team) => (
             <button
@@ -98,7 +103,7 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam, 
             >
               <span className="controller-label">{teamLabels[team.id as TeamId]}</span>
               <span className="controller-detail">
-                {team.players.length ? team.players.map((member) => member.name).join(', ') : 'No players yet'}
+                {team.players.length ? team.players.map((member) => member.name).join(', ') : 'Nobody yet'}
               </span>
             </button>
           ))}

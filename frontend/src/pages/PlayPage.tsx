@@ -108,7 +108,7 @@ export default function PlayPage() {
       : null;
     const teamName = (team: TeamId) => (team === 'red' ? 'Red team' : 'Blue team');
     const won = myTeam === result.winner;
-    const verdict = myTeam === null ? `${teamName(result.winner)} wins!` : won ? 'Your team won!' : 'Your team lost. Good fight!';
+    const verdict = myTeam === null ? `${teamName(result.winner)} won!` : won ? 'You won!' : 'You lost';
     const shown = myTeam ?? result.winner;
     return (
       <div className={`controller-page team-${shown} is-result`}>
@@ -119,7 +119,11 @@ export default function PlayPage() {
               label={`${teamName(shown)}'s knight`} size="82%" />
           </div>
           <h1 className="result-verdict">{verdict}</h1>
-          {myTaps !== null && <p className="result-taps">Your team tapped <strong>{myTaps}</strong> times.</p>}
+          {myTeam && myTaps !== null && (
+            <p className="result-taps">
+              {won ? '' : 'Good fight. '}{teamName(myTeam)} tapped <strong>{myTaps}</strong> {myTaps === 1 ? 'time' : 'times'}
+            </p>
+          )}
           {error && <p className="controller-error" role="alert">{error}</p>}
           <div className="phone-actions">
             <button className="phone-button is-light" type="button" onClick={() => leaveGame('/join')}>Join another game</button>

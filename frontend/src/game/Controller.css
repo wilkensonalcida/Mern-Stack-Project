@@ -21,13 +21,12 @@
   background: var(--grain) center / 400px 400px, var(--team);
   color: var(--cream);
 }
-/* The tapping screen's ground is a drawing, one per team: a dry brush stand-in until the hand drawn piece
-   replaces it in assets/art under the same name. It covers the screen, so keep what matters off its edges. */
-.controller-page.is-play.team-red {
-  background: var(--team) url('../assets/art/phone-red.webp') center / cover no-repeat;
-}
-.controller-page.is-play.team-blue {
-  background: var(--team) url('../assets/art/phone-blue.webp') center / cover no-repeat;
+/* The tapping screen's ground is a dark hand drawn piece, the same for both teams: a placeholder until the
+   drawing replaces assets/art/phone.webp. It covers the screen, so keep what matters off its edges.
+   The team's paint moves to a band behind the team's name instead. */
+.controller-page.is-play {
+  background: #26201c url('../assets/art/phone.webp') center / cover no-repeat;
+  color: var(--cream);
 }
 
 .controller {
@@ -65,6 +64,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* On the dark tapping screen, the team's paint is a brushed band behind its name, so the side reads at a glance. */
+.controller-page.is-play .controller-header {
+  position: relative;
+  isolation: isolate;
+  align-items: center;
+  margin: 8px 6px 0;
+  padding: 16px 26px 14px;
+}
+.controller-page.is-play .controller-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--team);
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
 
 /* The one word a player reads, the clock drawn under it, and a countdown when one runs.
    When the word is about the other team, it sits on a swatch of that team's paint. */
@@ -87,25 +103,35 @@
 }
 .controller-word.tone-red::before { --paint: var(--red); }
 .controller-word.tone-blue::before { --paint: var(--blue); }
+/* The big word, as large as the phone's width allows for its length. */
 .controller-status {
   margin: 0;
   font-family: var(--letters);
-  font-size: 40px;
-  line-height: 1.05;
+  font-size: 52px;
+  line-height: 0.95;
   text-wrap: balance;
 }
-.controller-status.is-big {
-  font-size: 112px;
-  line-height: 0.95;
+.controller-status.size-xl { font-size: 112px; }
+.controller-status.size-l { font-size: 100px; }
+.controller-status.size-m { font-size: 84px; }
+.controller-status.size-s { font-size: 64px; }
+.controller-status.size-xs { font-size: 52px; }
+/* The short line under the clock: what to do next, or what the word means. */
+.controller-note {
+  margin: 6px 0 0;
+  font-family: var(--text);
+  font-size: 24px;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 /* A dropped connection replaces the word, so a locked swatch never sits under "Tap!". */
 .controller-status.is-offline {
   display: inline-block;
-  padding: 10px 22px 8px;
+  padding: 10px 22px 6px;
   border-radius: 14px 22px 12px 20px;
-  background: var(--ink);
-  color: var(--cream);
-  font-size: 34px;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 40px;
 }
 /* The clock: a brush stroke that drains from the right as a tap window or a vote runs out,
    over a faint stroke that stays as the track. */
@@ -187,6 +213,9 @@
 .controller-button:disabled { color: rgb(27 23 20 / 0.55); }
 .controller-button:disabled::after { filter: grayscale(1) brightness(1.3) contrast(0.6); }
 .controller-button:disabled .controller-art img { filter: grayscale(1); opacity: 0.55; }
+/* On the dark tapping screen, a locked swatch fades back into the ground instead of lighting up. */
+.controller-page.is-play .controller-button:disabled { opacity: 0.42; color: var(--cream); }
+.controller-page.is-play .controller-button:disabled::after { filter: grayscale(1) brightness(0.85); }
 .controller-button:focus-visible {
   outline: 4px solid var(--cream);
   outline-offset: 2px;
@@ -256,11 +285,11 @@
   pointer-events: none;
 }
 
-/* The vote: items keep their stat's paint, and the one you voted for is circled in ink. */
+/* The vote: items keep their stat's paint, and the one you voted for is circled by hand. */
 .controller-ring {
   position: absolute;
   inset: -2px 0;
-  border: 4px solid var(--ink);
+  border: 4px solid var(--cream);
   border-radius: 48% 52% 44% 56% / 58% 46% 54% 42%;
   transform: rotate(-1.2deg);
   pointer-events: none;
@@ -284,100 +313,98 @@
 .controller-page.team-red ::selection,
 .controller-page.team-blue ::selection { background: var(--cream); color: var(--team); }
 
-/* The phone screens outside the tapping screen. They take the palette and lettering now,
-   and their own pass next. */
-/* The team pick: one big tile per team, with who's already on it. */
+/* The phone screens outside the game. Before a phone has a team they're white canvas with ink lettering;
+   once it has one, its team's paint fills them (the team rules near the top of this file). */
+
+/* A lettered heading, and a quiet line under it. */
+.phone-heading {
+  margin: 28px 20px 0;
+  text-align: center;
+  font-family: var(--letters);
+  font-size: 58px;
+  font-weight: 400;
+  line-height: 1;
+  text-wrap: balance;
+}
+.phone-note {
+  margin: 12px 20px 0;
+  text-align: center;
+  text-wrap: balance;
+  font-size: 21px;
+  line-height: 1.25;
+  color: var(--muted);
+}
+.controller-page.team-red .phone-note,
+.controller-page.team-blue .phone-note { color: var(--cream); }
+/* The game's code, lettered beside its name before a team is picked. */
+.controller-name.is-code { letter-spacing: 0.1em; }
+
+/* The team pick: one big swatch per team, with who's already on it. */
 .controller-button.team-tile {
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   text-align: center;
 }
 .controller-button.team-tile.pick-red { --paint: var(--red); }
 .controller-button.team-tile.pick-blue { --paint: var(--blue); }
-.controller-button.team-tile .controller-label { flex: none; font-size: 40px; }
+.controller-button.team-tile .controller-label { flex: none; font-size: 68px; }
 .controller-button.team-tile .controller-detail {
   margin: 0;
   max-width: 100%;
-  font-weight: 600;
+  font-size: 22px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.controller-name.is-code {
-  letter-spacing: 0.08em;
-  font-variant-numeric: tabular-nums;
-}
+/* In the lobby, the buttons show in their paint with a line on what each does, until the game starts. */
+.controller-button.controller-preview { flex: none; min-height: 112px; }
+.controller-button.controller-preview .controller-label { font-size: 46px; }
 
-.phone-heading {
-  margin: 22px 16px 0;
-  text-align: center;
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-.phone-note {
-  margin: 8px 16px 0;
-  text-align: center;
-  text-wrap: balance;
-  font-size: 17px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-/* The join form. */
+/* The join form: an inked box on the canvas, lettered as you type. */
 .phone-form {
   display: grid;
-  gap: 8px;
-  margin: 22px 16px 0;
+  gap: 10px;
+  margin: 24px 20px 0;
 }
 .phone-label {
   margin-top: 6px;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 22px;
 }
 .phone-input {
   width: 100%;
-  height: 60px;
-  padding: 0 18px;
-  border: 3px solid var(--locked);
-  border-radius: 16px;
+  height: 66px;
+  padding: 4px 18px 0;
+  border: 3px solid var(--ink);
+  border-radius: 10px 16px 9px 14px;
   background: #fff;
   color: var(--ink);
-  font: inherit;
-  font-size: 22px;
-  font-weight: 600;
+  font-family: var(--letters);
+  font-size: 34px;
   user-select: text;
   -webkit-user-select: text;
 }
-.phone-input::placeholder { color: #6b7280; font-weight: 500; }
-.phone-input:focus {
-  outline: none;
-  border-color: var(--ink);
-  box-shadow: 0 0 0 4px rgb(31 41 55 / 0.15);
-}
-.phone-input:disabled { background: var(--ground); }
+.phone-input::placeholder { color: #857b73; font-family: var(--text); font-size: 22px; }
+.phone-input:focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
+.phone-input:disabled { background: var(--canvas); color: var(--muted); }
 .phone-input.is-code {
-  height: 72px;
+  height: 84px;
   text-align: center;
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  font-size: 52px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
 }
 .phone-input.is-code::placeholder {
-  font-size: 20px;
+  font-size: 22px;
   letter-spacing: 0;
   text-transform: none;
 }
-.phone-form .phone-button { margin-top: 14px; }
+.phone-form .phone-button { margin-top: 16px; }
 .phone-error {
-  margin: 14px 16px 0;
+  margin: 16px 20px 0;
   text-align: center;
   color: var(--error);
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 21px;
 }
 
 /* One message between games, with the way onward at the bottom. */
@@ -386,125 +413,129 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   padding: 24px;
   text-align: center;
 }
 .phone-title {
   margin: 0;
-  font-family: inherit;
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1.1;
+  font-family: var(--letters);
+  font-size: 54px;
+  font-weight: 400;
+  line-height: 1;
   text-wrap: balance;
   color: var(--ink);
 }
 .phone-body {
   margin: 0;
-  font-size: 19px;
-  font-weight: 500;
-  line-height: 1.4;
+  font-size: 21px;
+  line-height: 1.35;
   text-wrap: pretty;
   color: var(--muted);
 }
 .phone-actions {
   margin-top: auto;
-  padding: 16px 16px 0;
+  padding: 16px 10px 0;
 }
+
+/* The one button: a swatch of ink, lettered in cream. */
 .phone-button {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 60px;
-  padding: 0 20px 4px;
+  min-height: 74px;
+  padding: 6px 24px 0;
   border: 0;
-  border-radius: 16px;
-  background: var(--ink);
-  color: #fff;
-  font: inherit;
-  font-size: 22px;
-  font-weight: 700;
+  background: transparent;
+  color: var(--cream);
+  font-family: var(--letters);
+  font-size: 36px;
+  line-height: 1;
   text-decoration: none;
-  box-shadow: inset 0 -5px 0 rgb(0 0 0 / 0.3), 0 8px 16px -6px rgb(31 41 55 / 0.4);
   -webkit-tap-highlight-color: transparent;
 }
-.phone-button:hover { color: #fff; }
-.phone-button:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.3); }
-.phone-button:disabled { background: var(--locked); box-shadow: none; transform: none; }
-.phone-button:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
-/* Switching teams: the other team's color, as an outline, so it reads as secondary to the controls. */
-.phone-button.is-outline {
-  background: #fff;
-  color: var(--switch);
-  box-shadow: inset 0 0 0 3px var(--switch), 0 3px 8px rgb(0 0 0 / 0.1);
+.phone-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--paint, var(--ink));
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
 }
-.phone-button.is-outline:hover { color: var(--switch); }
-.phone-button.is-outline.to-red { --switch: var(--red); }
-.phone-button.is-outline.to-blue { --switch: var(--blue); }
-/* Locked while the phone reconnects: grey, and flat. */
-.phone-button.is-outline:disabled { --switch: var(--locked); box-shadow: inset 0 0 0 3px var(--switch); }
+.phone-button:hover { color: var(--cream); }
+.phone-button:active { transform: translateY(3px); }
+.phone-button:disabled { color: rgb(255 250 242 / 0.75); }
+.phone-button:disabled::before { filter: grayscale(1) brightness(2.2) contrast(0.45); }
+.phone-button:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+/* Switching teams: a smaller swatch in the other team's paint, a way across rather than the main action. */
+.phone-button.is-outline { min-height: 64px; font-size: 32px; }
+.phone-button.is-outline.to-red { --paint: var(--red); }
+.phone-button.is-outline.to-blue { --paint: var(--blue); }
+/* On a team's paint, the main button is a cream swatch with ink lettering. */
+.phone-button.is-light { --paint: var(--cream); color: var(--ink); }
+.phone-button.is-light:hover { color: var(--ink); }
+.controller-page.team-red .phone-button:focus-visible,
+.controller-page.team-blue .phone-button:focus-visible { outline-color: var(--cream); }
 
-/* The result fills the phone with its team's color: the knight in a white spotlight, one verdict, and the way onward. */
-.controller-page.is-result {
-  background: var(--team);
-  color: #fff;
+/* The way back from the nickname step to the code step. */
+.phone-switch {
+  margin: 20px 16px 0;
+  text-align: center;
+  font-size: 21px;
 }
-.controller-page.is-result ::selection { background: #fff; color: var(--team); }
+.phone-switch a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 2px;
+}
+
+/* The result: the team's paint fills the phone, with its knight on a torn scrap of canvas,
+   one lettered verdict, and the way onward. */
 .result-screen {
   align-items: center;
-  gap: 18px;
-  padding: 28px 0 16px;
+  gap: 12px;
+  padding: 24px 0 14px;
   text-align: center;
 }
-.result-who { margin: 0; font-size: 20px; font-weight: 600; }
+.result-who { margin: 0; font-size: 22px; }
 .result-spot {
+  position: relative;
+  isolation: isolate;
   display: grid;
   place-items: center;
-  width: min(72vw, 300px);
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 16px 32px -14px rgb(0 0 0 / 0.5);
+  width: min(78vw, 320px);
+  aspect-ratio: 1.08 / 1;
+}
+.result-spot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
 }
 .result-verdict {
   margin: 6px 16px 0;
-  font-family: inherit;
-  font-size: 40px;
-  font-weight: 700;
-  line-height: 1.05;
+  font-family: var(--letters);
+  font-size: 76px;
+  font-weight: 400;
+  line-height: 0.95;
   text-wrap: balance;
 }
-.result-taps { margin: 0 16px; font-size: 20px; font-weight: 600; }
-.result-taps strong { font-weight: 700; font-variant-numeric: tabular-nums; }
+.result-taps { margin: 0 20px; font-size: 22px; line-height: 1.3; }
+.result-taps strong { font-family: var(--letters); font-size: 32px; font-weight: 400; }
 .result-screen .phone-actions { align-self: stretch; }
-.result-screen .controller-error { color: #fff; }
-.phone-button.is-light {
-  background: #fff;
-  color: var(--ink);
-  box-shadow: inset 0 -5px 0 rgb(0 0 0 / 0.12), 0 8px 16px -6px rgb(0 0 0 / 0.35);
-}
-.phone-button.is-light:hover { color: var(--ink); }
-.phone-button.is-light:focus-visible { outline-color: #fff; }
 @media (prefers-reduced-motion: no-preference) {
   .result-spot { animation: result-rise 600ms cubic-bezier(0.16, 1, 0.3, 1); }
 }
 @keyframes result-rise {
   from { transform: translateY(20px) scale(0.92); }
-}
-
-/* The way back from the nickname step to the code step. */
-.phone-switch {
-  margin: 18px 16px 0;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 600;
-}
-.phone-switch a {
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  text-decoration-thickness: 2px;
 }
 
 /* On touch the swatch dips and its paint flashes, a lettered +1 rises from the count,

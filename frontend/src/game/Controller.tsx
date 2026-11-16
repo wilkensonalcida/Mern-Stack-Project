@@ -18,12 +18,17 @@ const VOTE_LOCK_MS = 1500;
 
 type StateAck = Ack & { state?: EnemyState };
 type TapEvent = 'game:enemy:tap' | 'game:pvp:tap';
-// What the phone shows right now: a tap window that's open, buttons locked under a status line, or the item vote.
+// What the phone shows right now: a tap window that's open, buttons locked under a big word and a short line,
+// or the item vote.
 type Screen =
   | { kind: 'loading' }
   | { kind: 'open'; key: string; remaining: number; total: number; event: TapEvent }
-  | { kind: 'locked'; status: string; tone?: TeamId; countdown?: number; key?: string }
+  | { kind: 'locked'; title: string; note?: string; tone?: TeamId; countdown?: number; key?: string }
   | { kind: 'vote'; vote: TeamVote; myVote: Upgrade | null; remaining: number; total: number; locked: boolean; enemy: string };
+
+// The big word is lettered as large as the phone's width allows for its length.
+const titleSize = (title: string) =>
+  title.length <= 5 ? 'size-xl' : title.length <= 7 ? 'size-l' : title.length <= 9 ? 'size-m' : title.length <= 12 ? 'size-s' : 'size-xs';
 
 type Props = { code: string; team: TeamId; nickname: string };
 
@@ -131,27 +136,29 @@ export default function Controller({ code, team, nickname }: Props) {
   const tallied = (key: string) => (tally.key === key ? tally.counts : noTaps());
   const timesUp = (key: string): Screen => {
     const taps = Object.values(tallied(key)).reduce((sum, count) => sum + count, 0);
-    return { kind: 'locked', status: `Time's up: ${taps} ${taps === 1 ? 'tap' : 'taps'}`, key };
+    return { kind: 'locked', title: "Time's up", note: `${taps} ${taps === 1 ? 'tap' : 'taps'}`, key };
   };
 
   function readScreen(): Screen {
     // The final blow plays out on the big screen before the result shows here.
     if (pvp && pvp.state.phase === 'finished' && pvp.state.winner) {
-      return { kind: 'locked', status: 'K.O.! Watch the big screen.', tone: pvp.state.winner };
+      return { kind: 'locked', title: 'K.O.!', note: 'Watch the big screen', tone: pvp.state.winner };
     }
     if (pvp && pvp.state.phase !== 'finished') {
       const state = pvp.state;
       const left = Math.max(0, state.remainingMs - (now - pvp.at));
       if (state.phase === 'flip') {
-        const status = state.turn === team ? 'You go first! Get ready.' : `${teamNames[state.turn]} goes first.`;
-        return { kind: 'locked', status, tone: state.turn, countdown: wholeSeconds(left) };
+        const countdown = wholeSeconds(left);
+        return state.turn === team
+          ? { kind: 'locked', title: "You're first", note: 'Get ready to tap', tone: team, countdown }
+          : { kind: 'locked', title: `${teamNames[state.turn]} goes first`, note: 'Watch the big screen', tone: state.turn, countdown };
       }
       const key = `p${state.turnNumber}`;
       if (state.turn !== team) {
         if (state.phase === 'pause') {
-          return { kind: 'locked', status: 'Your turn next. Get ready.', tone: team, countdown: wholeSeconds(left) };
+          return { kind: 'locked', title: "You're next", note: 'Get ready to tap', tone: team, countdown: wholeSeconds(left) };
         }
-        return { kind: 'locked', status: `${teamNames[state.turn]} team's turn. Watch the big screen.`, tone: state.turn };
+        return { kind: 'locked', title: `${teamNames[state.turn]}'s turn`, note: 'Watch the big screen', tone: state.turn };
       }
       if (state.phase === 'turn' && left > 0) {
         return { kind: 'open', key, remaining: left, total: lengths[key] ?? left, event: 'game:pvp:tap' };
@@ -173,15 +180,15 @@ export default function Controller({ code, team, nickname }: Props) {
         // A fight's first round counts down. Between rounds, the last count stays up.
         if (state.round === 0) {
           const left = Math.max(0, state.nextRoundInMs - (now - boss.at));
-          return { kind: 'locked', status: `The ${enemy}! Get ready.`, countdown: wholeSeconds(left) };
+          return { kind: 'locked', title: `${enemy}!`, note: 'Get ready to tap', countdown: wholeSeconds(left) };
         }
         return timesUp(key);
       }
       case 'waiting':
-        return { kind: 'locked', status: `${enemy} down! Waiting for ${teamNames[otherTeam(team)].toLowerCase()}.` };
+        return { kind: 'locked', title: `${enemy} down!`, note: `Waiting for ${teamNames[otherTeam(team)].toLowerCase()}` };
       case 'selection': {
         const vote = state.vote;
-        if (!vote) return { kind: 'locked', status: 'Getting your items…' };
+        if (!vote) return { kind: 'locked', title: 'Hold on', note: 'Getting your items' };
         const left = vote.closed ? 0 : Math.max(0, vote.remainingMs - (now - boss.at));
         const key = `v${vote.stage}`;
         const seenAt = voteSeenAt[key];
@@ -189,11 +196,11 @@ export default function Controller({ code, team, nickname }: Props) {
         return { kind: 'vote', vote, myVote: sentVote ?? state.myVote, remaining: left, total: lengths[key] ?? left, locked, enemy };
       }
       case 'ready':
-        return { kind: 'locked', status: 'Both bosses are down. PvP is next!' };
+        return { kind: 'locked', title: 'Bosses down!', note: 'Now your knight fights theirs' };
       case 'won':
-        return { kind: 'locked', status: 'Your team wins!' };
+        return { kind: 'locked', title: 'You won!', note: 'Watch the big screen' };
       case 'failed':
-        return { kind: 'locked', status: 'Your knight fell.' };
+        return { kind: 'locked', title: 'Your knight fell', note: 'Watch the big screen' };
     }
   }
 
@@ -235,7 +242,7 @@ export default function Controller({ code, team, nickname }: Props) {
     socket.timeout(5000).emit('game:enemy:choose', { stage: screen.vote.stage, itemId }, (err: Error | null, response: Ack) => {
       if (err || !response?.success) {
         setSentVote(null);
-        setError(response?.error || 'Your vote did not count. Try again.');
+        setError(response?.error || "Your vote didn't count. Tap again.");
       }
     });
   }
@@ -249,17 +256,28 @@ export default function Controller({ code, team, nickname }: Props) {
     }
   };
 
-  let status = '';
+  // One big word for the moment, and a short line under it when the word needs one.
+  let title = '';
+  let note: string | undefined;
   let tone: TeamId | undefined;
   let countdown: number | undefined;
-  const itemName = (vote: TeamVote, id: Upgrade | null) => vote.offers.find(item => item.id === id)?.name ?? 'an item';
-  if (screen.kind === 'loading') status = 'Loading…';
-  else if (screen.kind === 'open') status = 'Tap!';
-  else if (screen.kind === 'locked') ({ status, tone, countdown } = screen);
-  else if (screen.vote.closed) status = `Your team picked ${itemName(screen.vote, screen.vote.pick)}.`;
-  else if (screen.locked) status = `${screen.enemy} down! Vote next.`;
-  else if (screen.myVote) status = `You voted ${itemName(screen.vote, screen.myVote)}. Tap another to switch.`;
-  else status = "Vote for your knight's item.";
+  const itemName = (vote: TeamVote, id: Upgrade | null) => vote.offers.find(item => item.id === id)?.name ?? 'Your item';
+  if (screen.kind === 'loading') title = 'Loading…';
+  else if (screen.kind === 'open') title = 'Tap!';
+  else if (screen.kind === 'locked') ({ title, note, tone, countdown } = screen);
+  else if (screen.vote.closed) {
+    title = itemName(screen.vote, screen.vote.pick);
+    note = "Your team's pick";
+  } else if (screen.locked) {
+    title = `${screen.enemy} down!`;
+    note = 'Vote in a moment';
+  } else if (screen.myVote) {
+    title = 'Voted';
+    note = `${itemName(screen.vote, screen.myVote)} · tap another to switch`;
+  } else {
+    title = 'Vote';
+    note = "Pick your knight's item";
+  }
 
   const countKey = screen.kind === 'open' ? screen.key : screen.kind === 'locked' ? screen.key : undefined;
   const counts = countKey ? tallied(countKey) : null;
@@ -276,17 +294,18 @@ export default function Controller({ code, team, nickname }: Props) {
           <h1 className="controller-team">{teamNames[team]} team</h1>
           <span className="controller-name">{nickname}</span>
         </header>
-        <div className={`controller-word ${otherTone ? `tone-${otherTone}` : ''}`}>
+        <div className={`controller-word ${otherTone ? `tone-${otherTone}` : ''}`} role="status">
           {connected ? (
-            <p className={`controller-status ${status.length <= 10 ? 'is-big' : ''}`} role="status">{status}</p>
+            <p className={`controller-status ${titleSize(title)}`}>{title}</p>
           ) : (
             // While the connection is down the swatches are locked, so the word says so instead of the last state.
-            <p className="controller-status is-offline" role="status">Reconnecting…</p>
+            <p className="controller-status is-offline">Reconnecting…</p>
           )}
           {/* The clock: a brush stroke under the word that drains as the window or the vote runs out. */}
           <div className="controller-clock" aria-hidden="true">
             <i style={{ '--left': `${Math.min(100, barWidth)}%` } as CSSProperties} />
           </div>
+          {connected && note && <p className="controller-note">{note}</p>}
           {connected && countdown !== undefined && (
             <p className="controller-countdown" aria-hidden="true">{countdown}</p>
           )}
