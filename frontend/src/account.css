@@ -1,42 +1,13 @@
-/* The account pages (log in, register, verify email, and the dashboard) on Alex's canvas, lettered like the game.
+/* The account pages (log in, register, verify email, and the dashboard): plain forms on Alex's canvas,
+   so it's clear what to look at. The only paint on a page is its main button.
    Their markup keeps Bootstrap's classes, so this restyles those classes inside .account-page only.
-   The palette, lettering, and brush shapes come from game/theme.css. */
+   The palette and lettering come from game/theme.css. */
 .account-page {
   min-height: 100vh;
   font-size: 20px;
   line-height: 1.35;
 }
 .account-page ::selection { background: var(--ink); color: var(--cream); }
-
-/* The game's name lettered in cream on a swatch of the red team's paint, with Alex's knight standing on it. */
-.account-brand {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin-bottom: 22px;
-  padding: 18px 26px 14px;
-  color: var(--cream);
-}
-.account-brand::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--grain) center / cover, var(--red);
-  -webkit-mask: var(--swatch-mask-2) center / 100% 100% no-repeat;
-  mask: var(--swatch-mask-2) center / 100% 100% no-repeat;
-}
-.account-brand-name {
-  margin: 0;
-  font-family: var(--letters);
-  font-size: clamp(42px, 11vw, 56px);
-  line-height: 1;
-  white-space: nowrap;
-}
-.account-brand canvas { width: clamp(84px, 24vw, 124px) !important; margin: -18px 0 -10px; }
 
 /* Panels sit straight on the canvas, with no card around them. */
 .account-page .card {
@@ -46,40 +17,52 @@
   color: inherit;
 }
 .account-page .card-body { padding: 4px 0 !important; }
+
+/* On a phone the column keeps 20px from the screen's edges, like the phone's join steps. */
+@media (max-width: 575.98px) {
+  .account-page .container { padding-inline: 20px; }
+}
+
+/* Each page's title and its short lines are centered, and so are errors, under the main button.
+   Labels and fields stay at left. */
 .account-page h1,
-.account-page h2,
-.account-page .h3,
-.account-page .h4,
-.account-page .card-title {
-  margin-bottom: 10px;
+.account-page h2 {
+  margin-bottom: 8px;
+  text-align: center;
+  text-wrap: balance;
   font-family: var(--letters);
-  font-size: clamp(36px, 9.5vw, 46px);
+  font-size: 40px;
   font-weight: 400;
   line-height: 1;
 }
+/* A section under the page's title, such as Host a game on the dashboard. */
+.account-page h2 { margin-top: 24px; font-size: 30px; }
+.account-page .card-body > p { text-align: center; text-wrap: balance; }
 .account-page .text-body-secondary { color: var(--muted) !important; }
+/* Emphasis in a short line switches to the lettering hand, as in the address a link was sent to. */
+.account-page .card-body > p strong { font-family: var(--letters); font-size: 1.15em; font-weight: 400; }
 
-/* Fields: an inked box, lettered as you type. */
-.account-page .form-label { margin-bottom: 4px; font-size: 21px; }
+/* Fields: a white box with a thin warm line, and typing in the plain hand. */
+.account-page .form-label { margin-bottom: 6px; font-size: 19px; line-height: 1.2; }
 .account-page .form-control {
-  height: 62px;
-  padding: 6px 6px 0;
-  border: 12px solid transparent;
-  border-image: var(--frame) 24 / 24px / 0 stretch;
-  border-radius: 0;
-  background: #fff padding-box;
+  height: 52px;
+  padding: 0 14px;
+  border: 2px solid var(--line);
+  border-radius: 5px 7px 4px 6px;
+  background: #fff;
   color: var(--ink);
-  font-family: var(--letters);
-  font-size: 30px;
+  font-family: var(--text);
+  font-size: 22px;
   box-shadow: none;
 }
 .account-page .form-control:focus {
-  border-color: transparent;
-  background: #fff padding-box;
+  border-color: var(--ink);
+  background: #fff;
   box-shadow: none;
   outline: 3px solid var(--red);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
+.account-page .form-control:disabled { background: var(--canvas); color: var(--muted); }
 .account-page .form-check {
   display: flex;
   align-items: center;
@@ -88,62 +71,52 @@
 }
 .account-page .form-check-input {
   float: none;
-  width: 28px;
-  height: 28px;
+  flex: none;
+  width: 22px;
+  height: 22px;
   margin: 0;
-  border: 3px solid var(--ink);
+  border: 2px solid var(--line);
   border-radius: 3px 5px 2px 4px;
   background-color: #fff;
 }
 .account-page .form-check-input:checked { background-color: var(--ink); border-color: var(--ink); }
-.account-page .form-check-input:focus { box-shadow: none; outline: 3px solid var(--red); outline-offset: 2px; }
+.account-page .form-check-input:focus { border-color: var(--ink); box-shadow: none; outline: 3px solid var(--red); outline-offset: 2px; }
+.account-page .form-check-label { font-size: 19px; }
 
-/* The main button is a swatch of ink lettered in cream, and the second is an inked outline. */
+/* The main button is a flat block of the red team's paint lettered in cream, and the second is an ink outline. */
 .account-page .btn-dark,
 .account-page .btn-outline-dark {
-  position: relative;
-  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 66px;
-  padding: 8px 24px 2px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  padding: 6px 24px 2px;
+  border-radius: 5px 7px 4px 6px;
   font-family: var(--letters);
-  font-size: 34px;
   line-height: 1;
   box-shadow: none;
 }
-.account-page .btn-dark,
+.account-page .btn-dark {
+  min-height: 56px;
+  border: 0;
+  background: var(--red);
+  color: var(--cream);
+  font-size: 30px;
+}
 .account-page .btn-dark:hover,
-.account-page .btn-dark:active,
-.account-page .btn-dark:disabled { background: transparent; color: var(--cream); }
-.account-page .btn-dark::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--grain) center / cover, var(--ink);
-  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
-  mask: var(--swatch-mask) center / 100% 100% no-repeat;
-}
-.account-page .btn-dark:hover::before { filter: brightness(1.6); }
-.account-page .btn-dark:active { transform: translateY(3px); }
-.account-page .btn-dark:disabled { opacity: 1; color: rgb(255 250 242 / 0.8); }
-.account-page .btn-dark:disabled::before { filter: grayscale(1) brightness(2.2) contrast(0.45); }
-.account-page .btn-outline-dark,
-.account-page .btn-outline-dark:hover,
-.account-page .btn-outline-dark:active {
-  border: 12px solid transparent;
-  border-image: var(--frame) 24 / 24px / 0 stretch;
+.account-page .btn-dark:active { background: color-mix(in srgb, var(--red) 86%, var(--ink)); color: var(--cream); }
+.account-page .btn-dark:disabled { opacity: 1; background: color-mix(in srgb, var(--red) 55%, var(--canvas)); color: var(--cream); }
+.account-page .btn-outline-dark {
+  min-height: 50px;
+  border: 2px solid var(--ink);
+  background: transparent;
   color: var(--ink);
+  font-size: 26px;
 }
 .account-page .btn-outline-dark:hover,
-.account-page .btn-outline-dark:active { background: #fff padding-box; }
-.account-page .btn-sm { min-height: 44px; padding: 6px 16px 2px; font-size: 26px; }
-.account-page .btn:focus-visible { box-shadow: none; outline: 3px solid var(--red); outline-offset: 4px; }
+.account-page .btn-outline-dark:active { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, var(--canvas)); color: var(--ink); }
+.account-page .btn-dark:active,
+.account-page .btn-outline-dark:active { transform: translateY(2px); }
+.account-page .btn:focus-visible { box-shadow: none; outline: 3px solid var(--red); outline-offset: 3px; }
 
 /* Links, and buttons that read as links, underlined in ink. */
 .account-page a:not(.btn),
@@ -155,41 +128,34 @@
   font-family: var(--text);
   font-size: inherit;
   text-decoration: underline;
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1.5px;
   text-underline-offset: 4px;
   vertical-align: baseline;
 }
 .account-page .btn-link:disabled { color: var(--muted); }
+.account-page a:not(.btn):focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
 
-/* An error is a line in the potion's red, not a box. */
+/* An error is a line in the potion's red under the main button, not a box, so it never pushes the button away. */
 .account-page .alert {
+  margin: 12px 0 0;
   padding: 0;
   border: 0;
   background: none;
   color: var(--error);
+  text-align: center;
+  text-wrap: balance;
   font-size: 20px;
 }
-.account-page hr { border: 0; border-top: 3px solid var(--ink); opacity: 0.2; }
+.account-page hr { border: 0; border-top: 1px solid var(--ink); opacity: 0.16; }
 
-/* On a short screen, such as a 720 pixel projector, the banner shrinks so the log in form fits without scrolling. */
-@media (max-height: 820px) {
-  .account-brand { margin-bottom: 12px; padding: 10px 22px 8px; }
-  .account-brand canvas { width: 84px !important; margin: -10px 0 -6px; }
-  .account-brand-name { font-size: 46px; }
-  .account-page .form-control { height: 56px; }
-  .account-page .mb-3 { margin-bottom: 10px !important; }
-  .account-page .py-4 { padding-top: 10px !important; padding-bottom: 10px !important; }
-  .account-page h1,
-  .account-page h2,
-  .account-page .card-title { margin-bottom: 6px; }
-  .account-page .my-3 { margin-top: 8px !important; margin-bottom: 8px !important; }
-}
-
-/* From tablet width up, the banner reaches past the form's column, so the whole name fits beside the knight. */
-@media (min-width: 768px) {
-  .account-brand { margin-left: -48px; margin-right: -48px; }
-}
-
-/* Bootstrap's own error red and ring spinner, in the game's ink and potion red. */
+/* Bootstrap's own error red, in the game's potion red. */
 .account-page .text-danger { color: var(--error) !important; }
-.account-page .spinner-border { color: var(--ink); }
+
+/* While an emailed link is checked, the title's dots appear one at a time: ".", "..", "...", and again.
+   Hidden dots keep their space, so the centered title never shifts. */
+@media (prefers-reduced-motion: no-preference) {
+  .account-page .loading-dots span:nth-child(2) { animation: loading-dot-2 1.5s step-end infinite; }
+  .account-page .loading-dots span:nth-child(3) { animation: loading-dot-3 1.5s step-end infinite; }
+}
+@keyframes loading-dot-2 { 0% { opacity: 0; } 33.33% { opacity: 1; } }
+@keyframes loading-dot-3 { 0% { opacity: 0; } 66.67% { opacity: 1; } }

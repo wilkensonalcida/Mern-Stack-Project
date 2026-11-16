@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { socket } from '../socket/socket'
 import PhoneMessage from '../components/PhoneMessage'
+import { sentence } from '../text'
+// The logo is off until a new one is drawn. When it lands, put this import and both <Logo /> lines back.
+// import Logo from '../components/Logo'
 import '../game/Controller.css'
 import type { LobbyResponse } from '../socket/lobby'
 
@@ -15,7 +18,7 @@ const friendlyErrors: Record<string, string> = {
   'Lobby not found': 'No game has that code. Check the code on the big screen.',
   'Game already started': 'That game already started. Join the next one.',
 }
-const friendly = (message: string) => friendlyErrors[message] ?? message
+const friendly = (message: string) => friendlyErrors[message] ?? sentence(message)
 
 // Sends a request once the socket is connected, connecting it first when it isn't.
 function whenConnected(send: () => void, fail: () => void) {
@@ -126,7 +129,7 @@ export default function JoinPage() {
             const message = response?.error || 'Unable to join the game.'
             // A lobby that closed or started since the check sends the phone back for another code.
             if (codeErrors.includes(message)) refuse(linkedCode, message)
-            else setError(message)
+            else setError(friendly(message))
             return
           }
           navigate(`/lobby/${response.lobby.code}`)
@@ -147,11 +150,9 @@ export default function JoinPage() {
     return (
       <div className="controller-page team-none is-form">
         <main className="controller">
-          <header className="controller-header">
-            <span className="controller-team">Fight Me Bro</span>
-            <span className="controller-name is-code" aria-label={`Game code ${linkedCode}`}>{linkedCode}</span>
-          </header>
+          {/* <Logo /> */}
           <h1 className="phone-heading" id="nickname-heading">Pick a nickname</h1>
+          <p className="phone-note">Game code <span className="phone-code">{linkedCode}</span></p>
           <form className="phone-form" onSubmit={joinLobby} aria-labelledby="nickname-heading">
             <input
               id="nickname"
@@ -182,9 +183,7 @@ export default function JoinPage() {
   return (
     <div className="controller-page team-none is-form">
       <main className="controller">
-        <header className="controller-header">
-          <span className="controller-team">Fight Me Bro</span>
-        </header>
+        {/* <Logo /> */}
         <h1 className="phone-heading" id="join-heading">Join a game</h1>
         <form className="phone-form" onSubmit={submitCode} aria-labelledby="join-heading">
           <label htmlFor="session-code" className="phone-label">Game code</label>

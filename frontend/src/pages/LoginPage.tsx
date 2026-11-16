@@ -43,9 +43,8 @@ export default function LoginPage({ onLogin }: { onLogin: (result: LoginResult, 
     <PageLayout>
       <section className="card" aria-labelledby="host-heading">
         <div className="card-body p-4">
-          <h2 className="h4 card-title" id="host-heading">Host a game</h2>
+          <h1 className="h4 card-title" id="host-heading">Host a game</h1>
           <p className="text-body-secondary">You need an account to host.</p>
-          {error && <div className="alert alert-secondary" role="alert"><strong>Login failed.</strong> {error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
               <label className="form-label" htmlFor="username">Username</label>
@@ -74,6 +73,7 @@ export default function LoginPage({ onLogin }: { onLogin: (result: LoginResult, 
               <label className="form-check-label" htmlFor="remember">Remember me</label>
             </div>
             <button className="btn btn-dark w-100" type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
+            {error && <div className="alert alert-secondary" role="alert"><strong>Login failed.</strong> {error}</div>}
           </form>
           <p className="mt-3 mb-0 text-center">Need an account? <Link to="/register">Register</Link></p>
         </div>

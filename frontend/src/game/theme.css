@@ -8,6 +8,8 @@
   --ink: #1b1714;
   --cream: #fffaf2;
   --muted: #5b524b;
+  /* The thin warm line around a plain field or checkbox, 3.7:1 on the canvas. */
+  --line: #8a7f77;
   /* Team paints, from Alex's drawings: the red of her potion and a slate blue. */
   --red: #b24f37;
   --blue: #4b6584;

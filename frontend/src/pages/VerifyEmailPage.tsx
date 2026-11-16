@@ -39,9 +39,9 @@ export default function VerifyEmailPage() {
       <section className="card" aria-labelledby="verify-heading">
         <div className="card-body p-4" role="status">
           {linkState === 'verifying' && (
-            <h1 className="h4 card-title mb-0 d-flex align-items-center gap-2" id="verify-heading">
-              <span className="spinner-border spinner-border-sm" aria-hidden="true" />
-              Verifying your email…
+            <h1 className="h4 card-title mb-0" id="verify-heading">
+              Verifying your email
+              <span className="loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
             </h1>
           )}
           {linkState === 'verified' && <>
@@ -81,8 +81,8 @@ export default function VerifyEmailPage() {
               <label className="form-label" htmlFor="verification-email">Email</label>
               <input className="form-control" id="verification-email" name="email" type="email" autoComplete="email" required />
             </div>
-            {resendError && <div className="alert alert-secondary" role="alert">{resendError}</div>}
             <button className="btn btn-dark w-100" type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send a new link'}</button>
+            {resendError && <div className="alert alert-secondary" role="alert">{resendError}</div>}
           </form>
           <p className="mt-3 mb-0 text-center"><Link to="/">Back to log in</Link></p>
         </div>
