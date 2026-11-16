@@ -132,7 +132,7 @@ export default function JoinPage() {
             else setError(friendly(message))
             return
           }
-          navigate(`/lobby/${response.lobby.code}`)
+          navigate(`/lobby/${response.lobby.code}`, { state: { rejoinKey: response.rejoinKey } })
         },
       ),
       () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import PhoneMessage from "../components/PhoneMessage";
 import PlayerLobby from "../components/PlayerLobby";
 import { useWakeLock } from "../game/useWakeLock";
@@ -15,6 +15,9 @@ import type {
 export default function LobbyPage() {
     const { code } = useParams<{ code: string }>();
     const navigate = useNavigate();
+    // The key the join page was given, which takes this phone's seat back if it drops.
+    const location = useLocation();
+    const rejoinKey = useRef((location.state as { rejoinKey?: string } | null)?.rejoinKey);
 
     const [lobby, setLobby] = useState<Lobby | null>(null);
     const [error, setError] = useState("");
@@ -42,14 +45,15 @@ export default function LobbyPage() {
         if (mine) me.current = { name: mine.name, team: mine.team };
     }, [lobby, myId]);
 
-    // The server lets a player go when its connection drops, so a phone that reconnects
-    // joins again under its nickname and takes its team back.
+    // A phone that reconnects comes back as a new connection, so it joins again with its rejoin key,
+    // which takes its old seat back. If the server already let the old one go, the phone joins
+    // under its nickname and picks its team again.
     function rejoin() {
         const saved = me.current;
         if (!code || !saved) return;
         setRejoining(true);
         setDropped(null);
-        socket.timeout(5000).emit("game:join", { code, name: saved.name }, (err: Error | null, response: LobbyResponse) => {
+        socket.timeout(5000).emit("game:join", { code, name: saved.name, rejoinKey: rejoinKey.current }, (err: Error | null, response: LobbyResponse) => {
             if (!mounted.current) return;
             setRejoining(false);
             if (err || !response?.success || !response.lobby) {
@@ -58,9 +62,11 @@ export default function LobbyPage() {
                 else setDropped("failed");
                 return;
             }
+            rejoinKey.current = response.rejoinKey ?? rejoinKey.current;
             setMyId(socket.id);
             setLobby(response.lobby);
-            if (saved.team) socket.emit("game:team", saved.team);
+            const seat = response.lobby.players.find(p => p.id === socket.id);
+            if (saved.team && !seat?.team) socket.emit("game:team", saved.team);
         });
     }
 

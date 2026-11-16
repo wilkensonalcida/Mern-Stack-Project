@@ -17,6 +17,8 @@ export interface LobbyResponse {
   success: boolean;
   lobby?: Lobby;
   error?: string;
+  // game:join gives each phone a key of its own, which takes its seat back if it drops and rejoins.
+  rejoinKey?: string;
 }
 
 export interface ActionResponse {
