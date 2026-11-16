@@ -72,16 +72,20 @@ export default function HostPage() {
     }
 
     let knockout = 0
+    let finishedGame = false
     function onFinished(finished: GameResult) {
       if (finished.code === code) {
+        finishedGame = true
         setResult(finished)
         window.clearTimeout(knockout)
         knockout = window.setTimeout(() => setShowResults(true), KNOCKOUT_MS)
       }
     }
 
+    // The lobby went: the host ended it, or every phone left. Once the game has a result,
+    // the results stay up, since the last phones leave while the room is still reading them.
     function onCancelled() {
-      navigate('/')
+      if (!finishedGame) navigate('/')
     }
 
     socket.on("game:updated", onUpdate)

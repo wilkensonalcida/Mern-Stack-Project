@@ -117,9 +117,11 @@ function registerLobbySockets(io) {
     // match while other players are still reading results.
     lobby.players = lobby.players.filter((player) => player.id !== socket.id);
     // A waiting lobby still has its host, whose code and QR code must keep working,
-    // so it stays open with no players. A game the host has left goes with its last player.
+    // so it stays open with no players. A game goes with its last player, and a host
+    // still on its page is told, so the big screen doesn't freeze on a game nobody is in.
     if (lobby.players.length === 0 && lobby.status !== "waiting") {
-      destroyLobby(code, { notify: false });
+      const hostWatching = io.sockets.sockets.get(lobby.hostId)?.data.lobbyCode === code;
+      destroyLobby(code, { notify: hostWatching });
       return;
     }
 
