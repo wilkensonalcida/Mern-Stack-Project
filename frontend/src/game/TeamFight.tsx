@@ -4,7 +4,7 @@ import type { TeamId } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
 import Knight, { type KnightAnimation } from './Knight';
 import { describeTurn } from './pvpText';
-import { EndButton, HostFrame, HostMessage, TapCounts, bonusText, formatAmount, formatHp } from './HostFrame';
+import { Clock, EndButton, HostFrame, HostMessage, TapCounts, bonusText, formatAmount, formatHp, useWindowLengths } from './HostFrame';
 
 const teamNames: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' };
 const otherTeam = (team: TeamId): TeamId => (team === 'red' ? 'blue' : 'red');
@@ -21,6 +21,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
   const [pvp, setPvp] = useState<{ state: PvpState; at: number } | null>(null);
   const [error, setError] = useState('');
   const [now, setNow] = useState(Date.now());
+  const windowLength = useWindowLengths();
 
   useEffect(() => {
     let mounted = true;
@@ -57,6 +58,8 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
   const { state } = pvp;
   // The clock ticks every 100 ms, so it can trail a state that just arrived; a negative wait would add a second.
   const seconds = state.endsAt === null ? null : Math.max(0, (state.remainingMs - Math.max(0, now - pvp.at)) / 1000);
+  // How much of the coin flip, the turn, or the pause is left, for the clock under the heading.
+  const clock = seconds === null ? null : (seconds * 1000) / windowLength(`${state.turnNumber}:${state.phase}`, state.remainingMs);
   const heading = state.winner ? `${teamNames[state.winner]} wins!`
     : state.phase === 'flip' ? 'Coin flip'
     : state.phase === 'pause' ? `${teamNames[otherTeam(state.turn)]} is up next`
@@ -79,10 +82,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
     const bonus = bonusText(knight.buffs);
     return (
       <section className={`pvp-team team-${team}`} aria-labelledby={`${team}-score`}>
-        <div className="stage-band-row">
-          <h2 className="pvp-team-name" id={`${team}-score`}>{teamNames[team]}</h2>
-          <span className="stage-players">{state.players[team].join(', ')}</span>
-        </div>
+        <h2 className="pvp-team-name" id={`${team}-score`}>{teamNames[team]}</h2>
         <div className="pvp-hp" role="progressbar" aria-label={`${teamNames[team]}'s knight's health`}
           aria-valuenow={knight.hp} aria-valuemin={0} aria-valuemax={knight.maxHp}>
           <div style={{ width: `${(100 * knight.hp) / knight.maxHp}%` }} />
@@ -105,14 +105,16 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
     : null;
 
   return (
-    <HostFrame action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
+    <HostFrame dark action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
       <main className="stage-pvp">
         <div className="pvp-board">
           {teamScore('red')}
           <div className={`pvp-center team-${headingTeam}`}>
             <h1 className="pvp-heading" id="pvp-heading">{heading}</h1>
-            {seconds !== null && <p className="stage-timer" role="timer">{seconds.toFixed(1)} s</p>}
-            <p className="pvp-turn">Turn {state.turnNumber}</p>
+            <Clock fraction={clock} />
+            {state.phase === 'turn'
+              ? <TapCounts label="Taps this turn" taps={state.taps} tone={state.turn} />
+              : <p className="pvp-turn">Turn {state.turnNumber}</p>}
           </div>
           {teamScore('blue')}
         </div>
@@ -138,9 +140,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
         {/* The coin flip's big line says who goes first, so the strip stays away until the first turn. */}
         {state.phase !== 'flip' && (
           <footer className="stage-foot" role="status">
-            {state.phase === 'turn'
-              ? <TapCounts label="Taps this turn" taps={state.taps} tone={state.turn} />
-              : last && <p>{describeTurn(last)}</p>}
+            {state.phase !== 'turn' && last && <p>{describeTurn(last)}</p>}
           </footer>
         )}
       </main>

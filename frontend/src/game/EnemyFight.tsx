@@ -5,7 +5,7 @@ import Skeleton from './Skeleton';
 import type { EnemyAnimation } from './AnimateEnemy';
 import type { HostBossState, HostTeamView, RoundResult, TeamId, TeamVote } from './enemyTypes';
 import { itemIcons } from './itemArt';
-import { EndButton, HostFrame, TapCounts, bonusText, formatAmount, formatHp } from './HostFrame';
+import { Clock, EndButton, HostFrame, TapCounts, bonusText, formatAmount, formatHp, useWindowLengths } from './HostFrame';
 
 // After each round, the knight swings if its team attacked and the enemy flinches, or the enemy attacks.
 function useRoundAnimation(stage: number | undefined, lastRound: RoundResult | null | undefined) {
@@ -60,22 +60,6 @@ function Fighter({ children, label, hp, maxHp, boss = false, knockedOut = false,
   );
 }
 
-function columnStatus(view: HostTeamView, other: TeamId): string {
-  switch (view.phase) {
-    case 'combat': return view.endsAt !== null ? `Round ${view.round}` : 'Get ready';
-    case 'waiting': return `Waiting for ${teamNames[other].toLowerCase()}`;
-    case 'selection': {
-      const vote = view.vote;
-      if (!vote) return 'Item vote';
-      if (vote.closed) return `Picked ${vote.offers.find(item => item.id === vote.pick)?.name ?? 'an item'}`;
-      return `Voting: ${vote.voters}/${vote.players}`;
-    }
-    case 'ready': return 'Ready for PvP';
-    case 'won': return 'Wins!';
-    case 'failed': return 'Knight down';
-  }
-}
-
 // A team's item vote on the stage: the three offers stand on the floor in their moves' colors,
 // each with its votes on the boards, and the pick rings out when the vote closes.
 function VoteOffers({ vote }: { vote: TeamVote }) {
@@ -101,24 +85,32 @@ function VoteOffers({ vote }: { vote: TeamVote }) {
   );
 }
 
-// The big line across the top of the arena, with what's next under it. The room watches this screen,
-// so the seconds before a tap window count down, and the window itself says "Tap!".
+// The big word across the top of each half, which the room reads, and the short line under its clock.
+// The seconds before a tap window count down, and the window itself says "Tap!".
 function stageHeadline(view: HostTeamView, other: TeamId, countdown: number | undefined): { line: string; next: string | null } {
-  if (view.phase === 'waiting') {
-    return { line: `${view.enemy?.name ?? 'Boss'} down!`, next: `Waiting for ${teamNames[other].toLowerCase()}` };
+  const enemy = view.enemy?.name ?? 'Boss';
+  switch (view.phase) {
+    case 'combat':
+      if (view.endsAt !== null) return { line: 'Tap!', next: null };
+      return { line: countdown !== undefined ? String(countdown) : 'Get ready', next: `Round ${view.round + 1}` };
+    case 'waiting': return { line: `${enemy} down!`, next: `Waiting for ${teamNames[other].toLowerCase()}` };
+    case 'selection': {
+      const vote = view.vote;
+      if (!vote) return { line: 'Vote', next: null };
+      if (vote.closed) return { line: vote.offers.find(item => item.id === vote.pick)?.name ?? 'Picked', next: "The team's pick" };
+      return { line: 'Vote', next: `${vote.voters} of ${vote.players} voted` };
+    }
+    case 'ready': return { line: 'Bosses down!', next: 'PvP next' };
+    case 'won': return { line: 'Won!', next: null };
+    case 'failed': return { line: 'K.O.!', next: 'Knight down' };
   }
-  if (view.phase === 'failed') return { line: 'K.O.!', next: 'Knight down' };
-  if (view.phase === 'combat') {
-    if (view.endsAt !== null) return { line: 'Tap!', next: `Round ${view.round}` };
-    return { line: countdown !== undefined ? String(countdown) : 'Get ready', next: `Round ${view.round + 1}` };
-  }
-  return { line: columnStatus(view, other), next: null };
 }
 
 type StageProps = {
   view: HostTeamView;
   other: TeamId;
-  secondsLeft: number | null;
+  // How much of a tap window or a vote is left, from 1 to 0, or null when nothing is timed.
+  clock: number | null;
   countdown: number | undefined;
   mirrored: boolean;
   // While the room's shared count shows over the seam, this half's own big line steps aside.
@@ -127,14 +119,14 @@ type StageProps = {
 
 // One team's boss fight on the host's stage. Blue's half is red's mirrored,
 // so each knight stands on its own team's side and the bosses meet in the middle.
-function BossStage({ view, other, secondsLeft, countdown, mirrored, sharedCount }: StageProps) {
+function BossStage({ view, other, clock, countdown, mirrored, sharedCount }: StageProps) {
   const animation = useRoundAnimation(view.stage, view.lastRound);
   const bossDown = view.phase === 'waiting' || view.phase === 'selection' || view.phase === 'ready';
   const voting = view.phase === 'selection' && Boolean(view.vote);
   const headline = stageHeadline(view, other, countdown);
   const { knight, enemy, lastRound } = view;
   const windowOpen = view.phase === 'combat' && view.endsAt !== null;
-  const showResult = lastRound !== null && lastRound !== undefined && !windowOpen && view.phase !== 'selection';
+  const showResult = lastRound !== null && lastRound !== undefined && !windowOpen && view.phase === 'combat';
   // The knight's bonuses from the items its team picked, on its nameplate. While the team votes,
   // its plate is too narrow, and the vote's own pick says what's coming.
   const bonus = voting ? null : bonusText(knight.buffs);
@@ -143,20 +135,22 @@ function BossStage({ view, other, secondsLeft, countdown, mirrored, sharedCount 
     <section className={`stage team-${view.team} ${mirrored ? 'is-mirrored' : ''} ${voting ? 'is-voting' : ''} ${bonus ? 'has-bonus' : ''}`}
       aria-labelledby={`${view.team}-heading`}>
       <header className="stage-band">
-        <h2 id={`${view.team}-heading`}>
-          {teamNames[view.team]} team
-          <span className="stage-players">{view.players.map(player => player.name).join(', ')}</span>
-        </h2>
-        {secondsLeft !== null && <p className="stage-timer" role="timer">{secondsLeft.toFixed(1)} s</p>}
+        <h2 id={`${view.team}-heading`}>{teamNames[view.team]} team</h2>
       </header>
 
       <div className="stage-arena">
-        {!sharedCount && (
-          <div className="stage-headline" role="status">
-            <p className="stage-moment" key={headline.line}>{headline.line}</p>
-            {headline.next && <p className="stage-next">{headline.next}</p>}
-          </div>
-        )}
+        <div className="stage-headline">
+          {/* While the room's shared count shows over the seam, this half's own big word steps aside. */}
+          <p className={`stage-moment ${sharedCount ? 'is-hidden' : ''}`} key={headline.line} role="status">{headline.line}</p>
+          <Clock fraction={clock} />
+          {windowOpen
+            ? <TapCounts label="Taps this round" taps={view.taps} />
+            : showResult
+              ? <p className="stage-next">
+                  Last round: {formatAmount(lastRound.attack)} damage, {formatAmount(lastRound.blocked)} blocked, {formatAmount(lastRound.healed)} healed
+                </p>
+              : headline.next && <p className="stage-next">{headline.next}</p>}
+        </div>
         <div className="stage-floor">
           <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp} knockedOut={view.phase === 'failed'} mirror={mirrored ? -1 : 1} note={bonus}>
             <Knight animation={bossDown ? 'victory' : animation.knight} mirrored={mirrored}
@@ -174,15 +168,6 @@ function BossStage({ view, other, secondsLeft, countdown, mirrored, sharedCount 
         </div>
       </div>
 
-      <footer className="stage-foot">
-        {/* The taps while a window is open, and between windows what the last round did.
-            The last round means little once the vote opens. */}
-        {showResult
-          ? <p className="stage-result">
-              Last round: {formatAmount(lastRound.attack)} damage, {formatAmount(lastRound.blocked)} blocked, {formatAmount(lastRound.healed)} healed
-            </p>
-          : view.phase === 'combat' && <TapCounts label="Taps this round" taps={view.taps} />}
-      </footer>
     </section>
   );
 }
@@ -201,12 +186,14 @@ export function HostBossFights({ state, receivedAt, onEndGame }: HostBossFightsP
     const interval = window.setInterval(() => setNow(Date.now()), 100);
     return () => window.clearInterval(interval);
   }, []);
-  // A round's time left, or an open item vote's.
-  const secondsLeft = (view: HostTeamView) => {
-    const remaining = view.endsAt !== null ? view.remainingMs
-      : view.phase === 'selection' && view.vote && !view.vote.closed ? view.vote.remainingMs
+  // How much of a round's tap window, or an open item vote, is left.
+  const windowLength = useWindowLengths();
+  const clock = (view: HostTeamView) => {
+    const timed = view.endsAt !== null ? { key: `${view.team}:${view.stage}:${view.round}`, remaining: view.remainingMs }
+      : view.phase === 'selection' && view.vote && !view.vote.closed ? { key: `${view.team}:v${view.stage}`, remaining: view.vote.remainingMs }
       : null;
-    return remaining === null ? null : Math.max(0, (remaining - (now - receivedAt)) / 1000);
+    if (!timed) return null;
+    return Math.max(0, timed.remaining - (now - receivedAt)) / windowLength(timed.key, timed.remaining);
   };
   // Whole seconds until a team's next tap window opens, while one is waiting to. It holds at 1
   // until the window's state arrives, so the count never jumps back to "Get ready". The clock ticks
@@ -232,12 +219,12 @@ export function HostBossFights({ state, receivedAt, onEndGame }: HostBossFightsP
     : null;
 
   return (
-    <HostFrame action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
+    <HostFrame dark action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
       <main className="stage-split">
         <h1 className="visually-hidden">Boss fights, session {state.code}</h1>
-        <BossStage view={red} other="blue" secondsLeft={secondsLeft(red)}
+        <BossStage view={red} other="blue" clock={clock(red)}
           countdown={countdown(red)} mirrored={false} sharedCount={shared !== null} />
-        <BossStage view={blue} other="red" secondsLeft={secondsLeft(blue)}
+        <BossStage view={blue} other="red" clock={clock(blue)}
           countdown={countdown(blue)} mirrored sharedCount={shared !== null} />
         {shared !== null && (
           <p className={`stage-count ${shared === 'Tap!' ? 'is-go' : ''}`} key={shared} role="status">{shared}</p>

@@ -248,7 +248,7 @@ export default function HostPage() {
             {players.map(player => <li className="host-chip" key={player.id}>{player.name}</li>)}
           </ul>
         ) : (
-          <p className="host-empty">No players yet.</p>
+          <p className="host-empty">Nobody yet</p>
         )}
       </section>
     )

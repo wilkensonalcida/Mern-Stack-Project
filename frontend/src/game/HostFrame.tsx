@@ -1,20 +1,22 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Buffs, Move, TeamId } from './enemyTypes';
 import './Host.css';
 
 const moves: Move[] = ['attack', 'block', 'heal'];
-const moveNames: Record<Move, string> = { attack: 'Attack', block: 'Block', heal: 'Heal' };
 
 type HostFrameProps = {
   // The host's one control on this screen, such as End game, at the bar's right.
   action?: ReactNode;
+  // The fight screens sit on a dark hand drawn ground, the results on the winner's paint, and the rest on white canvas.
+  dark?: boolean;
+  team?: TeamId;
   children: ReactNode;
 };
 
-// Every screen the host's laptop or projector shows: an ink bar with the game's name, then the screen.
-export function HostFrame({ action, children }: HostFrameProps) {
+// Every screen the host's laptop or projector shows: the game's name lettered across the top, then the screen.
+export function HostFrame({ action, dark = false, team, children }: HostFrameProps) {
   return (
-    <div className="host-page">
+    <div className={`host-page ${dark ? 'is-dark' : ''} ${team ? `is-painted team-${team}` : ''}`}>
       <header className="host-bar">
         <span className="host-brand">Fight Me Bro</span>
         {action}
@@ -82,24 +84,48 @@ export function HostMessage({ title, live, action }: { title: string; live?: 'st
 }
 
 type TapCountsProps = {
+  // What the count is, for screen readers, such as "Taps this round".
   label: string;
   taps: Record<Move, number>;
-  // The team tapping, whose color the total takes in PvP.
+  // The team tapping, in PvP.
   tone?: TeamId;
 };
 
-// A tap window's running total, with each move's count in its own color.
+// A tap window's running total, lettered under the clock, with each move's count on a dab of its paint.
 export function TapCounts({ label, taps, tone }: TapCountsProps) {
   const total = taps.attack + taps.block + taps.heal;
   return (
-    <div className={`host-taps ${tone ? `team-${tone}` : ''}`}>
+    <div className={`host-taps ${tone ? `team-${tone}` : ''}`} aria-label={label}>
       <p className="host-taps-total">
-        <span className="host-taps-label">{label}</span>
-        <span className="host-taps-number">{total}</span>
+        <span className="host-taps-number">{total}</span> {total === 1 ? 'tap' : 'taps'}
       </p>
       <ul className="host-move-chips" aria-label={`${label}, by move`}>
-        {moves.map(move => <li className={`move-${move}`} key={move}>{moveNames[move]} {taps[move]}</li>)}
+        {moves.map(move => (
+          <li className={`move-${move}`} key={move} aria-label={`${move} ${taps[move]}`}>{taps[move]}</li>
+        ))}
       </ul>
     </div>
   );
+}
+
+// The clock: a brush stroke that drains from the right as a tap window, a vote, or a turn runs out,
+// over a faint stroke that stays as the track. The same clock sits under the big word on the phones.
+export function Clock({ fraction }: { fraction: number | null }) {
+  const left = fraction === null ? 0 : Math.max(0, Math.min(1, fraction));
+  return (
+    <div className="host-clock" aria-hidden="true">
+      <i style={{ '--left': `${left * 100}%` } as CSSProperties} />
+    </div>
+  );
+}
+
+// The server sends only the time left, so each window's full length is the most this screen has seen of it,
+// keyed by the window, which makes the clock start full.
+export function useWindowLengths() {
+  const lengths = useRef<Record<string, number>>({});
+  return (key: string, remainingMs: number) => {
+    const known = lengths.current[key];
+    if (known === undefined || remainingMs > known) lengths.current[key] = remainingMs;
+    return lengths.current[key];
+  };
 }

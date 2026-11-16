@@ -21,7 +21,7 @@ export default function HostResults({ result, lobby, error, onNewGame }: Props) 
     : `${teamNames[result.loser]}'s knight fell to a boss.`;
 
   return (
-    <HostFrame>
+    <HostFrame team={result.winner}>
       <main className={`stage-results team-${result.winner}`}>
         <h1 id="results-heading">{teamNames[result.winner]} wins!</h1>
         <p className="stage-results-how">{how}</p>
