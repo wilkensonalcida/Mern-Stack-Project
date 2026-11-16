@@ -163,7 +163,7 @@ function registerLobbySockets(io) {
       console.info("[LOBBY CREATED]", { code, hostId: socket.id });
     });
 
-    // CHECK A CODE — public, so a phone asks for a nickname only once its code names a lobby that's still open.
+    // CHECK A CODE: public, so a phone asks for a nickname only once its code names a lobby that's still open.
     // It joins nothing, and its errors match game:join's.
     socket.on("game:check", (data, callback) => {
       if (typeof callback !== "function") return;
