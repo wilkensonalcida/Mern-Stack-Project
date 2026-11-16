@@ -150,13 +150,12 @@ export default function HostPage() {
   }
 
   // Puts a guest who's still picking onto the smaller team, so one idle phone can't hold up the start.
+  // The server picks the team, since this screen's lobby can be a click behind.
   function placePlayer(playerId: string) {
     if (!lobby) return
-    const red = lobby.players.filter(p => p.team === "red").length
-    const blue = lobby.players.filter(p => p.team === "blue").length
     socket.timeout(5000).emit(
       "game:assign",
-      { code: lobby.code, playerId, team: red <= blue ? "red" : "blue" },
+      { code: lobby.code, playerId },
       (err: Error | null, response: { success: boolean, error?: string }) => {
         if (err || !response?.success) setError(response?.error || "Unable to place that player.")
       }

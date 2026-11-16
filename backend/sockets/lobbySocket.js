@@ -271,8 +271,9 @@ function registerLobbySockets(io) {
       console.info("[TEAM]", { code, playerId: socket.id, team });
     });
 
-    // PLACE A PLAYER — the host puts a guest who's still picking onto a team,
-    // so one idle phone can't hold up the start.
+    // PLACE A PLAYER: the host puts a guest who's still picking onto the smaller team,
+    // so one idle phone can't hold up the start. The server picks the team from the lobby
+    // as it is now, so quick clicks spread guests out, and a guest who picked meanwhile keeps the pick.
     socket.on("game:assign", (data, callback) => {
       const lobby = lobbies.get(normalizeCode(data?.code));
       if (!lobby || lobby.hostId !== socket.id) {
@@ -281,18 +282,19 @@ function registerLobbySockets(io) {
       if (lobby.status !== "waiting") {
         return reply(callback, { success: false, error: "Game has already started." });
       }
-      if (data?.team !== "red" && data?.team !== "blue") {
-        return reply(callback, { success: false, error: "Invalid team." });
-      }
       const player = lobby.players.find((member) => member.id === data?.playerId);
       if (!player) {
         return reply(callback, { success: false, error: "Player not found in lobby." });
       }
+      if (player.team) {
+        return reply(callback, { success: true, team: player.team });
+      }
 
-      player.team = data.team;
+      const size = (team) => lobby.players.filter((member) => member.team === team).length;
+      player.team = size("red") <= size("blue") ? "red" : "blue";
       io.to(lobby.code).emit("game:updated", publicLobby(lobby));
-      reply(callback, { success: true });
-      console.info("[TEAM PLACED]", { code: lobby.code, playerId: player.id, team: data.team });
+      reply(callback, { success: true, team: player.team });
+      console.info("[TEAM PLACED]", { code: lobby.code, playerId: player.id, team: player.team });
     });
 
     // START GAME — unchanged frontend contract. Initialize PvE first;
