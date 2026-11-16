@@ -7,10 +7,10 @@
   flex-direction: column;
 }
 .host-page ::selection { background: var(--ink); color: var(--cream); }
-/* The fight screens' ground: a placeholder until the hand drawn piece replaces assets/art/fight.webp.
-   It covers the screen behind both halves, so keep what matters off its edges. */
+/* The fight screens' ground is Alex's dark forest, behind both halves. It covers the screen,
+   so keep what matters off its edges. */
 .host-page.is-dark {
-  background: #26201c url('../assets/art/fight.webp') center / cover no-repeat;
+  background: #1d1714 url('../../sprites/forest-background.png') center / cover no-repeat;
   color: var(--cream);
 }
 /* The results take the winner's paint, top to bottom. */

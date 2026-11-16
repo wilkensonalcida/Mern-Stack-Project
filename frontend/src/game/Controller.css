@@ -21,11 +21,10 @@
   background: var(--grain) center / 400px 400px, var(--team);
   color: var(--cream);
 }
-/* The tapping screen's ground is a dark hand drawn piece, the same for both teams: a placeholder until the
-   drawing replaces assets/art/phone.webp. It covers the screen, so keep what matters off its edges.
-   The team's paint moves to a band behind the team's name instead. */
+/* The tapping screen's ground is Alex's dark forest, the same for both teams, cropped to the phone's middle.
+   It covers the screen, so keep what matters off its edges. The team's paint moves to a band behind its name. */
 .controller-page.is-play {
-  background: #26201c url('../assets/art/phone.webp') center / cover no-repeat;
+  background: #1d1714 url('../../sprites/forest-background.png') center / cover no-repeat;
   color: var(--cream);
 }
 
