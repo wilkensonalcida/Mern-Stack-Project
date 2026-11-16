@@ -389,7 +389,7 @@
   user-select: text;
   -webkit-user-select: text;
 }
-.phone-input::placeholder { color: #857b73; font-family: var(--text); font-size: 22px; }
+.phone-input::placeholder { color: #6e655e; font-family: var(--text); font-size: 22px; }
 .phone-input:focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
 .phone-input:disabled { background: var(--canvas); color: var(--muted); }
 .phone-input.is-code {

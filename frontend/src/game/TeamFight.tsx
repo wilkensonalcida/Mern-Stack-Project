@@ -64,7 +64,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
     : state.phase === 'flip' ? 'Coin flip'
     : state.phase === 'pause' ? `${teamNames[otherTeam(state.turn)]} is up next`
     : `${teamNames[state.turn]}, tap!`;
-  // The heading takes the color of the team it's about: the winner, the flip's winner, or whoever taps next.
+  // The team the heading is about: the winner, the flip's winner, or whoever taps next.
   const headingTeam = state.winner ?? (state.phase === 'pause' ? otherTeam(state.turn) : state.turn);
   const last = state.lastTurn;
 

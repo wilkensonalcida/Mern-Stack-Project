@@ -189,3 +189,7 @@
 @media (min-width: 768px) {
   .account-brand { margin-left: -48px; margin-right: -48px; }
 }
+
+/* Bootstrap's own error red and ring spinner, in the game's ink and potion red. */
+.account-page .text-danger { color: var(--error) !important; }
+.account-page .spinner-border { color: var(--ink); }

@@ -544,7 +544,7 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   font-size: clamp(19px, 1.5vw, 22px);
   line-height: 1.2;
 }
-/* Health: a red fill on a cream track, outlined by hand. */
+/* Health: a brush stroke, cream where it's empty and potion red where it's full. */
 .stage-hp {
   height: 22px;
   background: var(--cream);
@@ -909,3 +909,9 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   .stage-pvp { --fighter-scale: 1.18; }
 }
 .stage.is-voting { --fighter-scale: 1; }
+/* The PvP clock sits beside blue's health bar, so it takes another stroke, and the results' two tally tags
+   take scraps of their own, apart from the knight's. */
+.pvp-center .host-clock > i,
+.pvp-center .host-clock::before { -webkit-mask-image: var(--stroke-mask-2); mask-image: var(--stroke-mask-2); }
+.stage-tally li:nth-child(1)::before { -webkit-mask-image: var(--scrap-mask-2); mask-image: var(--scrap-mask-2); }
+.stage-tally li:nth-child(2)::before { -webkit-mask-image: var(--scrap-mask-3); mask-image: var(--scrap-mask-3); }

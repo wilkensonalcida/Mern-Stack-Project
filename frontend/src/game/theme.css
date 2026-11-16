@@ -10,9 +10,7 @@
   --muted: #5b524b;
   /* Team paints, from Alex's drawings: the red of her potion and a slate blue. */
   --red: #b24f37;
-  --red-deep: #7f3627;
   --blue: #4b6584;
-  --blue-deep: #34475d;
   /* One paint per move, each from Alex's drawings: the heated blade's orange, the sword's steel, and the Goblin's green. */
   --attack: #bc6940;
   --block: #4b5761;
@@ -20,11 +18,7 @@
   /* Health bars take the red of Alex's potion. */
   --health: #a73f26;
   --error: #a73f26;
-  --track: #d9d3cb;
-  --locked: #b9b4ad;
-  --ground: var(--canvas);
   --team: var(--ink);
-  --team-deep: #000;
   --letters: 'Caveat Brush', 'Patrick Hand', cursive;
   --text: 'Patrick Hand', 'Caveat Brush', cursive;
   /* The brush shapes, rendered once as images so phones never filter them live: Alex's grain to lay
@@ -45,7 +39,6 @@
   --dab: url('../assets/art/dab.webp');
   --loop: url('../assets/art/loop.webp');
   --frame: url('../assets/art/frame.webp');
-  --card-shadow: 0 10px 24px -12px rgb(27 23 20 / 0.3);
   background: var(--canvas);
   color: var(--ink);
   font-family: var(--text);
@@ -55,9 +48,9 @@
 }
 
 /* Anything inside takes its team's paint, or ink before a team is picked. */
-.team-red { --team: var(--red); --team-deep: var(--red-deep); }
-.team-blue { --team: var(--blue); --team-deep: var(--blue-deep); }
-.team-none { --team: var(--ink); --team-deep: #000; }
+.team-red { --team: var(--red); }
+.team-blue { --team: var(--blue); }
+.team-none { --team: var(--ink); }
 
 /* One paint per move. --move is the same paint under the name the host's stage reads. */
 .move-attack { --paint: var(--attack); --move: var(--attack); }
