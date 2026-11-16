@@ -116,7 +116,9 @@ function registerLobbySockets(io) {
     // On the results screen, an explicit game:leave must not delete the
     // match while other players are still reading results.
     lobby.players = lobby.players.filter((player) => player.id !== socket.id);
-    if (lobby.players.length === 0) {
+    // A waiting lobby still has its host, whose code and QR code must keep working,
+    // so it stays open with no players. A game the host has left goes with its last player.
+    if (lobby.players.length === 0 && lobby.status !== "waiting") {
       destroyLobby(code, { notify: false });
       return;
     }
