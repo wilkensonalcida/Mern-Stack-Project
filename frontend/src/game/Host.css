@@ -214,12 +214,40 @@ button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 
 /* The stage. Each team's half runs edge to edge: a band in the team's color for the status and the time,
    an arena whose fighters stand on a floor line, and a strip for the taps. An ink seam splits the halves. */
 .stage-split {
+  position: relative;
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
   background: var(--ink);
 }
+/* The room's shared count before each boss fight: one giant number on a white disc over the seam,
+   level with the halves' big lines, then "Tap!" on ink. It sits above the fighters' heads. */
+.stage-count {
+  position: absolute;
+  top: calc(clamp(64px, 9.5vh, 90px) + clamp(12px, 3.5vh, 36px));
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: clamp(120px, 18vh, 200px);
+  height: clamp(120px, 18vh, 200px);
+  margin: 0 auto;
+  padding: 0 0.32em 0.06em;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 18px 40px -16px rgb(0 0 0 / 0.45);
+  color: var(--ink);
+  font-size: clamp(76px, 12vh, 132px);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.stage-count.is-go { background: var(--ink); color: #fff; }
 .stage {
   /* As big as two fighters can stand side by side in a half, with a 40 px gap between their readouts. */
   --sprite: clamp(170px, min(calc(25vw - 42px), 52vh), 360px);
@@ -593,7 +621,8 @@ button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 
 
 /* The stage's motion: the big moments pop in, a pick rings out, and the winner's spotlight rises. */
 @media (prefers-reduced-motion: no-preference) {
-  .stage-moment { animation: stage-pop 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .stage-moment,
+  .stage-count { animation: stage-pop 420ms cubic-bezier(0.16, 1, 0.3, 1); }
   .stage-offer.is-picked .stage-offer-tile { animation: stage-pick 360ms cubic-bezier(0.16, 1, 0.3, 1); }
   .stage-spotlight { animation: stage-rise 600ms cubic-bezier(0.16, 1, 0.3, 1); }
   .stage-results h1 { animation: stage-pop 520ms cubic-bezier(0.16, 1, 0.3, 1); }

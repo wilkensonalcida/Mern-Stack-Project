@@ -112,11 +112,19 @@ function stageHeadline(view: HostTeamView, other: TeamId, countdown: number | un
   return { line: columnStatus(view, other), next: null };
 }
 
-type StageProps = { view: HostTeamView; other: TeamId; secondsLeft: number | null; countdown: number | undefined; mirrored: boolean };
+type StageProps = {
+  view: HostTeamView;
+  other: TeamId;
+  secondsLeft: number | null;
+  countdown: number | undefined;
+  mirrored: boolean;
+  // While the room's shared count shows over the seam, this half's own big line steps aside.
+  sharedCount: boolean;
+};
 
 // One team's boss fight on the host's stage. Blue's half is red's mirrored,
 // so each knight stands on its own team's side and the bosses meet in the middle.
-function BossStage({ view, other, secondsLeft, countdown, mirrored }: StageProps) {
+function BossStage({ view, other, secondsLeft, countdown, mirrored, sharedCount }: StageProps) {
   const animation = useRoundAnimation(view.stage, view.lastRound);
   const bossDown = view.phase === 'waiting' || view.phase === 'selection' || view.phase === 'ready';
   const voting = view.phase === 'selection' && Boolean(view.vote);
@@ -137,10 +145,12 @@ function BossStage({ view, other, secondsLeft, countdown, mirrored }: StageProps
       </header>
 
       <div className="stage-arena">
-        <div className="stage-headline" role="status">
-          <p className="stage-moment" key={headline.line}>{headline.line}</p>
-          {headline.next && <p className="stage-next">{headline.next}</p>}
-        </div>
+        {!sharedCount && (
+          <div className="stage-headline" role="status">
+            <p className="stage-moment" key={headline.line}>{headline.line}</p>
+            {headline.next && <p className="stage-next">{headline.next}</p>}
+          </div>
+        )}
         <div className="stage-floor">
           <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp} knockedOut={view.phase === 'failed'} mirror={mirrored ? -1 : 1}>
             <Knight animation={bossDown ? 'victory' : animation.knight} mirrored={mirrored}
@@ -203,14 +213,32 @@ export function HostBossFights({ state, receivedAt, onEndGame }: HostBossFightsP
     return Math.max(1, Math.ceil((view.nextRoundInMs - Math.max(0, now - receivedAt)) / 1000));
   };
 
+  // Both teams start each boss fight together, so the room gets one shared count over the seam,
+  // "3, 2, 1", then a big "Tap!" for the first second of round 1. Later rounds count in each half.
+  const { red, blue } = state.teams;
+  const bothFighting = red.phase === 'combat' && blue.phase === 'combat' && red.stage === blue.stage;
+  const startingFight = bothFighting && red.round === 0 && blue.round === 0 && red.endsAt === null && blue.endsAt === null;
+  const firstWindow = bothFighting && red.round === 1 && blue.round === 1 && red.endsAt !== null && blue.endsAt !== null;
+  const [tapUntil, setTapUntil] = useState<{ stage: number; until: number } | null>(null);
+  useEffect(() => {
+    if (firstWindow) setTapUntil(current => (current?.stage === red.stage ? current : { stage: red.stage, until: Date.now() + 1000 }));
+  }, [firstWindow, red.stage]);
+  const startCount = startingFight ? countdown(red) : undefined;
+  const shared = startCount !== undefined ? String(startCount)
+    : firstWindow && tapUntil?.stage === red.stage && now < tapUntil.until ? 'Tap!'
+    : null;
+
   return (
     <HostFrame action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
       <main className="stage-split">
         <h1 className="visually-hidden">Boss fights, session {state.code}</h1>
-        <BossStage view={state.teams.red} other="blue" secondsLeft={secondsLeft(state.teams.red)}
-          countdown={countdown(state.teams.red)} mirrored={false} />
-        <BossStage view={state.teams.blue} other="red" secondsLeft={secondsLeft(state.teams.blue)}
-          countdown={countdown(state.teams.blue)} mirrored />
+        <BossStage view={red} other="blue" secondsLeft={secondsLeft(red)}
+          countdown={countdown(red)} mirrored={false} sharedCount={shared !== null} />
+        <BossStage view={blue} other="red" secondsLeft={secondsLeft(blue)}
+          countdown={countdown(blue)} mirrored sharedCount={shared !== null} />
+        {shared !== null && (
+          <p className={`stage-count ${shared === 'Tap!' ? 'is-go' : ''}`} key={shared} role="status">{shared}</p>
+        )}
       </main>
     </HostFrame>
   );
