@@ -12,22 +12,26 @@ const UPGRADE_ITEMS = Object.freeze([
 ]);
 const ITEMS_BY_ID = new Map(UPGRADE_ITEMS.map(item => [item.id, item]));
 
-function rollUpgradeOptions(count = 3) {
-  if (!Number.isInteger(count) || count < 1 || count > UPGRADE_ITEMS.length) {
-    throw new RangeError('Invalid upgrade option count');
+const STATS = ['attack', 'block', 'heal'];
+
+// Each vote offers a team one item for each move, in the controller's order, so no two of its offers do
+// the same thing. Each move has two items, and they go one to each team, so the teams never get the same item.
+function rollTeamOffers(pickIndex = randomInt) {
+  const offers = { red: [], blue: [] };
+  for (const stat of STATS) {
+    const items = UPGRADE_ITEMS.filter(item => item.stat === stat);
+    if (items.length !== 2) throw new Error(`Each move needs two items, and ${stat} has ${items.length}.`);
+    const toRed = pickIndex(2);
+    offers.red.push({ ...items[toRed] });
+    offers.blue.push({ ...items[1 - toRed] });
   }
-  const shuffled = [...UPGRADE_ITEMS];
-  for (let i = 0; i < count; i++) {
-    const j = randomInt(i, shuffled.length);
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, count).map(item => ({ ...item }));
+  return offers;
 }
 
-// After each boss, a team votes on one item for its knight. Each player votes
-// for one of three offers and can switch until the vote closes, which happens
+// After each boss, a team votes on one item for its knight from its three offers.
+// Each player votes for one and can switch until the vote closes, which happens
 // once every player on the team has voted, or when its time runs out.
-function openVote(stage, endsAt, offers = rollUpgradeOptions(3)) {
+function openVote(stage, endsAt, offers) {
   return { stage, offers, votes: new Map(), endsAt, closed: false, pick: null };
 }
 
@@ -73,7 +77,7 @@ function applyPick(knight, itemId) {
 
 module.exports = {
   UPGRADE_ITEMS,
-  rollUpgradeOptions,
+  rollTeamOffers,
   openVote,
   castVote,
   voteCounts,

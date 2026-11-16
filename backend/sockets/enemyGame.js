@@ -8,6 +8,7 @@ const otherTeam = team => team === 'red' ? 'blue' : 'red';
 const { BASE, createKnight, resolveEnemyRound, sumTaps } = require('./enemyRules');
 const copyTotals = totals => ({ red: { ...totals.red }, blue: { ...totals.blue } });
 const {
+  rollTeamOffers,
   openVote,
   castVote,
   voteCounts,
@@ -202,11 +203,13 @@ function createEnemyGameManager(io, lobbies, options = {}) {
   function maybeBeginSelection(lobby, game) {
     if (game.finished || game.pvpSent) return;
     if (!TEAMS.every(team => game.teams[team].phase === 'waiting')) return;
+    // Each team gets one item per move, and never the same item as the other team.
+    const offers = rollTeamOffers();
     for (const team of TEAMS) {
       const fight = game.teams[team];
       fight.phase = 'selection';
       fight.endsAt = null;
-      fight.vote = openVote(fight.stage, Date.now() + VOTE_MS);
+      fight.vote = openVote(fight.stage, Date.now() + VOTE_MS, offers[team]);
       const k = key(lobby.code, team);
       clearTimeout(timers.get(k));
       timers.set(k, setTimeout(() => closeVote(lobby.code, team), VOTE_MS));
