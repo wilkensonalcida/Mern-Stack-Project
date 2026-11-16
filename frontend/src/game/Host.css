@@ -929,6 +929,30 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   .stage-pvp { --fighter-scale: 1.18; }
 }
 .stage.is-voting { --fighter-scale: 1; }
+
+/* Each boss stands further up the path than its team's knight, a little smaller and leaning in toward it,
+   so the knight in front reads as fighting it. Its nameplate stays on the boards below. */
+.stage {
+  --boss-lift: calc(var(--sprite) * 0.22);
+  --boss-shift: calc(var(--sprite) * -0.12);
+  --boss-scale: 0.85;
+}
+.stage.is-mirrored { --boss-shift: calc(var(--sprite) * 0.12); }
+/* On a short screen, such as a 720 pixel projector, the boss climbs less, so the Skeleton's hood clears the taps. */
+@media (max-height: 799px) {
+  .stage { --boss-lift: calc(var(--sprite) * 0.16); }
+}
+.stage-fighter.is-boss canvas {
+  translate: var(--boss-shift) calc(-1 * var(--boss-lift));
+  scale: calc(var(--fighter-scale, 1) * var(--boss-scale));
+}
+.stage-fighter.is-boss::before {
+  bottom: calc(var(--floor) - 9px + var(--boss-lift));
+  translate: var(--boss-shift) 0;
+  scale: var(--boss-scale);
+}
+/* The knight stands in front of the boss. */
+.stage-fighter:not(.is-boss) { z-index: 1; }
 /* The PvP clock sits beside blue's health bar, so it takes another stroke, and the results' two tally tags
    take scraps of their own, apart from the knight's. */
 .pvp-center .host-clock > i,
