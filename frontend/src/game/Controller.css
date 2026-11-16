@@ -392,6 +392,8 @@
 .phone-button.is-outline:hover { color: var(--switch); }
 .phone-button.is-outline.to-red { --switch: var(--red); }
 .phone-button.is-outline.to-blue { --switch: var(--blue); }
+/* Locked while the phone reconnects: grey, and flat. */
+.phone-button.is-outline:disabled { --switch: var(--locked); box-shadow: inset 0 0 0 3px var(--switch); }
 
 /* The result fills the phone with its team's color: the knight in a white spotlight, one verdict, and the way onward. */
 .controller-page.is-result {

@@ -13,6 +13,8 @@ type PlayerLobbyProps = {
     players: { id: string; name: string }[]
   }[]
   onSelectTeam: (team: TeamId) => void
+  // While the phone's connection is down or it's rejoining, the status says so instead of waiting.
+  offline?: boolean
 }
 
 const moves: Move[] = ['attack', 'block', 'heal']
@@ -27,7 +29,7 @@ const teamLabels: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' 
 const isTeam = (id: string): id is TeamId => id === 'red' || id === 'blue'
 
 // A player's phone in the lobby. The host's screen shows who joined.
-export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }: PlayerLobbyProps) {
+export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam, offline = false }: PlayerLobbyProps) {
 
   // Team selection comes from the server's lobby state
   const teamId = teams.find((team) =>
@@ -50,7 +52,9 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }
             <h1 className="controller-team">{teamLabels[teamId]}</h1>
             <span className="controller-name">{player.name}</span>
           </header>
-          <p className="controller-status" role="status">Waiting for the host to start.</p>
+          {offline
+            ? <p className="controller-status is-offline" role="status">Reconnecting…</p>
+            : <p className="controller-status" role="status">Waiting for the host to start.</p>}
           <p className="phone-note">Your buttons, which unlock when the game starts:</p>
           <div className="controller-buttons">
             {moves.map((move) => (
@@ -65,7 +69,7 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }
           </div>
           {other && isTeam(other.id) && (
             <div className="phone-actions">
-              <button className={`phone-button is-outline to-${other.id}`} type="button" onClick={() => selectTeam(other.id)}>
+              <button className={`phone-button is-outline to-${other.id}`} type="button" disabled={offline} onClick={() => selectTeam(other.id)}>
                 Switch to {teamLabels[other.id]}
               </button>
             </div>

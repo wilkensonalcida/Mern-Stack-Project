@@ -3,6 +3,7 @@ import { socket } from '../socket/socket';
 import type { Ack, EnemyState, Move, TeamId, TeamVote, Upgrade } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
 import { itemIcons, moveIcons } from './itemArt';
+import { useWakeLock } from './useWakeLock';
 import './Controller.css';
 
 const moves: Move[] = ['attack', 'block', 'heal'];
@@ -114,27 +115,8 @@ export default function Controller({ code, team, nickname }: Props) {
     return () => window.clearInterval(interval);
   }, []);
 
-  // Keeps the phone's screen on during the game, where the browser allows it.
-  useEffect(() => {
-    let lock: WakeLockSentinel | null = null;
-    const request = async () => {
-      if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
-      try {
-        lock = await navigator.wakeLock.request('screen');
-      } catch {
-        // Low battery or a browser setting can refuse it, and the game works without it.
-      }
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') void request();
-    };
-    void request();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibility);
-      void lock?.release().catch(() => {});
-    };
-  }, []);
+  // Keeps the phone's screen on during the game.
+  useWakeLock();
 
   // On a computer, the 1, 2 and 3 keys press the three buttons.
   useEffect(() => {
