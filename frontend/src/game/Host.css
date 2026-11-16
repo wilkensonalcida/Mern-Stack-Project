@@ -680,21 +680,12 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   gap: 12px;
   padding: 6px 16px 0;
 }
+/* Each team's name and health stand bare on the dark ground, like the boss fights' health bars;
+   the paint goes on the middle card instead, in the colors of the team whose turn it is. */
 .pvp-team {
-  position: relative;
-  isolation: isolate;
   min-width: 0;
   padding: clamp(16px, 2.4vh, 22px) 32px clamp(16px, 2.6vh, 24px);
   color: var(--cream);
-}
-.pvp-team::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--grain) center / cover, var(--team);
-  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
-  mask: var(--swatch-mask) center / 100% 100% no-repeat;
 }
 .pvp-team-name {
   margin: 0;
@@ -703,14 +694,13 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   font-weight: 400;
   line-height: 1;
 }
-/* PvP health sits on its team's own paint, so it carries an ink edge all round: a cream track, and the red
-   fill inside it keeps the stroke's brush shape at any length. --hp is the share of HP left, set by the page. */
+/* PvP health: a cream track on the dark ground, and the red fill inside it keeps the stroke's brush shape
+   at any length. --hp is the share of HP left, set by the page. */
 @property --hp { syntax: '<number>'; inherits: true; initial-value: 1; }
 .pvp-hp {
   position: relative;
   height: 26px;
   margin-top: 12px;
-  filter: drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink)) drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink));
 }
 .pvp-hp::before {
   content: "";
@@ -757,15 +747,32 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
 }
 /* The knight's item bonuses under its HP in PvP. */
 .pvp-bonus { margin: 6px 0 0; font-size: clamp(20px, 1.6vw, 24px); }
+/* The middle card takes the paint of the team the heading is about: the team tapping, the team up next
+   between turns, the team going first at the coin flip, and the winner at the end. */
 .pvp-center {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: clamp(16px, 2.4vh, 22px) 24px clamp(16px, 2.6vh, 24px);
   text-align: center;
   color: var(--cream);
+}
+.pvp-center::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--team);
+  -webkit-mask: var(--swatch-mask-3) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask-3) center / 100% 100% no-repeat;
+}
+/* On the team's paint each move chip wears an ink edge, so Attack's orange still reads on red and Block's steel on blue. */
+.pvp-center .host-move-chips li {
+  filter: drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink)) drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink));
 }
 .pvp-heading {
   margin: 0;
@@ -902,7 +909,6 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
 /* Neighbours never share a brush edge: blue's band and panels take the second swatch, and each tag,
    chip, and offer in a row takes the next scrap or swatch. */
 .stage.team-blue .stage-band::before,
-.pvp-team.team-blue::before,
 .host-team.team-blue::before { -webkit-mask-image: var(--swatch-mask-2); mask-image: var(--swatch-mask-2); }
 .host-team .host-chip:nth-child(3n + 2)::before,
 .stage-offer:nth-child(3n + 2) .stage-offer-votes { -webkit-mask-image: var(--scrap-mask-2); mask-image: var(--scrap-mask-2); }
