@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import type { Move, TeamId } from './enemyTypes';
+import type { Buffs, Move, TeamId } from './enemyTypes';
 import './Host.css';
 
 const moves: Move[] = ['attack', 'block', 'heal'];
@@ -53,6 +53,15 @@ export function EndButton({ label, confirmLabel, onConfirm, disabled }: EndButto
 // so a knight or boss that's still standing never shows 0.
 export function formatHp(value: number): string {
   return String(Math.ceil(value));
+}
+
+// A knight's item bonuses in the vote's own words, such as "+25% heal", or null before any pick.
+export function bonusText(buffs: Buffs): string | null {
+  const parts = moves.flatMap(move => {
+    const percent = Math.round((buffs[move] - 1) * 100);
+    return percent > 0 ? [`+${percent}% ${move}`] : [];
+  });
+  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 // Damage, blocks, heals, and shields round to the nearest whole number.

@@ -259,6 +259,8 @@ button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 
 }
 /* While its team votes, the knight steps aside for the three offers. */
 .stage.is-voting { --sprite: clamp(130px, min(12vw, 30vh), 230px); }
+/* A knight with bonuses carries a third line on its nameplate, so the boards grow to hold it. */
+.stage.has-bonus { --floor: clamp(86px, 11.5vh, 104px); }
 
 .stage-band {
   display: grid;
@@ -359,6 +361,16 @@ button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 
   font-weight: 700;
 }
 .stage-plate-value { font-variant-numeric: tabular-nums; }
+/* The knight's item bonuses under its HP bar, in the vote's words, such as "+25% heal". */
+.stage-plate-note {
+  margin: 4px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: clamp(17px, 1.4vw, 20px);
+  font-weight: 600;
+  line-height: 1.2;
+}
 .stage-hp {
   height: 14px;
   border-radius: 7px;
@@ -439,7 +451,6 @@ button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 
   box-shadow: inset 0 2px 0 var(--track);
 }
 .stage-foot p { margin: 0; font-size: 20px; }
-.stage-foot .host-muted { margin-top: 4px; }
 .stage-foot .host-taps { padding: 0; box-shadow: none; }
 
 /* A tap window's running total, with each move's count in its own color. */
@@ -528,6 +539,8 @@ button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 
   color: var(--team-deep);
   font-size: 21px;
 }
+/* The knight's item bonuses under its HP in PvP, in white on the team's color. */
+.pvp-bonus { margin: 6px 0 0; font-size: clamp(18px, 1.5vw, 21px); font-weight: 600; color: #fff; }
 .pvp-center {
   display: flex;
   flex-direction: column;

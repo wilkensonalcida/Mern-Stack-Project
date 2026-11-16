@@ -4,7 +4,7 @@ import type { TeamId } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
 import Knight, { type KnightAnimation } from './Knight';
 import { describeTurn } from './pvpText';
-import { EndButton, HostFrame, HostMessage, TapCounts, formatAmount, formatHp } from './HostFrame';
+import { EndButton, HostFrame, HostMessage, TapCounts, bonusText, formatAmount, formatHp } from './HostFrame';
 
 const teamNames: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' };
 const otherTeam = (team: TeamId): TeamId => (team === 'red' ? 'blue' : 'red');
@@ -75,6 +75,8 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
 
   function teamScore(team: TeamId) {
     const knight = state.knights[team];
+    // The items picked in the boss fights carry into PvP, so the knight's bonuses show under its HP.
+    const bonus = bonusText(knight.buffs);
     return (
       <section className={`pvp-team team-${team}`} aria-labelledby={`${team}-score`}>
         <div className="stage-band-row">
@@ -89,6 +91,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
           <span className="stage-plate-value">{formatHp(knight.hp)} / {knight.maxHp} HP</span>
           {Math.round(knight.shield) > 0 && <span className="pvp-shield">Shield {formatAmount(knight.shield)}</span>}
         </p>
+        {bonus && <p className="pvp-bonus">{bonus}</p>}
       </section>
     );
   }

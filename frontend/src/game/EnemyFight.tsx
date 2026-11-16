@@ -5,7 +5,7 @@ import Skeleton from './Skeleton';
 import type { EnemyAnimation } from './AnimateEnemy';
 import type { HostBossState, HostTeamView, RoundResult, TeamId, TeamVote } from './enemyTypes';
 import { itemIcons } from './itemArt';
-import { EndButton, HostFrame, TapCounts, formatAmount, formatHp } from './HostFrame';
+import { EndButton, HostFrame, TapCounts, bonusText, formatAmount, formatHp } from './HostFrame';
 
 // After each round, the knight swings if its team attacked and the enemy flinches, or the enemy attacks.
 function useRoundAnimation(stage: number | undefined, lastRound: RoundResult | null | undefined) {
@@ -38,10 +38,12 @@ type FighterProps = {
   // A knight that fell to the boss falls backward where it stood; -1 for a sprite drawn mirrored.
   knockedOut?: boolean;
   mirror?: 1 | -1;
+  // A line under the HP bar, such as the knight's item bonuses.
+  note?: string | null;
 };
 
 // A fighter on the stage: its sprite standing on the floor line, and its nameplate on the boards below.
-function Fighter({ children, label, hp, maxHp, boss = false, knockedOut = false, mirror = 1 }: FighterProps) {
+function Fighter({ children, label, hp, maxHp, boss = false, knockedOut = false, mirror = 1, note }: FighterProps) {
   return (
     <div className={`stage-fighter ${boss ? 'is-boss' : ''} ${knockedOut ? 'is-knocked-out' : ''}`}
       style={knockedOut ? ({ '--mirror': mirror } as CSSProperties) : undefined}>
@@ -52,6 +54,7 @@ function Fighter({ children, label, hp, maxHp, boss = false, knockedOut = false,
           aria-valuenow={hp} aria-valuemin={0} aria-valuemax={maxHp}>
           <div style={{ width: `${(100 * hp) / maxHp}%` }} />
         </div>
+        {note && <p className="stage-plate-note">{note}</p>}
       </div>
     </div>
   );
@@ -132,9 +135,12 @@ function BossStage({ view, other, secondsLeft, countdown, mirrored, sharedCount 
   const { knight, enemy, lastRound } = view;
   const windowOpen = view.phase === 'combat' && view.endsAt !== null;
   const showResult = lastRound !== null && lastRound !== undefined && !windowOpen && view.phase !== 'selection';
+  // The knight's bonuses from the items its team picked, on its nameplate. While the team votes,
+  // its plate is too narrow, and the vote's own pick says what's coming.
+  const bonus = voting ? null : bonusText(knight.buffs);
 
   return (
-    <section className={`stage team-${view.team} ${mirrored ? 'is-mirrored' : ''} ${voting ? 'is-voting' : ''}`}
+    <section className={`stage team-${view.team} ${mirrored ? 'is-mirrored' : ''} ${voting ? 'is-voting' : ''} ${bonus ? 'has-bonus' : ''}`}
       aria-labelledby={`${view.team}-heading`}>
       <header className="stage-band">
         <h2 id={`${view.team}-heading`}>
@@ -152,7 +158,7 @@ function BossStage({ view, other, secondsLeft, countdown, mirrored, sharedCount 
           </div>
         )}
         <div className="stage-floor">
-          <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp} knockedOut={view.phase === 'failed'} mirror={mirrored ? -1 : 1}>
+          <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp} knockedOut={view.phase === 'failed'} mirror={mirrored ? -1 : 1} note={bonus}>
             <Knight animation={bossDown ? 'victory' : animation.knight} mirrored={mirrored}
               label={`${teamNames[view.team]} team's knight`} size={spriteSize} />
           </Fighter>
@@ -176,9 +182,6 @@ function BossStage({ view, other, secondsLeft, countdown, mirrored, sharedCount 
               Last round: {formatAmount(lastRound.attack)} damage, {formatAmount(lastRound.blocked)} blocked, {formatAmount(lastRound.healed)} healed
             </p>
           : view.phase === 'combat' && <TapCounts label="Taps this round" taps={view.taps} />}
-        <p className="host-muted">
-          Knight's bonuses: attack ×{knight.buffs.attack.toFixed(2)}, block ×{knight.buffs.block.toFixed(2)}, heal ×{knight.buffs.heal.toFixed(2)}
-        </p>
       </footer>
     </section>
   );
