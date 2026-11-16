@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 // Imported from where Alex keeps her sprites, so the build includes the sheet, and a missing sheet fails the build.
 import knightSheet from '../../sprites/playersheet.png'
+// Alex's same knight in the blue team's cape and plume, drawn on the same frames.
+import blueKnightSheet from '../../sprites/playersheet2.png'
 import { Sprite } from './Sprite'
 
 export type KnightAnimation = 'idle' | 'attack' | 'victory'
@@ -21,12 +23,14 @@ type KnightProps = {
   label: string
   // How wide to draw it, as a CSS length; the host's screen draws it bigger.
   size?: string
+  // Whose knight it is: red's wears the red cape, and blue's the blue one.
+  team?: 'red' | 'blue'
 }
 
 // Draws one knight from Alex's sheet and plays the animation the fight asks for.
-export default function Knight({ animation, mirrored = false, label, size }: KnightProps) {
+export default function Knight({ animation, mirrored = false, label, size, team = 'red' }: KnightProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [sprite] = useState(() => new Sprite(knightSheet, FRAME_SIZE, FRAME_SIZE, animations))
+  const [sprite] = useState(() => new Sprite(team === 'blue' ? blueKnightSheet : knightSheet, FRAME_SIZE, FRAME_SIZE, animations))
 
   // An attack plays once, then the sprite goes back to idle on its own.
   useEffect(() => {

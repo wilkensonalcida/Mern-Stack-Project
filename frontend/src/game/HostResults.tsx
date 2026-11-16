@@ -26,7 +26,7 @@ export default function HostResults({ result, lobby, error, onNewGame }: Props) 
         <h1 id="results-heading">{teamNames[result.winner]} wins!</h1>
         <p className="stage-results-how">{how}</p>
         <div className="stage-spotlight">
-          <Knight animation="victory" mirrored={result.winner === 'blue'} label={`${teamNames[result.winner]}'s knight`} size="82%" />
+          <Knight animation="victory" team={result.winner} mirrored={result.winner === 'blue'} label={`${teamNames[result.winner]}'s knight`} size="82%" />
         </div>
         {result.totals && (
           <ul className="stage-tally" aria-label="Taps across the game">

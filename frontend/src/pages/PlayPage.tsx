@@ -115,7 +115,7 @@ export default function PlayPage() {
         <main className="controller result-screen">
           <p className="result-who">{mine && myTeam ? `${mine.name}, ${teamName(myTeam)}` : 'Fight Me Bro'}</p>
           <div className="result-spot">
-            <Knight animation={myTeam === null || won ? 'victory' : 'idle'} mirrored={shown === 'blue'}
+            <Knight animation={myTeam === null || won ? 'victory' : 'idle'} team={shown} mirrored={shown === 'blue'}
               label={`${teamName(shown)}'s knight`} size="82%" />
           </div>
           <h1 className="result-verdict">{verdict}</h1>

@@ -153,7 +153,7 @@ function BossStage({ view, other, clock, countdown, mirrored, sharedCount }: Sta
         </div>
         <div className="stage-floor">
           <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp} knockedOut={view.phase === 'failed'} mirror={mirrored ? -1 : 1} note={bonus}>
-            <Knight animation={bossDown ? 'victory' : animation.knight} mirrored={mirrored}
+            <Knight animation={bossDown ? 'victory' : animation.knight} team={view.team} mirrored={mirrored}
               label={`${teamNames[view.team]} team's knight`} size={spriteSize} />
           </Fighter>
           {/* The boss stays standing over a knight it knocked out. */}

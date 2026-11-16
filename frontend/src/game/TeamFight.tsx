@@ -128,7 +128,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
               return (
                 <div key={team} className={`stage-fighter ${knockedOut ? 'is-knocked-out' : ''}`}
                   style={knockedOut ? ({ '--mirror': team === 'blue' ? -1 : 1 } as CSSProperties) : undefined}>
-                  <Knight animation={animationFor(team)} mirrored={team === 'blue'}
+                  <Knight animation={animationFor(team)} team={team} mirrored={team === 'blue'}
                     label={`${teamNames[team]}'s knight`} size="var(--sprite)" />
                   <div className="stage-plate" />
                 </div>
