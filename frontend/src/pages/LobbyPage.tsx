@@ -206,7 +206,6 @@ export default function LobbyPage() {
 
     return (
         <PlayerLobby
-            sessionCode={lobby.code}
             player={player}
             teams={teams}
             onSelectTeam={selectTeam}

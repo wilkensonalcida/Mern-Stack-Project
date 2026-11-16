@@ -5,7 +5,6 @@ type TeamId = 'red' | 'blue'
 type Move = 'attack' | 'block' | 'heal'
 
 type PlayerLobbyProps = {
-  sessionCode: string
   player: { id: string; name: string }
   teams: {
     id: string
@@ -29,7 +28,7 @@ const teamLabels: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' 
 const isTeam = (id: string): id is TeamId => id === 'red' || id === 'blue'
 
 // A player's phone in the lobby. The host's screen shows who joined.
-export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam, offline = false }: PlayerLobbyProps) {
+export default function PlayerLobby({ player, teams, onSelectTeam, offline = false }: PlayerLobbyProps) {
 
   // Team selection comes from the server's lobby state
   const teamId = teams.find((team) =>
@@ -84,15 +83,11 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam, 
     )
   }
 
-  // Before a pick: one big tile per team, with who's already on it.
+  // Before a pick: one big tile per team, with who's already on it, under the heading alone.
   return (
     <div className="controller-page team-none">
       <main className="controller">
-        <header className="controller-header">
-          <span className="controller-team">Fight Me Bro</span>
-          <span className="controller-name is-code" aria-label={`Game code ${sessionCode}`}>{sessionCode}</span>
-        </header>
-        <h1 className="phone-heading" id="lobby-heading">Pick a team</h1>
+        <h1 className="phone-heading is-top" id="lobby-heading">Pick a team</h1>
         <div className="controller-buttons" role="group" aria-labelledby="lobby-heading">
           {teams.filter((team) => isTeam(team.id)).map((team) => (
             <button

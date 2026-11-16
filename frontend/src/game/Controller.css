@@ -330,6 +330,8 @@
   line-height: 1;
   text-wrap: balance;
 }
+/* A heading with no header above it, such as Pick a team, starts lower so it doesn't crowd the top edge. */
+.phone-heading.is-top { margin-top: 44px; }
 .phone-note {
   margin: 12px 20px 0;
   text-align: center;
@@ -340,8 +342,6 @@
 }
 .controller-page.team-red .phone-note,
 .controller-page.team-blue .phone-note { color: var(--cream); }
-/* The game's code, lettered beside its name before a team is picked. */
-.controller-name.is-code { letter-spacing: 0.1em; }
 
 /* The team pick: one big swatch per team, with who's already on it. */
 .controller-button.team-tile {
