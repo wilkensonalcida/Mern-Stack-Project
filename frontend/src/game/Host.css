@@ -10,7 +10,7 @@
 /* The fight screens' ground is Alex's dark forest, behind both halves. It covers the screen,
    so keep what matters off its edges. */
 .host-page.is-dark {
-  background: #1d1714 url('../../sprites/forest-background.png') center / cover no-repeat;
+  background: #1d1714 url('../assets/art/forest.webp') center / cover no-repeat;
   color: var(--cream);
 }
 /* In the boss fights each team's half has its own copy of the forest, top to bottom, and blue's is mirrored,
@@ -28,7 +28,7 @@
   bottom: 0;
   z-index: -1;
   width: 50%;
-  background: url('../../sprites/forest-background.png') center / cover no-repeat;
+  background: url('../assets/art/forest.webp') center / cover no-repeat;
   pointer-events: none;
 }
 .host-page.is-split::before { left: 0; }
