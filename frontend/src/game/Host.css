@@ -13,6 +13,26 @@
   background: #1d1714 url('../../sprites/forest-background.png') center / cover no-repeat;
   color: var(--cream);
 }
+/* In the boss fights each team's half has its own copy of the forest, top to bottom, and blue's is mirrored,
+   so the two halves face each other across the split. The final fight keeps one forest behind both knights. */
+.host-page.is-dark.is-split {
+  position: relative;
+  isolation: isolate;
+  background: #1d1714;
+}
+.host-page.is-split::before,
+.host-page.is-split::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: -1;
+  width: 50%;
+  background: url('../../sprites/forest-background.png') center / cover no-repeat;
+  pointer-events: none;
+}
+.host-page.is-split::before { left: 0; }
+.host-page.is-split::after { right: 0; transform: scaleX(-1); }
 /* The results take the winner's paint, top to bottom. */
 .host-page.is-painted {
   background: var(--grain) center / 400px 400px, var(--team);

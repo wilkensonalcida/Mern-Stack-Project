@@ -9,14 +9,16 @@ type HostFrameProps = {
   action?: ReactNode;
   // The fight screens sit on a dark hand drawn ground, the results on the winner's paint, and the rest on white canvas.
   dark?: boolean;
+  // The boss fights give each team's half its own copy of the dark ground, blue's mirrored.
+  split?: boolean;
   team?: TeamId;
   children: ReactNode;
 };
 
 // Every screen the host's laptop or projector shows: the game's name lettered across the top, then the screen.
-export function HostFrame({ action, dark = false, team, children }: HostFrameProps) {
+export function HostFrame({ action, dark = false, split = false, team, children }: HostFrameProps) {
   return (
-    <div className={`host-page ${dark ? 'is-dark' : ''} ${team ? `is-painted team-${team}` : ''}`}>
+    <div className={`host-page ${dark ? 'is-dark' : ''} ${split ? 'is-split' : ''} ${team ? `is-painted team-${team}` : ''}`}>
       <header className="host-bar">
         <span className="host-brand">Fight Me Bro</span>
         {action}

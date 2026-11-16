@@ -219,7 +219,7 @@ export function HostBossFights({ state, receivedAt, onEndGame }: HostBossFightsP
     : null;
 
   return (
-    <HostFrame dark action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
+    <HostFrame dark split action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
       <main className="stage-split">
         <h1 className="visually-hidden">Boss fights, session {state.code}</h1>
         <BossStage view={red} other="blue" clock={clock(red)}
