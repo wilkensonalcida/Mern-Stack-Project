@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import Controller from '../game/Controller';
 import Knight from '../game/Knight';
@@ -7,6 +7,7 @@ import PhoneMessage from '../components/PhoneMessage';
 import { socket } from '../socket/socket';
 import type { Lobby } from '../socket/lobby';
 import type { GameResult, TeamId } from '../game/enemyTypes';
+import { KNOCKOUT_MS } from '../game/knockout';
 
 type LobbyAck = { success: boolean; lobby?: Lobby; error?: string };
 type ResultAck = { success: boolean; result?: GameResult; error?: string };
@@ -26,6 +27,15 @@ export default function PlayPage() {
     if (data.code !== normalizedCode) return;
     setResult(data);
   }, [normalizedCode]);
+
+  // A result that arrives live waits while the big screen shows the final blow, as the host's screen does.
+  const knockout = useRef(0);
+  const onLiveFinished = useCallback((data: GameResult) => {
+    if (data.code !== normalizedCode) return;
+    window.clearTimeout(knockout.current);
+    knockout.current = window.setTimeout(() => setResult(data), KNOCKOUT_MS);
+  }, [normalizedCode]);
+  useEffect(() => () => window.clearTimeout(knockout.current), []);
 
   function leaveGame(destination: string) {
       socket.timeout(5000).emit(
@@ -71,18 +81,18 @@ export default function PlayPage() {
       if (mounted) setCancelled(true);
     };
 
-    socket.on('game:finished', onFinished);
+    socket.on('game:finished', onLiveFinished);
     socket.on('game:cancelled', onCancelled);
     socket.on('connect', load);
     if (socket.connected) load();
     else socket.connect();
     return () => {
       mounted = false;
-      socket.off('game:finished', onFinished);
+      socket.off('game:finished', onLiveFinished);
       socket.off('game:cancelled', onCancelled);
       socket.off('connect', load);
     };
-  }, [normalizedCode, onFinished]);
+  }, [normalizedCode, onFinished, onLiveFinished]);
 
   const joinLink = (label: string) => <Link className="phone-button" to="/join">{label}</Link>;
   if (!normalizedCode) return <PhoneMessage title="Invalid game code" action={joinLink('Join a game')} />;

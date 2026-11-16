@@ -522,7 +522,6 @@ button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 
 .pvp-turn { margin: 0; font-size: 20px; color: var(--muted); }
 .stage-pvp .stage-fighter { min-width: 0; }
 .stage-pvp .stage-fighter::before { bottom: calc(var(--floor) - 9px); }
-.stage-pvp .stage-spot { width: var(--sprite); aspect-ratio: 1 / 1; }
 .stage-pvp .stage-foot {
   display: flex;
   justify-content: center;
@@ -598,6 +597,21 @@ button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 
   .stage-offer.is-picked .stage-offer-tile { animation: stage-pick 360ms cubic-bezier(0.16, 1, 0.3, 1); }
   .stage-spotlight { animation: stage-rise 600ms cubic-bezier(0.16, 1, 0.3, 1); }
   .stage-results h1 { animation: stage-pop 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+  /* The final blow: HP drains, and once the winner's swing lands, the loser falls backward and fades. */
+  .pvp-hp > div { transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .stage-fighter.is-knocked-out canvas {
+    transform-origin: 50% 96%;
+    animation: stage-knockout 700ms 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-fighter.is-knocked-out canvas { opacity: 0.4; }
+}
+/* It tips back on its heels, then rises by its own depth so it lies on the floor line, not through it.
+   Both ends list the same functions, so a mirrored sprite turns smoothly instead of flipping. */
+@keyframes stage-knockout {
+  from { transform: translateY(0) scaleX(var(--mirror, 1)) rotate(0deg); }
+  to { transform: translateY(-30%) scaleX(var(--mirror, 1)) rotate(-80deg); opacity: 0.4; }
 }
 @keyframes stage-pop {
   from { transform: scale(0.7); }

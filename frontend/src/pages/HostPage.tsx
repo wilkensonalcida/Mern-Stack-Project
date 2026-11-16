@@ -6,6 +6,7 @@ import { HostBossFights } from '../game/EnemyFight'
 import TeamFight from '../game/TeamFight'
 import HostResults from '../game/HostResults'
 import { EndButton, HostFrame, HostMessage } from '../game/HostFrame'
+import { KNOCKOUT_MS } from '../game/knockout'
 import type { GameResult, HostBossState } from '../game/enemyTypes'
 
 import type {
@@ -24,6 +25,8 @@ export default function HostPage() {
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false)
   const [result, setResult] = useState<GameResult | null>(null)
+  // The results wait while the arena holds the final blow.
+  const [showResults, setShowResults] = useState(false)
   const [boss, setBoss] = useState<{ state: HostBossState, receivedAt: number } | null>(null)
   const [pvpStarted, setPvpStarted] = useState(false)
 
@@ -68,9 +71,12 @@ export default function HostPage() {
       if (data.code === code) setPvpStarted(true)
     }
 
+    let knockout = 0
     function onFinished(finished: GameResult) {
       if (finished.code === code) {
         setResult(finished)
+        window.clearTimeout(knockout)
+        knockout = window.setTimeout(() => setShowResults(true), KNOCKOUT_MS)
       }
     }
 
@@ -101,6 +107,7 @@ export default function HostPage() {
   )
 
   return () => {
+    window.clearTimeout(knockout)
     socket.off("game:updated", onUpdate)
     socket.off("game:started", onStarted)
     socket.off("game:enemy:host", onBossState)
@@ -183,10 +190,10 @@ export default function HostPage() {
 
   // After Start game, the phones play, and this screen shows the game.
   if (lobby.status === "playing") {
-    if (pvpStarted && !result) {
+    if (pvpStarted && !showResults) {
       return <TeamFight code={lobby.code} onEndGame={cancelGame} />
     }
-    if (boss && !result) {
+    if (boss && !showResults) {
       return <HostBossFights state={boss.state} receivedAt={boss.receivedAt} onEndGame={cancelGame} />
     }
     if (result) {

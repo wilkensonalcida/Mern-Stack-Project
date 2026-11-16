@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import Knight, { type KnightAnimation } from './Knight';
 import Goblin from './Goblin';
 import Skeleton from './Skeleton';
@@ -29,10 +29,22 @@ const teamNames: Record<TeamId, string> = { red: 'Red', blue: 'Blue' };
 // The sprites' width on this screen, from the stage's --sprite in Host.css.
 const spriteSize = 'var(--sprite)';
 
+type FighterProps = {
+  children: ReactNode;
+  label: string;
+  hp: number;
+  maxHp: number;
+  boss?: boolean;
+  // A knight that fell to the boss falls backward where it stood; -1 for a sprite drawn mirrored.
+  knockedOut?: boolean;
+  mirror?: 1 | -1;
+};
+
 // A fighter on the stage: its sprite standing on the floor line, and its nameplate on the boards below.
-function Fighter({ children, label, hp, maxHp, boss = false }: { children: ReactNode; label: string; hp: number; maxHp: number; boss?: boolean }) {
+function Fighter({ children, label, hp, maxHp, boss = false, knockedOut = false, mirror = 1 }: FighterProps) {
   return (
-    <div className={`stage-fighter ${boss ? 'is-boss' : ''}`}>
+    <div className={`stage-fighter ${boss ? 'is-boss' : ''} ${knockedOut ? 'is-knocked-out' : ''}`}
+      style={knockedOut ? ({ '--mirror': mirror } as CSSProperties) : undefined}>
       {children}
       <div className="stage-plate">
         <p className="stage-plate-label"><span>{label}</span><span className="stage-plate-value">{formatHp(hp)} / {maxHp} HP</span></p>
@@ -92,6 +104,7 @@ function stageHeadline(view: HostTeamView, other: TeamId, countdown: number | un
   if (view.phase === 'waiting') {
     return { line: `${view.enemy?.name ?? 'Boss'} down!`, next: `Waiting for ${teamNames[other].toLowerCase()}` };
   }
+  if (view.phase === 'failed') return { line: 'K.O.!', next: 'Knight down' };
   if (view.phase === 'combat') {
     if (view.endsAt !== null) return { line: 'Tap!', next: `Round ${view.round}` };
     return { line: countdown !== undefined ? String(countdown) : 'Get ready', next: `Round ${view.round + 1}` };
@@ -129,11 +142,12 @@ function BossStage({ view, other, secondsLeft, countdown, mirrored }: StageProps
           {headline.next && <p className="stage-next">{headline.next}</p>}
         </div>
         <div className="stage-floor">
-          <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp}>
+          <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp} knockedOut={view.phase === 'failed'} mirror={mirrored ? -1 : 1}>
             <Knight animation={bossDown ? 'victory' : animation.knight} mirrored={mirrored}
               label={`${teamNames[view.team]} team's knight`} size={spriteSize} />
           </Fighter>
-          {view.phase === 'combat' && enemy && (
+          {/* The boss stays standing over a knight it knocked out. */}
+          {(view.phase === 'combat' || view.phase === 'failed') && enemy && (
             <Fighter label={enemy.name} hp={enemy.hp} maxHp={enemy.maxHp} boss>
               {view.stage === 0
                 ? <Goblin animation={animation.foe} mirrored={!mirrored} size={spriteSize} />

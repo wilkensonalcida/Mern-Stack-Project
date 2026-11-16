@@ -135,6 +135,10 @@ export default function Controller({ code, team, nickname }: Props) {
   };
 
   function readScreen(): Screen {
+    // The final blow plays out on the big screen before the result shows here.
+    if (pvp && pvp.state.phase === 'finished' && pvp.state.winner) {
+      return { kind: 'locked', status: 'K.O.! Watch the big screen.', tone: pvp.state.winner };
+    }
     if (pvp && pvp.state.phase !== 'finished') {
       const state = pvp.state;
       const left = Math.max(0, state.remainingMs - (now - pvp.at));

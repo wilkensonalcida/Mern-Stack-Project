@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { socket } from '../socket/socket';
 import type { TeamId } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
@@ -65,10 +65,11 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
   const headingTeam = state.winner ?? (state.phase === 'pause' ? otherTeam(state.turn) : state.turn);
   const last = state.lastTurn;
 
-  // The team that just attacked swings during the pause, and the winner celebrates.
+  // The team that just attacked swings, during the pause and on the final blow, and otherwise the winner celebrates.
   function animationFor(team: TeamId): KnightAnimation {
-    if (state.winner === team) return 'victory';
-    if (state.phase === 'pause' && last?.team === team && last.taps.attack > 0) return 'attack';
+    const swung = last?.team === team && last.taps.attack > 0;
+    if (state.winner === team) return swung ? 'attack' : 'victory';
+    if (state.phase === 'pause' && swung) return 'attack';
     return 'idle';
   }
 
@@ -93,8 +94,8 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
   }
 
   // The big line across the arena, which the room watches: who goes first, the team that taps now,
-  // the seconds until the next team's turn, or who won.
-  const moment = state.winner ? `${teamNames[state.winner]} wins!`
+  // the seconds until the next team's turn, or the final blow.
+  const moment = state.winner ? 'K.O.!'
     : state.phase === 'flip' ? `${teamNames[state.turn]} goes first!`
     : state.phase === 'turn' ? `${teamNames[state.turn]}, tap!`
     : state.phase === 'pause' && seconds !== null ? String(Math.max(1, Math.ceil(seconds)))
@@ -116,16 +117,18 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
         <section className={`stage-arena team-${headingTeam}`} aria-label="PvP arena">
           {moment && <p className="stage-moment" key={moment}>{moment}</p>}
           <div className="stage-floor">
-            {teams.map(team => (state.winner && state.winner !== team
-              // The losing knight is gone, and its spot stays empty so the winner doesn't move.
-              ? <div key={team} className="stage-spot" />
-              : (
-                <div key={team} className="stage-fighter">
+            {teams.map(team => {
+              // On the final blow, the losing knight falls backward where it stood.
+              const knockedOut = state.winner !== null && state.winner !== team;
+              return (
+                <div key={team} className={`stage-fighter ${knockedOut ? 'is-knocked-out' : ''}`}
+                  style={knockedOut ? ({ '--mirror': team === 'blue' ? -1 : 1 } as CSSProperties) : undefined}>
                   <Knight animation={animationFor(team)} mirrored={team === 'blue'}
                     label={`${teamNames[team]}'s knight`} size="var(--sprite)" />
                   <div className="stage-plate" />
                 </div>
-              )))}
+              );
+            })}
           </div>
         </section>
 
