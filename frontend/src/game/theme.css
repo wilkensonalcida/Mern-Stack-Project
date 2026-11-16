@@ -2,7 +2,8 @@
    Alex's Canvas, drenched: a team's dry brush paint fills the ground, each move keeps one paint,
    and ink and lettering sit on top, the way her drawings sit on painted grounds in her sheets. */
 .controller-page,
-.host-page {
+.host-page,
+.account-page {
   --canvas: #fbfaf8;
   --ink: #1b1714;
   --cream: #fffaf2;

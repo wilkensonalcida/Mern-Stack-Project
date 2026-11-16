@@ -56,7 +56,7 @@ export default function RegisterPage({ onLogin }: { onLogin: (result: LoginResul
     <PageLayout>
       <section className="card" aria-labelledby="register-heading">
         <div className="card-body p-4">
-          <h1 className="h4 card-title mb-3" id="register-heading">Create Account</h1>
+          <h1 className="h4 card-title mb-3" id="register-heading">Create an account</h1>
           <form onSubmit={handleSubmit}>
             <div className="row g-2 mb-2">
               <div className="col-6">

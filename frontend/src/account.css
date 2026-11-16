@@ -1,0 +1,156 @@
+/* The account pages (log in, register, verify email, and the dashboard) on Alex's canvas, lettered like the game.
+   Their markup keeps Bootstrap's classes, so this restyles those classes inside .account-page only.
+   The palette, lettering, and brush shapes come from game/theme.css. */
+.account-page {
+  min-height: 100vh;
+  font-size: 20px;
+  line-height: 1.35;
+}
+.account-page ::selection { background: var(--ink); color: var(--cream); }
+
+/* The game's name lettered at the top of every account page, beside Alex's knight. */
+.account-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.account-brand-name {
+  margin: 0;
+  font-family: var(--letters);
+  font-size: clamp(42px, 11vw, 62px);
+  line-height: 1;
+  white-space: nowrap;
+}
+.account-brand canvas { width: clamp(64px, 18vw, 92px) !important; }
+
+/* Panels sit straight on the canvas, with no card around them. */
+.account-page .card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+.account-page .card-body { padding: 4px 0 !important; }
+.account-page h1,
+.account-page h2,
+.account-page .h3,
+.account-page .h4,
+.account-page .card-title {
+  margin-bottom: 10px;
+  font-family: var(--letters);
+  font-size: clamp(36px, 9.5vw, 46px);
+  font-weight: 400;
+  line-height: 1;
+}
+.account-page .text-body-secondary { color: var(--muted) !important; }
+
+/* Fields: an inked box, lettered as you type. */
+.account-page .form-label { margin-bottom: 4px; font-size: 21px; }
+.account-page .form-control {
+  height: 58px;
+  padding: 6px 16px 0;
+  border: 3px solid var(--ink);
+  border-radius: 10px 16px 9px 14px;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--letters);
+  font-size: 30px;
+  box-shadow: none;
+}
+.account-page .form-control:focus {
+  border-color: var(--ink);
+  box-shadow: none;
+  outline: 3px solid var(--red);
+  outline-offset: 3px;
+}
+.account-page .form-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 0;
+}
+.account-page .form-check-input {
+  float: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 3px solid var(--ink);
+  border-radius: 5px 7px 4px 6px;
+}
+.account-page .form-check-input:checked { background-color: var(--ink); border-color: var(--ink); }
+.account-page .form-check-input:focus { box-shadow: none; outline: 3px solid var(--red); outline-offset: 2px; }
+
+/* The main button is a swatch of ink lettered in cream, and the second is an inked outline. */
+.account-page .btn-dark,
+.account-page .btn-outline-dark {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 66px;
+  padding: 8px 24px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--letters);
+  font-size: 34px;
+  line-height: 1;
+  box-shadow: none;
+}
+.account-page .btn-dark,
+.account-page .btn-dark:hover,
+.account-page .btn-dark:active,
+.account-page .btn-dark:disabled { background: transparent; color: var(--cream); }
+.account-page .btn-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--ink);
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.account-page .btn-dark:hover::before { filter: brightness(1.6); }
+.account-page .btn-dark:active { transform: translateY(3px); }
+.account-page .btn-dark:disabled { opacity: 1; color: rgb(255 250 242 / 0.8); }
+.account-page .btn-dark:disabled::before { filter: grayscale(1) brightness(2.2) contrast(0.45); }
+.account-page .btn-outline-dark,
+.account-page .btn-outline-dark:hover,
+.account-page .btn-outline-dark:active {
+  border: 3px solid var(--ink);
+  border-radius: 10px 16px 9px 14px;
+  color: var(--ink);
+}
+.account-page .btn-outline-dark:hover,
+.account-page .btn-outline-dark:active { background: #fff; }
+.account-page .btn-sm { min-height: 44px; padding: 6px 16px 2px; font-size: 26px; }
+.account-page .btn:focus-visible { box-shadow: none; outline: 3px solid var(--red); outline-offset: 4px; }
+
+/* Links, and buttons that read as links, underlined in ink. */
+.account-page a:not(.btn),
+.account-page .btn-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  vertical-align: baseline;
+}
+.account-page .btn-link:disabled { color: var(--muted); }
+
+/* An error is a line in the potion's red, not a box. */
+.account-page .alert {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--error);
+  font-size: 20px;
+}
+.account-page hr { border: 0; border-top: 3px solid var(--ink); opacity: 0.2; }
