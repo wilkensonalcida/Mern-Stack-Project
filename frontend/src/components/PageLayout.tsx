@@ -20,7 +20,7 @@ export default function PageLayout({ children, wide = false }: PageLayoutProps) 
         <div className={`row justify-content-center ${rows}`}>
           <div className={column}>
             <div className="account-brand">
-              <Knight animation="idle" label="Fight Me Bro's knight" size="92px" />
+              <Knight animation="idle" label="Fight Me Bro's knight" size="124px" />
               <p className="account-brand-name">Fight Me Bro</p>
             </div>
             {children}

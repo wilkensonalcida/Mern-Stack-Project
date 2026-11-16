@@ -63,7 +63,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
   const heading = state.winner ? `${teamNames[state.winner]} wins!`
     : state.phase === 'flip' ? 'Coin flip'
     : state.phase === 'pause' ? `${teamNames[otherTeam(state.turn)]} is up next`
-    : `${teamNames[state.turn]}'s turn`;
+    : `${teamNames[state.turn]}, tap!`;
   // The heading takes the color of the team it's about: the winner, the flip's winner, or whoever taps next.
   const headingTeam = state.winner ?? (state.phase === 'pause' ? otherTeam(state.turn) : state.turn);
   const last = state.lastTurn;
@@ -100,7 +100,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
   // the seconds until the next team's turn, or the final blow.
   const moment = state.winner ? 'K.O.!'
     : state.phase === 'flip' ? `${teamNames[state.turn]} goes first!`
-    : state.phase === 'turn' ? `${teamNames[state.turn]}, tap!`
+    // During a turn the heading over the clock already says who taps, so the arena leaves the knights alone.
     : state.phase === 'pause' && seconds !== null ? String(Math.max(1, Math.ceil(seconds)))
     : null;
 

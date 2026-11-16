@@ -33,6 +33,18 @@
   --swatch-mask: url('../assets/art/swatch.webp');
   --scrap-mask: url('../assets/art/scrap.webp');
   --stroke-mask: url('../assets/art/stroke.webp');
+  /* Two more of each shape, so neighbours never share an edge. */
+  --swatch-mask-2: url('../assets/art/swatch-2.webp');
+  --swatch-mask-3: url('../assets/art/swatch-3.webp');
+  --scrap-mask-2: url('../assets/art/scrap-2.webp');
+  --scrap-mask-3: url('../assets/art/scrap-3.webp');
+  --stroke-mask-2: url('../assets/art/stroke-2.webp');
+  --stroke-mask-3: url('../assets/art/stroke-3.webp');
+  /* Alex's ink line, drawn by hand: a cream dab outlined in ink for counts, a cream loop around a pick,
+     and an ink frame that any box can wear as a nine-sliced border image. */
+  --dab: url('../assets/art/dab.webp');
+  --loop: url('../assets/art/loop.webp');
+  --frame: url('../assets/art/frame.webp');
   --card-shadow: 0 10px 24px -12px rgb(27 23 20 / 0.3);
   background: var(--canvas);
   color: var(--ink);

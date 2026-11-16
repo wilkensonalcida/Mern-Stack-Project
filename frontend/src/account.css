@@ -8,13 +8,26 @@
 }
 .account-page ::selection { background: var(--ink); color: var(--cream); }
 
-/* The game's name lettered at the top of every account page, beside Alex's knight. */
+/* The game's name lettered in cream on a swatch of the red team's paint, with Alex's knight standing on it. */
 .account-brand {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-bottom: 18px;
+  gap: 4px;
+  margin-bottom: 22px;
+  padding: 18px 26px 14px;
+  color: var(--cream);
+}
+.account-brand::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--red);
+  -webkit-mask: var(--swatch-mask-2) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask-2) center / 100% 100% no-repeat;
 }
 .account-brand-name {
   margin: 0;
@@ -23,7 +36,7 @@
   line-height: 1;
   white-space: nowrap;
 }
-.account-brand canvas { width: clamp(64px, 18vw, 92px) !important; }
+.account-brand canvas { width: clamp(84px, 24vw, 124px) !important; margin: -18px 0 -10px; }
 
 /* Panels sit straight on the canvas, with no card around them. */
 .account-page .card {
@@ -49,18 +62,20 @@
 /* Fields: an inked box, lettered as you type. */
 .account-page .form-label { margin-bottom: 4px; font-size: 21px; }
 .account-page .form-control {
-  height: 58px;
-  padding: 6px 16px 0;
-  border: 3px solid var(--ink);
-  border-radius: 10px 16px 9px 14px;
-  background: #fff;
+  height: 62px;
+  padding: 6px 6px 0;
+  border: 12px solid transparent;
+  border-image: var(--frame) 24 / 24px / 0 stretch;
+  border-radius: 0;
+  background: #fff padding-box;
   color: var(--ink);
   font-family: var(--letters);
   font-size: 30px;
   box-shadow: none;
 }
 .account-page .form-control:focus {
-  border-color: var(--ink);
+  border-color: transparent;
+  background: #fff padding-box;
   box-shadow: none;
   outline: 3px solid var(--red);
   outline-offset: 3px;
@@ -73,13 +88,16 @@
 }
 .account-page .form-check-input {
   float: none;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   margin: 0;
-  border: 3px solid var(--ink);
-  border-radius: 5px 7px 4px 6px;
+  border: 7px solid transparent;
+  border-image: var(--frame) 24 / 14px / 0 stretch;
+  border-radius: 0;
+  background-color: #fff;
+  background-clip: padding-box;
 }
-.account-page .form-check-input:checked { background-color: var(--ink); border-color: var(--ink); }
+.account-page .form-check-input:checked { background-color: var(--ink); border-color: transparent; }
 .account-page .form-check-input:focus { box-shadow: none; outline: 3px solid var(--red); outline-offset: 2px; }
 
 /* The main button is a swatch of ink lettered in cream, and the second is an inked outline. */
@@ -120,12 +138,12 @@
 .account-page .btn-outline-dark,
 .account-page .btn-outline-dark:hover,
 .account-page .btn-outline-dark:active {
-  border: 3px solid var(--ink);
-  border-radius: 10px 16px 9px 14px;
+  border: 12px solid transparent;
+  border-image: var(--frame) 24 / 24px / 0 stretch;
   color: var(--ink);
 }
 .account-page .btn-outline-dark:hover,
-.account-page .btn-outline-dark:active { background: #fff; }
+.account-page .btn-outline-dark:active { background: #fff padding-box; }
 .account-page .btn-sm { min-height: 44px; padding: 6px 16px 2px; font-size: 26px; }
 .account-page .btn:focus-visible { box-shadow: none; outline: 3px solid var(--red); outline-offset: 4px; }
 
@@ -154,3 +172,17 @@
   font-size: 20px;
 }
 .account-page hr { border: 0; border-top: 3px solid var(--ink); opacity: 0.2; }
+
+/* On a short screen, such as a 720 pixel projector, the banner shrinks so the log in form fits without scrolling. */
+@media (max-height: 820px) {
+  .account-brand { margin-bottom: 12px; padding: 10px 22px 8px; }
+  .account-brand canvas { width: 84px !important; margin: -10px 0 -6px; }
+  .account-brand-name { font-size: 46px; }
+  .account-page .form-control { height: 56px; }
+  .account-page .mb-3 { margin-bottom: 10px !important; }
+  .account-page .py-4 { padding-top: 10px !important; padding-bottom: 10px !important; }
+  .account-page h1,
+  .account-page h2,
+  .account-page .card-title { margin-bottom: 6px; }
+  .account-page .my-3 { margin-top: 8px !important; margin-bottom: 8px !important; }
+}

@@ -257,15 +257,11 @@ export default function HostPage() {
   return (
     <HostFrame action={<EndButton label="Cancel match" confirmLabel="Cancel for everyone?" onConfirm={cancelGame} disabled={!isHost} />}>
       <main className="host-lobby">
-        <section className="host-card host-join" aria-labelledby="code-heading">
-          {/* Where to join sits at the left and the QR code at the right, so the code stays in the middle. */}
-          <div>
-            <p className="host-join-label">Join at</p>
-            <p className="host-join-url">{window.location.host}/join</p>
-          </div>
+        <section className="host-join" aria-labelledby="code-heading">
+          {/* The code is the screen's heading, with where to type it on one line under it, and the QR code beside. */}
           <div className="host-join-code">
-            <h1 className="host-join-label" id="code-heading">Game code</h1>
-            <p className="host-code">{lobby.code}</p>
+            <h1 className="host-code" id="code-heading" aria-label={`Game code ${lobby.code}`}>{lobby.code}</h1>
+            <p className="host-join-url">Go to <strong>{window.location.host}/join</strong> and type this code, or scan</p>
           </div>
           <div className="host-qr">
             {/* Opens the join page on a phone at the nickname step, on whatever address the host is using. */}

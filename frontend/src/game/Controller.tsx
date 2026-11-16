@@ -263,7 +263,12 @@ export default function Controller({ code, team, nickname }: Props) {
   let countdown: number | undefined;
   const itemName = (vote: TeamVote, id: Upgrade | null) => vote.offers.find(item => item.id === id)?.name ?? 'Your item';
   if (screen.kind === 'loading') title = 'Loading…';
-  else if (screen.kind === 'open') title = 'Tap!';
+  else if (screen.kind === 'open') {
+    // This phone's taps the server has accepted so far this window, lettered under the clock.
+    const taps = Object.values(tallied(screen.key)).reduce((sum, count) => sum + count, 0);
+    title = 'Tap!';
+    note = `${taps} ${taps === 1 ? 'tap' : 'taps'}`;
+  }
   else if (screen.kind === 'locked') ({ title, note, tone, countdown } = screen);
   else if (screen.vote.closed) {
     title = itemName(screen.vote, screen.vote.pick);
@@ -305,7 +310,7 @@ export default function Controller({ code, team, nickname }: Props) {
           <div className="controller-clock" aria-hidden="true">
             <i style={{ '--left': `${Math.min(100, barWidth)}%` } as CSSProperties} />
           </div>
-          {connected && note && <p className="controller-note">{note}</p>}
+          {connected && note && <p className={`controller-note ${screen.kind === 'open' ? 'is-taps' : ''}`}>{note}</p>}
           {connected && countdown !== undefined && (
             <p className="controller-countdown" aria-hidden="true">{countdown}</p>
           )}
