@@ -38,8 +38,10 @@ export default function PlayPage() {
 
   // A result that arrives live waits while the big screen shows the final blow, as the host's screen does.
   const knockout = useRef(0);
+  const heldResult = useRef<GameResult | null>(null);
   const onLiveFinished = useCallback((data: GameResult) => {
     if (data.code !== normalizedCode) return;
+    heldResult.current = data;
     window.clearTimeout(knockout.current);
     knockout.current = window.setTimeout(() => setResult(data), KNOCKOUT_MS);
   }, [normalizedCode]);
@@ -84,9 +86,13 @@ export default function PlayPage() {
           });
       }
     }
-    // The host ended the game, so the lobby is gone.
+    // The host ended the game, so the lobby is gone. A game already won shows its result now,
+    // since the big screen that was holding the final blow has gone too.
     const onCancelled = () => {
-      if (mounted) setCancelled(true);
+      if (!mounted) return;
+      window.clearTimeout(knockout.current);
+      if (heldResult.current) setResult(heldResult.current);
+      else setCancelled(true);
     };
 
     socket.on('game:finished', onLiveFinished);
