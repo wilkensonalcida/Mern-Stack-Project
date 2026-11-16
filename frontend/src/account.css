@@ -1,0 +1,161 @@
+/* The account pages (log in, register, verify email, and the dashboard): plain forms on Alex's canvas,
+   so it's clear what to look at. The only paint on a page is its main button.
+   Their markup keeps Bootstrap's classes, so this restyles those classes inside .account-page only.
+   The palette and lettering come from game/theme.css. */
+.account-page {
+  min-height: 100vh;
+  font-size: 20px;
+  line-height: 1.35;
+}
+.account-page ::selection { background: var(--ink); color: var(--cream); }
+
+/* Panels sit straight on the canvas, with no card around them. */
+.account-page .card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+.account-page .card-body { padding: 4px 0 !important; }
+
+/* On a phone the column keeps 20px from the screen's edges, like the phone's join steps. */
+@media (max-width: 575.98px) {
+  .account-page .container { padding-inline: 20px; }
+}
+
+/* Each page's title and its short lines are centered, and so are errors, under the main button.
+   Labels and fields stay at left. */
+.account-page h1,
+.account-page h2 {
+  margin-bottom: 8px;
+  text-align: center;
+  text-wrap: balance;
+  font-family: var(--letters);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1;
+}
+/* A section under the page's title, such as Host a game on the dashboard. */
+.account-page h2 { margin-top: 24px; font-size: 30px; }
+.account-page .card-body > p { text-align: center; text-wrap: balance; }
+.account-page .text-body-secondary { color: var(--muted) !important; }
+/* Emphasis in a short line switches to the lettering hand, as in the address a link was sent to. */
+.account-page .card-body > p strong { font-family: var(--letters); font-size: 1.15em; font-weight: 400; }
+
+/* Fields: a white box with a thin warm line, and typing in the plain hand. */
+.account-page .form-label { margin-bottom: 6px; font-size: 19px; line-height: 1.2; }
+.account-page .form-control {
+  height: 52px;
+  padding: 0 14px;
+  border: 2px solid var(--line);
+  border-radius: 5px 7px 4px 6px;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 22px;
+  box-shadow: none;
+}
+.account-page .form-control:focus {
+  border-color: var(--ink);
+  background: #fff;
+  box-shadow: none;
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+.account-page .form-control:disabled { background: var(--canvas); color: var(--muted); }
+.account-page .form-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 0;
+}
+.account-page .form-check-input {
+  float: none;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid var(--line);
+  border-radius: 3px 5px 2px 4px;
+  background-color: #fff;
+}
+.account-page .form-check-input:checked { background-color: var(--ink); border-color: var(--ink); }
+.account-page .form-check-input:focus { border-color: var(--ink); box-shadow: none; outline: 3px solid var(--red); outline-offset: 2px; }
+.account-page .form-check-label { font-size: 19px; }
+
+/* The main button is a flat block of the red team's paint lettered in cream, and the second is an ink outline. */
+.account-page .btn-dark,
+.account-page .btn-outline-dark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 24px 2px;
+  border-radius: 5px 7px 4px 6px;
+  font-family: var(--letters);
+  line-height: 1;
+  box-shadow: none;
+}
+.account-page .btn-dark {
+  min-height: 56px;
+  border: 0;
+  background: var(--red);
+  color: var(--cream);
+  font-size: 30px;
+}
+.account-page .btn-dark:hover,
+.account-page .btn-dark:active { background: color-mix(in srgb, var(--red) 86%, var(--ink)); color: var(--cream); }
+.account-page .btn-dark:disabled { opacity: 1; background: color-mix(in srgb, var(--red) 55%, var(--canvas)); color: var(--cream); }
+.account-page .btn-outline-dark {
+  min-height: 50px;
+  border: 2px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: 26px;
+}
+.account-page .btn-outline-dark:hover,
+.account-page .btn-outline-dark:active { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, var(--canvas)); color: var(--ink); }
+.account-page .btn-dark:active,
+.account-page .btn-outline-dark:active { transform: translateY(2px); }
+.account-page .btn:focus-visible { box-shadow: none; outline: 3px solid var(--red); outline-offset: 3px; }
+
+/* Links, and buttons that read as links, underlined in ink. */
+.account-page a:not(.btn),
+.account-page .btn-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  vertical-align: baseline;
+}
+.account-page .btn-link:disabled { color: var(--muted); }
+.account-page a:not(.btn):focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
+
+/* An error is a line in the potion's red under the main button, not a box, so it never pushes the button away. */
+.account-page .alert {
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--error);
+  text-align: center;
+  text-wrap: balance;
+  font-size: 20px;
+}
+.account-page hr { border: 0; border-top: 1px solid var(--ink); opacity: 0.16; }
+
+/* Bootstrap's own error red, in the game's potion red. */
+.account-page .text-danger { color: var(--error) !important; }
+
+/* While an emailed link is checked, the title's dots appear one at a time: ".", "..", "...", and again.
+   Hidden dots keep their space, so the centered title never shifts. */
+@media (prefers-reduced-motion: no-preference) {
+  .account-page .loading-dots span:nth-child(2) { animation: loading-dot-2 1.5s step-end infinite; }
+  .account-page .loading-dots span:nth-child(3) { animation: loading-dot-3 1.5s step-end infinite; }
+}
+@keyframes loading-dot-2 { 0% { opacity: 0; } 33.33% { opacity: 1; } }
+@keyframes loading-dot-3 { 0% { opacity: 0; } 66.67% { opacity: 1; } }

@@ -1,191 +1,591 @@
-/* The phone controller: the screen tinted in the team's color, and three big buttons for thumbs. */
+/* The phone on Alex's canvas: the team's paint fills the screen, one lettered word with the clock
+   drawn under it, and three paint swatches for thumbs. The palette, lettering, and brush shapes
+   come from theme.css, shared with the host's screen. */
 .controller-page {
-  --team-tint: #f8d7da;
-  --team-ink: #842029;
-  --team-strong: #b02a37;
   min-height: 100dvh;
-  background: var(--team-tint);
-  color: var(--team-ink);
-  /* Mashing the buttons never zooms, selects text, or opens the long press menu. */
+  /* Mashing the swatches never zooms, selects text, or opens the long press menu. */
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+/* The join form needs text selection and the long press menu back, for typing and pasting a code. */
+.controller-page.is-form {
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+/* Once a phone has a team, its paint fills the screen. */
+.controller-page.team-red,
 .controller-page.team-blue {
-  --team-tint: #cfe2ff;
-  --team-ink: #084298;
-  --team-strong: #0a58ca;
+  background: var(--grain) center / 400px 400px, var(--team);
+  color: var(--cream);
+}
+/* The tapping screen's ground is Alex's dark forest, the same for both teams, cropped to the phone's middle.
+   It covers the screen, so keep what matters off its edges. The team's paint moves to a band behind its name.
+   forest.webp is her sprites/forest-background.png made with cwebp -q 90, at 39 kB instead of 975 kB, since
+   every phone loads it as the game starts. Make it again the same way if the PNG changes. */
+.controller-page.is-play {
+  background: #1d1714 url('../assets/art/forest.webp') center / cover no-repeat;
+  color: var(--cream);
 }
 
 .controller {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   max-width: 560px;
   margin: 0 auto;
-  padding: 1.25rem 1rem 1rem;
+  padding-bottom: 14px;
 }
 
-.controller-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 8px;
-}
-.controller-bar > div {
-  height: 100%;
-  background: var(--team-strong);
-}
-
-.controller-banner {
-  background: #212529;
-  color: #fff;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  text-align: center;
-  font-weight: 600;
-}
-
+/* The team, lettered across the top, and who you are. */
 .controller-header {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
-  gap: 1rem;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 64px;
+  padding: 18px 22px 0;
 }
 .controller-team {
-  font-size: 1.5rem;
-  font-weight: 700;
+  margin: 0;
+  font-family: var(--letters);
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 1;
+  color: inherit;
 }
 .controller-name {
-  font-size: 1.125rem;
+  max-width: 50%;
+  font-family: var(--letters);
+  font-size: 30px;
+  line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* On the dark tapping screen, the team's paint is a brushed band behind its name, so the side reads at a glance. */
+.controller-page.is-play .controller-header {
+  position: relative;
+  isolation: isolate;
+  align-items: center;
+  margin: 8px 6px 0;
+  padding: 16px 26px 14px;
+}
+.controller-page.is-play .controller-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--team);
+  -webkit-mask: var(--swatch-mask-3) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask-3) center / 100% 100% no-repeat;
+}
 
+/* The one word a player reads, the clock drawn under it, and a countdown when one runs.
+   When the word is about the other team, it sits on a swatch of that team's paint. */
+.controller-word {
+  position: relative;
+  isolation: isolate;
+  margin: 10px 14px 0;
+  padding: 10px 12px 12px;
+  text-align: center;
+}
+.controller-word.tone-red::before,
+.controller-word.tone-blue::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--paint);
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.controller-word.tone-red::before { --paint: var(--red); }
+.controller-word.tone-blue::before { --paint: var(--blue); }
+/* The big word, as large as the phone's width allows for its length. */
 .controller-status {
-  font-size: 1.75rem;
-  font-weight: 700;
-  text-align: center;
   margin: 0;
-  min-height: 2.5rem;
+  font-family: var(--letters);
+  font-size: 52px;
+  line-height: 0.95;
+  text-wrap: balance;
 }
-.controller-status.tone-red { color: #b02a37; }
-.controller-status.tone-blue { color: #0a58ca; }
-
+.controller-status.size-xl { font-size: 112px; }
+.controller-status.size-l { font-size: 100px; }
+.controller-status.size-m { font-size: 84px; }
+.controller-status.size-s { font-size: 64px; }
+.controller-status.size-xs { font-size: 52px; }
+/* The short line under the clock: what to do next, or what the word means. */
+.controller-note {
+  margin: 6px 0 0;
+  font-family: var(--text);
+  font-size: 24px;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+/* During a tap window the line under the clock is this phone's accepted taps, lettered like the projector's total. */
+.controller-note.is-taps { font-family: var(--letters); font-size: 34px; line-height: 1; }
+/* A dropped connection replaces the word, so a locked swatch never sits under "Tap!". */
+.controller-status.is-offline {
+  display: inline-block;
+  padding: 12px 26px 8px;
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 40px;
+}
+/* The clock: a brush stroke that drains from the right as a tap window or a vote runs out,
+   over a faint stroke that stays as the track. */
+.controller-clock {
+  position: relative;
+  width: min(80%, 320px);
+  height: 22px;
+  margin: 6px auto 0;
+}
+.controller-clock::before,
+.controller-clock > i {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--cream);
+  -webkit-mask: var(--stroke-mask) center / 100% 100% no-repeat;
+  mask: var(--stroke-mask) center / 100% 100% no-repeat;
+}
+.controller-clock::before { opacity: 0.28; }
+.controller-clock > i { clip-path: inset(0 calc(100% - var(--left, 0%)) 0 0); }
 .controller-countdown {
-  font-size: 4rem;
-  font-weight: 800;
-  line-height: 1;
-  text-align: center;
-  margin: 0;
+  margin: 2px 0 0;
+  font-family: var(--letters);
+  font-size: 120px;
+  line-height: 0.9;
 }
 
+/* Three swatches, one per move, sharing the height that's left. */
 .controller-buttons {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 60dvh;
+  gap: 8px;
+  margin: 14px 8px 0;
 }
-
 .controller-button {
-  --move-color: #475569;
   position: relative;
+  isolation: isolate;
   flex: 1;
+  min-height: 120px;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 12px;
   width: 100%;
+  padding: 0 30px 0 32px;
   border: 0;
-  border-radius: 1.25rem;
-  padding: 0.75rem 1.25rem;
-  background: var(--move-color);
-  color: #fff;
+  background: transparent;
+  color: var(--cream);
+  font: inherit;
   text-align: left;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
-  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-.controller-button.move-attack { --move-color: #c2410c; }
-.controller-button.move-block { --move-color: #475569; }
-.controller-button.move-heal { --move-color: #15803d; }
-.controller-button:disabled {
-  filter: grayscale(1);
-  opacity: 0.55;
-  box-shadow: none;
+/* A torn scrap of white canvas under the paint, so a swatch reads on any ground, a hand drawn one included. */
+.controller-button::before,
+.controller-button::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
 }
-/* The lobby's look at the controls: in color, so players learn them, but flat, since they don't work yet. */
-.controller-button.controller-preview {
-  opacity: 0.85;
-  box-shadow: none;
+.controller-button::before {
+  inset: 0;
+  z-index: -2;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
 }
+/* The move's paint, with Alex's dry brush edge and grain. */
+.controller-button::after {
+  inset: 9px 8px;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--paint);
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.controller-button.move-attack { --paint: var(--attack); }
+.controller-button.move-block { --paint: var(--block); }
+.controller-button.move-heal { --paint: var(--heal); }
+/* Each of the three stacked swatches gets its own brush edge and its own scrap. */
+.controller-buttons > :nth-child(2)::before { -webkit-mask-image: var(--scrap-mask-2); mask-image: var(--scrap-mask-2); }
+.controller-buttons > :nth-child(3)::before { -webkit-mask-image: var(--scrap-mask-3); mask-image: var(--scrap-mask-3); }
+.controller-buttons > :nth-child(2)::after { -webkit-mask-image: var(--swatch-mask-2); mask-image: var(--swatch-mask-2); }
+.controller-buttons > :nth-child(3)::after { -webkit-mask-image: var(--swatch-mask-3); mask-image: var(--swatch-mask-3); }
+/* Locked: the paint washes out to grey, the drawing greys, and the lettering turns to pencil. */
+.controller-button:disabled { color: rgb(27 23 20 / 0.55); }
+.controller-button:disabled::after { filter: grayscale(1) brightness(1.3) contrast(0.6); }
+.controller-button:disabled .controller-art img { filter: grayscale(1); opacity: 0.55; }
+/* On the dark tapping screen, a locked swatch fades back into the ground instead of lighting up. */
+.controller-page.is-play .controller-button:disabled { opacity: 0.42; color: var(--cream); }
+.controller-page.is-play .controller-button:disabled::after { filter: grayscale(1) brightness(0.85); }
 .controller-button:focus-visible {
-  outline: 4px solid #212529;
-  outline-offset: 3px;
+  outline: 4px solid var(--cream);
+  outline-offset: 2px;
 }
-.controller-button img {
-  width: clamp(3.5rem, 18vw, 5.5rem);
-  height: clamp(3.5rem, 18vw, 5.5rem);
+
+/* Alex's drawing, straight on the paint. */
+.controller-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 116px;
+}
+.controller-art img {
+  max-width: 92px;
+  max-height: 116px;
   object-fit: contain;
-  flex-shrink: 0;
   pointer-events: none;
 }
 .controller-label {
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.1;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--letters);
+  font-size: 54px;
+  line-height: 0.95;
 }
+/* At 24px, cream on every move's paint reads as large text, which needs 3:1 and gets it. */
 .controller-detail {
   display: block;
-  font-size: 1rem;
-  font-weight: 500;
-  opacity: 0.9;
-}
-.controller-count {
-  margin-left: auto;
-  font-size: 2rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-/* A ring, not an outline, since Bootstrap removes the outline from a button a tap has focused. */
-.controller-button.picked {
-  box-shadow: 0 0 0 4px var(--team-tint), 0 0 0 9px var(--team-ink);
-  filter: none;
-  opacity: 1;
+  margin-top: 4px;
+  font-family: var(--text);
+  font-size: 24px;
+  line-height: 1.1;
 }
 
+/* The count, in an inked circle, rises only when the server takes the tap. */
+.controller-tally {
+  position: relative;
+  flex: none;
+}
+.controller-count {
+  display: grid;
+  place-items: center;
+  min-width: 74px;
+  height: 64px;
+  padding: 6px 14px 0;
+  background: var(--dab) center / 100% 100% no-repeat;
+  color: var(--ink);
+  font-family: var(--letters);
+  font-size: 40px;
+  line-height: 1;
+}
+.controller-button:disabled .controller-count { color: var(--muted); }
 .controller-plus {
   position: absolute;
-  right: 22%;
-  top: 25%;
-  font-size: 1.75rem;
-  font-weight: 800;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 2px;
+  transform: translateX(-50%);
+  font-family: var(--letters);
+  font-size: 36px;
+  line-height: 1;
+  color: var(--cream);
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
   pointer-events: none;
 }
 
+/* The vote: items keep their stat's paint, and the one you voted for is circled by hand. */
+.controller-ring {
+  position: absolute;
+  inset: -10px -6px;
+  background: var(--loop) center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+.controller-buttons.is-vote .controller-art { width: 78px; height: 100px; }
+.controller-buttons.is-vote .controller-art img { max-width: 78px; max-height: 100px; }
+.controller-buttons.is-vote .controller-label { font-size: 38px; line-height: 1; }
+
+.controller-error {
+  align-self: center;
+  margin: 12px 16px 0;
+  padding: 8px 16px 6px;
+  border-radius: 14px 20px 12px 18px;
+  background: var(--ink);
+  color: var(--cream);
+  text-align: center;
+  font-size: 20px;
+}
+
+.controller-page ::selection { background: var(--team); color: var(--cream); }
+.controller-page.team-red ::selection,
+.controller-page.team-blue ::selection { background: var(--cream); color: var(--team); }
+
+/* The phone screens outside the game. Before a phone has a team they're white canvas with ink lettering;
+   once it has one, its team's paint fills them (the team rules near the top of this file). */
+
+/* A lettered heading, and a quiet line under it. */
+.phone-heading {
+  margin: 28px 20px 0;
+  text-align: center;
+  font-family: var(--letters);
+  font-size: 58px;
+  font-weight: 400;
+  line-height: 1;
+  text-wrap: balance;
+}
+/* A heading with no header above it, such as Pick a team, starts lower so it doesn't crowd the top edge. */
+.phone-heading.is-top { margin-top: 44px; }
+.phone-note {
+  margin: 12px 20px 0;
+  text-align: center;
+  text-wrap: balance;
+  font-size: 21px;
+  line-height: 1.25;
+  color: var(--muted);
+}
+.controller-page.team-red .phone-note,
+.controller-page.team-blue .phone-note { color: var(--cream); }
+
+/* The team pick: one big swatch per team, with who's already on it. */
+.controller-button.team-tile {
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+}
+.controller-button.team-tile.pick-red { --paint: var(--red); }
+.controller-button.team-tile.pick-blue { --paint: var(--blue); }
+.controller-button.team-tile .controller-label { flex: none; font-size: 68px; }
+.controller-button.team-tile .controller-detail {
+  margin: 0;
+  max-width: 100%;
+  font-size: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* In the lobby, the buttons show in their paint with a line on what each does, until the game starts. */
+.controller-button.controller-preview { flex: none; min-height: 112px; }
+.controller-button.controller-preview .controller-label { font-size: 46px; }
+
+/* The join steps are plain forms, like the account pages: a title, plain fields, and a flat red button,
+   so it's clear what to look at, centered top to bottom. They have no header until a new logo is drawn. */
+.controller-page.is-form .controller { justify-content: center; padding-block: 24px; }
+.is-form .phone-heading { margin-top: 0; font-size: 40px; }
+.is-form .phone-note { font-size: 20px; }
+.is-form .phone-error { margin-top: 12px; font-size: 20px; text-wrap: balance; }
+.phone-code { font-family: var(--letters); font-size: 26px; letter-spacing: 0.06em; color: var(--ink); }
+.phone-form {
+  display: grid;
+  gap: 6px;
+  margin: 24px 20px 0;
+}
+.phone-label { font-size: 19px; }
+.phone-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border: 2px solid var(--line);
+  border-radius: 5px 7px 4px 6px;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 22px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.phone-input::placeholder { color: var(--muted); font-size: 20px; }
+.phone-input:focus-visible { border-color: var(--ink); outline: 3px solid var(--red); outline-offset: 2px; }
+.phone-input:disabled { background: var(--canvas); color: var(--muted); }
+/* The game code is lettered big, the way the host's screen shows it. */
+.phone-input.is-code {
+  height: 64px;
+  padding-top: 4px;
+  text-align: center;
+  font-family: var(--letters);
+  font-size: 40px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+/* While it's empty, the field takes the plain hand at the hint's size, so the hint sits in the middle. */
+.phone-input.is-code:placeholder-shown {
+  padding-top: 0;
+  font-family: var(--text);
+  font-size: 20px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* The form's button is a flat block of the red team's paint, not the ink swatch the game's screens use. */
+.phone-form .phone-button {
+  min-height: 56px;
+  margin-top: 16px;
+  padding: 6px 24px 2px;
+  border-radius: 5px 7px 4px 6px;
+  background: var(--red);
+  font-size: 30px;
+}
+.phone-form .phone-button::before { content: none; }
+.phone-form .phone-button:hover,
+.phone-form .phone-button:active { background: color-mix(in srgb, var(--red) 86%, var(--ink)); }
+.phone-form .phone-button:disabled { background: color-mix(in srgb, var(--red) 55%, var(--canvas)); color: var(--cream); }
+.phone-error {
+  margin: 16px 20px 0;
+  text-align: center;
+  color: var(--error);
+  font-size: 21px;
+}
+
+/* One message between games, with the way onward at the bottom. */
+.phone-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+}
+.phone-title {
+  margin: 0;
+  font-family: var(--letters);
+  font-size: 54px;
+  font-weight: 400;
+  line-height: 1;
+  text-wrap: balance;
+  color: var(--ink);
+}
+.phone-body {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.35;
+  text-wrap: pretty;
+  color: var(--muted);
+}
+.phone-actions {
+  margin-top: auto;
+  padding: 16px 10px 0;
+}
+
+/* The one button: a swatch of ink, lettered in cream. */
+.phone-button {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 74px;
+  padding: 6px 24px 0;
+  border: 0;
+  background: transparent;
+  color: var(--cream);
+  font-family: var(--letters);
+  font-size: 36px;
+  line-height: 1;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.phone-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--paint, var(--ink));
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.phone-button:hover { color: var(--cream); }
+.phone-button:active { transform: translateY(3px); }
+.phone-button:disabled { color: rgb(255 250 242 / 0.75); }
+.phone-button:disabled::before { filter: grayscale(1) brightness(2.2) contrast(0.45); }
+.phone-button:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+/* Switching teams: a smaller swatch in the other team's paint, a way across rather than the main action. */
+.phone-button.is-outline { min-height: 64px; font-size: 32px; }
+.phone-button.is-outline.to-red { --paint: var(--red); }
+.phone-button.is-outline.to-blue { --paint: var(--blue); }
+/* On a team's paint, the main button is a cream swatch with ink lettering. */
+.phone-button.is-light { --paint: var(--cream); color: var(--ink); }
+.phone-button.is-light:hover { color: var(--ink); }
+.controller-page.team-red .phone-button:focus-visible,
+.controller-page.team-blue .phone-button:focus-visible { outline-color: var(--cream); }
+
+/* The way back from the nickname step to the code step. */
+.phone-switch {
+  margin: 20px 16px 0;
+  text-align: center;
+  font-size: 21px;
+}
+.phone-switch a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 2px;
+}
+
+/* The result: the team's paint fills the phone, with its knight on a torn scrap of canvas,
+   one lettered verdict, and the way onward. */
+.result-screen {
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0 14px;
+  text-align: center;
+}
+.result-who { margin: 0; font-size: 22px; }
+.result-spot {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: min(78vw, 320px);
+  aspect-ratio: 1.08 / 1;
+}
+.result-spot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+.result-verdict {
+  margin: 6px 16px 0;
+  font-family: var(--letters);
+  font-size: 76px;
+  font-weight: 400;
+  line-height: 0.95;
+  text-wrap: balance;
+}
+.result-taps { margin: 0 20px; font-size: 22px; line-height: 1.3; }
+.result-taps strong { font-family: var(--letters); font-size: 32px; font-weight: 400; }
+.result-screen .phone-actions { align-self: stretch; }
 @media (prefers-reduced-motion: no-preference) {
-  .controller-button.tapped {
-    animation: controller-squish 150ms ease-out;
-  }
-  .controller-plus {
-    animation: controller-plus-one 600ms ease-out forwards;
-  }
+  .result-spot { animation: result-rise 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+}
+@keyframes result-rise {
+  from { transform: translateY(20px) scale(0.92); }
+}
+
+/* On touch the swatch dips and its paint flashes, a lettered +1 rises from the count,
+   and the count bumps when the server takes the tap. */
+@media (prefers-reduced-motion: no-preference) {
+  .controller-button.tapped { animation: controller-press 140ms ease-out; }
+  .controller-button.tapped::after { animation: controller-flash 140ms ease-out; }
+  .controller-plus { animation: controller-plus-one 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .controller-count.bump { animation: controller-bump 180ms cubic-bezier(0.16, 1, 0.3, 1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .controller-plus {
-    display: none;
-  }
+  .controller-plus { display: none; }
 }
-@keyframes controller-squish {
-  0% { transform: scale(1); filter: brightness(1); }
-  40% { transform: scale(0.95); filter: brightness(1.3); }
-  100% { transform: scale(1); filter: brightness(1); }
+@keyframes controller-press {
+  35% { transform: translateY(4px) scale(0.985); }
+}
+@keyframes controller-flash {
+  35% { filter: brightness(1.14); }
 }
 @keyframes controller-plus-one {
-  from { transform: translateY(0); opacity: 1; }
-  to { transform: translateY(-3rem); opacity: 0; }
+  from { opacity: 1; transform: translate(-50%, 0) rotate(-6deg); }
+  to { opacity: 0; transform: translate(-50%, -38px) rotate(-6deg); }
+}
+@keyframes controller-bump {
+  40% { transform: scale(1.14) rotate(-3deg); }
 }

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { socket } from '../socket/socket';
 import type { Ack, EnemyState, Move, TeamId, TeamVote, Upgrade } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
 import { itemIcons, moveIcons } from './itemArt';
+import { useWakeLock } from './useWakeLock';
 import './Controller.css';
 
 const moves: Move[] = ['attack', 'block', 'heal'];
@@ -11,15 +12,23 @@ const teamNames: Record<TeamId, string> = { red: 'Red', blue: 'Blue' };
 const otherTeam = (team: TeamId): TeamId => (team === 'red' ? 'blue' : 'red');
 const noTaps = (): Record<Move, number> => ({ attack: 0, block: 0, heal: 0 });
 const wholeSeconds = (ms: number) => (ms > 0 ? Math.ceil(ms / 1000) : undefined);
+// The vote opens the moment the last boss falls, often under a thumb that's still mashing. Its tiles
+// stay locked this long first, so a tap meant for the fight can't cast a vote.
+const VOTE_LOCK_MS = 1500;
 
 type StateAck = Ack & { state?: EnemyState };
 type TapEvent = 'game:enemy:tap' | 'game:pvp:tap';
-// What the phone shows right now: a tap window that's open, buttons locked under a status line, or the item vote.
+// What the phone shows right now: a tap window that's open, buttons locked under a big word and a short line,
+// or the item vote.
 type Screen =
   | { kind: 'loading' }
   | { kind: 'open'; key: string; remaining: number; total: number; event: TapEvent }
-  | { kind: 'locked'; status: string; tone?: TeamId; countdown?: number; key?: string }
-  | { kind: 'vote'; vote: TeamVote; myVote: Upgrade | null; remaining: number; total: number };
+  | { kind: 'locked'; title: string; note?: string; tone?: TeamId; countdown?: number; key?: string }
+  | { kind: 'vote'; vote: TeamVote; myVote: Upgrade | null; remaining: number; total: number; locked: boolean; enemy: string };
+
+// The big word is lettered as large as the phone's width allows for its length.
+const titleSize = (title: string) =>
+  title.length <= 5 ? 'size-xl' : title.length <= 7 ? 'size-l' : title.length <= 9 ? 'size-m' : title.length <= 12 ? 'size-s' : 'size-xs';
 
 type Props = { code: string; team: TeamId; nickname: string };
 
@@ -30,6 +39,8 @@ export default function Controller({ code, team, nickname }: Props) {
   const [connected, setConnected] = useState(socket.connected);
   // Each window's and vote's length, from the first state that showed it open, so the bar starts full.
   const [lengths, setLengths] = useState<Record<string, number>>({});
+  // When this phone first saw each vote open, for the lock at its start.
+  const [voteSeenAt, setVoteSeenAt] = useState<Record<string, number>>({});
   // The taps the server accepted in the latest window. They count only after the server says so.
   const [tally, setTally] = useState({ key: '', counts: noTaps() });
   // A vote this phone just sent, shown at once until the server's state catches up.
@@ -54,7 +65,11 @@ export default function Controller({ code, team, nickname }: Props) {
       if (!mounted || next.code !== code) return;
       setBoss({ state: next, at: Date.now() });
       if (next.phase === 'combat' && next.endsAt !== null) openWindow(`b${next.stage}:${next.round}`, next.remainingMs);
-      if (next.vote && !next.vote.closed) noteLength(`v${next.vote.stage}`, next.vote.remainingMs);
+      if (next.vote && !next.vote.closed) {
+        const key = `v${next.vote.stage}`;
+        noteLength(key, next.vote.remainingMs);
+        setVoteSeenAt(known => (key in known ? known : { ...known, [key]: Date.now() }));
+      }
       setSentVote(sent => (next.vote && !next.vote.closed && sent && sent !== next.myVote ? sent : null));
     };
     const onPvp = (next: PvpState) => {
@@ -105,27 +120,8 @@ export default function Controller({ code, team, nickname }: Props) {
     return () => window.clearInterval(interval);
   }, []);
 
-  // Keeps the phone's screen on during the game, where the browser allows it.
-  useEffect(() => {
-    let lock: WakeLockSentinel | null = null;
-    const request = async () => {
-      if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
-      try {
-        lock = await navigator.wakeLock.request('screen');
-      } catch {
-        // Low battery or a browser setting can refuse it, and the game works without it.
-      }
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') void request();
-    };
-    void request();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibility);
-      void lock?.release().catch(() => {});
-    };
-  }, []);
+  // Keeps the phone's screen on during the game.
+  useWakeLock();
 
   // On a computer, the 1, 2 and 3 keys press the three buttons.
   useEffect(() => {
@@ -140,23 +136,29 @@ export default function Controller({ code, team, nickname }: Props) {
   const tallied = (key: string) => (tally.key === key ? tally.counts : noTaps());
   const timesUp = (key: string): Screen => {
     const taps = Object.values(tallied(key)).reduce((sum, count) => sum + count, 0);
-    return { kind: 'locked', status: `Time's up: ${taps} ${taps === 1 ? 'tap' : 'taps'}`, key };
+    return { kind: 'locked', title: "Time's up", note: `${taps} ${taps === 1 ? 'tap' : 'taps'}`, key };
   };
 
   function readScreen(): Screen {
+    // The final blow plays out on the big screen before the result shows here.
+    if (pvp && pvp.state.phase === 'finished' && pvp.state.winner) {
+      return { kind: 'locked', title: 'K.O.!', note: 'Watch the big screen', tone: pvp.state.winner };
+    }
     if (pvp && pvp.state.phase !== 'finished') {
       const state = pvp.state;
       const left = Math.max(0, state.remainingMs - (now - pvp.at));
       if (state.phase === 'flip') {
-        const status = state.turn === team ? 'You go first! Get ready.' : `${teamNames[state.turn]} goes first.`;
-        return { kind: 'locked', status, tone: state.turn, countdown: wholeSeconds(left) };
+        const countdown = wholeSeconds(left);
+        return state.turn === team
+          ? { kind: 'locked', title: "You're first", note: 'Get ready to tap', tone: team, countdown }
+          : { kind: 'locked', title: `${teamNames[state.turn]} goes first`, note: 'Watch the big screen', tone: state.turn, countdown };
       }
       const key = `p${state.turnNumber}`;
       if (state.turn !== team) {
         if (state.phase === 'pause') {
-          return { kind: 'locked', status: 'Your turn next. Get ready.', tone: team, countdown: wholeSeconds(left) };
+          return { kind: 'locked', title: "You're next", note: 'Get ready to tap', tone: team, countdown: wholeSeconds(left) };
         }
-        return { kind: 'locked', status: `${teamNames[state.turn]}'s turn. Get ready.`, tone: state.turn };
+        return { kind: 'locked', title: `${teamNames[state.turn]}'s turn`, note: 'Watch the big screen', tone: state.turn };
       }
       if (state.phase === 'turn' && left > 0) {
         return { kind: 'open', key, remaining: left, total: lengths[key] ?? left, event: 'game:pvp:tap' };
@@ -178,31 +180,33 @@ export default function Controller({ code, team, nickname }: Props) {
         // A fight's first round counts down. Between rounds, the last count stays up.
         if (state.round === 0) {
           const left = Math.max(0, state.nextRoundInMs - (now - boss.at));
-          return { kind: 'locked', status: `The ${enemy}! Get ready.`, countdown: wholeSeconds(left) };
+          return { kind: 'locked', title: `${enemy}!`, note: 'Get ready to tap', countdown: wholeSeconds(left) };
         }
         return timesUp(key);
       }
       case 'waiting':
-        return { kind: 'locked', status: `${enemy} down! Waiting for ${teamNames[otherTeam(team)].toLowerCase()}.` };
+        return { kind: 'locked', title: `${enemy} down!`, note: `Waiting for ${teamNames[otherTeam(team)].toLowerCase()}` };
       case 'selection': {
         const vote = state.vote;
-        if (!vote) return { kind: 'locked', status: 'Getting your items…' };
+        if (!vote) return { kind: 'locked', title: 'Hold on', note: 'Getting your items' };
         const left = vote.closed ? 0 : Math.max(0, vote.remainingMs - (now - boss.at));
         const key = `v${vote.stage}`;
-        return { kind: 'vote', vote, myVote: sentVote ?? state.myVote, remaining: left, total: lengths[key] ?? left };
+        const seenAt = voteSeenAt[key];
+        const locked = !vote.closed && seenAt !== undefined && now - seenAt < VOTE_LOCK_MS;
+        return { kind: 'vote', vote, myVote: sentVote ?? state.myVote, remaining: left, total: lengths[key] ?? left, locked, enemy };
       }
       case 'ready':
-        return { kind: 'locked', status: 'Both bosses are down. PvP is next!' };
+        return { kind: 'locked', title: 'Bosses down!', note: 'Now your knight fights theirs' };
       case 'won':
-        return { kind: 'locked', status: 'Your team wins!' };
+        return { kind: 'locked', title: 'You won!', note: 'Watch the big screen' };
       case 'failed':
-        return { kind: 'locked', status: 'Your knight fell.' };
+        return { kind: 'locked', title: 'Your knight fell', note: 'Watch the big screen' };
     }
   }
 
   const screen = readScreen();
   const open = connected && screen.kind === 'open';
-  const voting = connected && screen.kind === 'vote' && !screen.vote.closed && screen.remaining > 0;
+  const voting = connected && screen.kind === 'vote' && !screen.vote.closed && !screen.locked && screen.remaining > 0;
 
   // The button squishes and flashes, a +1 floats up, and the phone buzzes where it can.
   function feedback(slot: number) {
@@ -238,7 +242,7 @@ export default function Controller({ code, team, nickname }: Props) {
     socket.timeout(5000).emit('game:enemy:choose', { stage: screen.vote.stage, itemId }, (err: Error | null, response: Ack) => {
       if (err || !response?.success) {
         setSentVote(null);
-        setError(response?.error || 'Your vote did not count. Try again.');
+        setError(response?.error || "Your vote didn't count. Tap again.");
       }
     });
   }
@@ -252,38 +256,67 @@ export default function Controller({ code, team, nickname }: Props) {
     }
   };
 
-  let status = '';
+  // One big word for the moment, and a short line under it when the word needs one.
+  let title = '';
+  let note: string | undefined;
   let tone: TeamId | undefined;
   let countdown: number | undefined;
-  const itemName = (vote: TeamVote, id: Upgrade | null) => vote.offers.find(item => item.id === id)?.name ?? 'an item';
-  if (screen.kind === 'loading') status = 'Loading…';
-  else if (screen.kind === 'open') status = 'Tap!';
-  else if (screen.kind === 'locked') ({ status, tone, countdown } = screen);
-  else if (screen.vote.closed) status = `Your team picked ${itemName(screen.vote, screen.vote.pick)}.`;
-  else if (screen.myVote) status = `You voted ${itemName(screen.vote, screen.myVote)}. Tap another to switch.`;
-  else status = "Vote for your knight's item.";
+  const itemName = (vote: TeamVote, id: Upgrade | null) => vote.offers.find(item => item.id === id)?.name ?? 'Your item';
+  if (screen.kind === 'loading') title = 'Loading…';
+  else if (screen.kind === 'open') {
+    // This phone's taps the server has accepted so far this window, lettered under the clock.
+    const taps = Object.values(tallied(screen.key)).reduce((sum, count) => sum + count, 0);
+    title = 'Tap!';
+    note = `${taps} ${taps === 1 ? 'tap' : 'taps'}`;
+  }
+  else if (screen.kind === 'locked') ({ title, note, tone, countdown } = screen);
+  else if (screen.vote.closed) {
+    title = itemName(screen.vote, screen.vote.pick);
+    note = "Your team's pick";
+  } else if (screen.locked) {
+    title = `${screen.enemy} down!`;
+    note = 'Vote in a moment';
+  } else if (screen.myVote) {
+    title = 'Voted';
+    note = `${itemName(screen.vote, screen.myVote)} · tap another to switch`;
+  } else {
+    title = 'Vote';
+    note = "Pick your knight's item";
+  }
 
   const countKey = screen.kind === 'open' ? screen.key : screen.kind === 'locked' ? screen.key : undefined;
   const counts = countKey ? tallied(countKey) : null;
   const barWidth = screen.kind === 'open' || (screen.kind === 'vote' && !screen.vote.closed)
     ? (100 * screen.remaining) / screen.total
     : 0;
+  // A word about the other team sits on that team's paint, since this phone is already its own team's color.
+  const otherTone = connected && tone && tone !== team ? tone : undefined;
 
   return (
-    <div className={`controller-page team-${team}`} onContextMenu={event => event.preventDefault()}>
-      <div className="controller-bar" aria-hidden="true">
-        <div style={{ width: `${Math.min(100, barWidth)}%` }} />
-      </div>
+    <div className={`controller-page is-play team-${team}`} onContextMenu={event => event.preventDefault()}>
       <main className="controller">
-        {!connected && <p className="controller-banner" role="alert">Reconnecting…</p>}
         <header className="controller-header">
-          <h1 className="controller-team mb-0">{teamNames[team]} team</h1>
+          <h1 className="controller-team">{teamNames[team]} team</h1>
           <span className="controller-name">{nickname}</span>
         </header>
-        <p className={`controller-status ${tone ? `tone-${tone}` : ''}`} role="status">{status}</p>
-        {countdown !== undefined && <p className="controller-countdown" aria-hidden="true">{countdown}</p>}
+        <div className={`controller-word ${otherTone ? `tone-${otherTone}` : ''}`} role="status">
+          {connected ? (
+            <p className={`controller-status ${titleSize(title)}`}>{title}</p>
+          ) : (
+            // While the connection is down the swatches are locked, so the word says so instead of the last state.
+            <p className="controller-status is-offline">Reconnecting…</p>
+          )}
+          {/* The clock: a brush stroke under the word that drains as the window or the vote runs out. */}
+          <div className="controller-clock" aria-hidden="true">
+            <i style={{ '--left': `${Math.min(100, barWidth)}%` } as CSSProperties} />
+          </div>
+          {connected && note && <p className={`controller-note ${screen.kind === 'open' ? 'is-taps' : ''}`}>{note}</p>}
+          {connected && countdown !== undefined && (
+            <p className="controller-countdown" aria-hidden="true">{countdown}</p>
+          )}
+        </div>
 
-        <div className="controller-buttons">
+        <div className={`controller-buttons ${screen.kind === 'vote' ? 'is-vote' : ''}`}>
           {screen.kind === 'vote'
             ? screen.vote.offers.map((item, slot) => {
                 const chosen = screen.vote.closed ? screen.vote.pick === item.id : screen.myVote === item.id;
@@ -295,12 +328,15 @@ export default function Controller({ code, team, nickname }: Props) {
                     aria-pressed={chosen}
                     disabled={!voting && !chosen}
                     onClick={() => vote(item.id)}>
-                    <img src={itemIcons[item.id]} alt="" />
-                    <span>
-                      <span className="controller-label">{item.name}</span>
+                    <span className="controller-art"><img src={itemIcons[item.id]} alt="" /></span>
+                    <span className="controller-label">
+                      {item.name}
                       <span className="controller-detail">+{Math.round(item.bonus * 100)}% {item.stat}</span>
                     </span>
-                    <span className="controller-count" aria-label={`${votes} ${votes === 1 ? 'vote' : 'votes'}`}>{votes}</span>
+                    <span className="controller-tally">
+                      <span className="controller-count" aria-label={`${votes} ${votes === 1 ? 'vote' : 'votes'}`}>{votes}</span>
+                    </span>
+                    {chosen && <span className="controller-ring" aria-hidden="true" />}
                   </button>
                 );
               })
@@ -312,16 +348,21 @@ export default function Controller({ code, team, nickname }: Props) {
                   onPointerDown={() => tap(move, slot)}
                   // Enter and Space press a focused button with no pointer, which reports detail 0.
                   onClick={event => { if (event.detail === 0) tap(move, slot); }}>
-                  <img src={moveIcons[move]} alt="" />
+                  <span className="controller-art"><img src={moveIcons[move]} alt="" /></span>
                   <span className="controller-label">{moveNames[move]}</span>
-                  {counts && <span className="controller-count">{counts[move]}</span>}
-                  {floats.filter(float => float.slot === slot).map(float => (
-                    <span key={float.id} className="controller-plus" aria-hidden="true">+1</span>
-                  ))}
+                  {counts && (
+                    <span className="controller-tally">
+                      {/* Keyed by the count, so the pill bumps each time the server takes a tap. */}
+                      <span key={counts[move]} className={`controller-count ${counts[move] > 0 ? 'bump' : ''}`}>{counts[move]}</span>
+                      {floats.filter(float => float.slot === slot).map(float => (
+                        <span key={float.id} className="controller-plus" aria-hidden="true">+1</span>
+                      ))}
+                    </span>
+                  )}
                 </button>
               ))}
         </div>
-        {error && <p className="text-danger text-center fw-semibold mb-0" role="alert">{error}</p>}
+        {error && <p className="controller-error" role="alert">{error}</p>}
       </main>
     </div>
   );

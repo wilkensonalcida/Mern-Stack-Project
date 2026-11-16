@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Sprite } from './Sprite'
 
 export type EnemyAnimation = 'idle' | 'attack' | 'hit'
-type Props = { sheet: string; frameSize: number; animation: EnemyAnimation; label: string; mirrored?: boolean }
+// size is how wide to draw it, as a CSS length; the host's screen draws it bigger.
+type Props = { sheet: string; frameSize: number; animation: EnemyAnimation; label: string; mirrored?: boolean; size?: string }
 
 // Exactly the same canvas + Sprite lifecycle used by Knight.tsx.
-export default function AnimatedEnemy({ sheet, frameSize, animation, label, mirrored = false }: Props) {
+export default function AnimatedEnemy({ sheet, frameSize, animation, label, mirrored = false, size }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [sprite] = useState(() => new Sprite(sheet, frameSize, frameSize, {
     idle: { row: 0, frames: 3, fps: 4, loop: true },
@@ -30,5 +31,6 @@ export default function AnimatedEnemy({ sheet, frameSize, animation, label, mirr
     return () => cancelAnimationFrame(frame)
   }, [sprite, frameSize])
   return <canvas ref={canvasRef} width={frameSize} height={frameSize} role="img" aria-label={label}
-    style={{ width: `min(250px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined }} />
+    // The sheets have small marks at their frames' top and side edges, so a 2% crop hides them and keeps the feet.
+    style={{ width: size ?? `min(250px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined, clipPath: 'inset(2% 2% 0 2%)' }} />
 }

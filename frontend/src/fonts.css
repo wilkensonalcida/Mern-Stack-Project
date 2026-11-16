@@ -1,0 +1,17 @@
+/* The game's two faces, served from the app so they load on any network.
+   Caveat Brush letters everything read at a glance, and Patrick Hand sets the small text.
+   Their licenses are in assets/fonts/OFL-caveat-brush.txt and assets/fonts/OFL-patrick-hand.txt. */
+@font-face {
+  font-family: 'Caveat Brush';
+  src: url('./assets/fonts/caveat-brush-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Patrick Hand';
+  src: url('./assets/fonts/patrick-hand-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

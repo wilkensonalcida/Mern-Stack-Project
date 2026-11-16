@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPick, castVote, decideVote, everyoneVoted, openVote, rollUpgradeOptions, voteCounts } from './upgradeSelection.js';
+import { UPGRADE_ITEMS, applyPick, castVote, decideVote, everyoneVoted, openVote, rollTeamOffers, voteCounts } from './upgradeSelection.js';
 import { createKnight } from './enemyRules.js';
 
 const offers = [
@@ -9,11 +9,25 @@ const offers = [
 ];
 const newVote = () => openVote(0, Date.now() + 10_000, offers.map(item => ({ ...item })));
 
-describe('rollUpgradeOptions', () => {
-  it('offers three different items', () => {
-    const rolled = rollUpgradeOptions(3);
-    expect(rolled).toHaveLength(3);
-    expect(new Set(rolled.map(item => item.id)).size).toBe(3);
+describe('rollTeamOffers', () => {
+  it("offers each team one item for each move, in the controller's order", () => {
+    const { red, blue } = rollTeamOffers();
+    expect(red.map(item => item.stat)).toEqual(['attack', 'block', 'heal']);
+    expect(blue.map(item => item.stat)).toEqual(['attack', 'block', 'heal']);
+  });
+
+  it('never offers both teams the same item, so between them every item is on offer', () => {
+    for (let i = 0; i < 20; i++) {
+      const { red, blue } = rollTeamOffers();
+      const ids = [...red, ...blue].map(item => item.id).sort();
+      expect(ids).toEqual(UPGRADE_ITEMS.map(item => item.id).sort());
+    }
+  });
+
+  it("splits each move's two items between the teams at random", () => {
+    expect(rollTeamOffers(() => 0).red.map(item => item.id)).toEqual(['sharpened_blade', 'wood_shield', 'healing_potion']);
+    expect(rollTeamOffers(() => 0).blue.map(item => item.id)).toEqual(['heated_blade', 'metal_shield', 'gauze']);
+    expect(rollTeamOffers(() => 1).red.map(item => item.id)).toEqual(['heated_blade', 'metal_shield', 'gauze']);
   });
 });
 

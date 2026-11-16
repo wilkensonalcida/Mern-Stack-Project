@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import Knight, { type KnightAnimation } from './Knight';
 import Goblin from './Goblin';
 import Skeleton from './Skeleton';
 import type { EnemyAnimation } from './AnimateEnemy';
 import type { HostBossState, HostTeamView, RoundResult, TeamId, TeamVote } from './enemyTypes';
 import { itemIcons } from './itemArt';
+import { Clock, EndButton, HostFrame, TapCounts, bonusText, formatAmount, formatHp, useWindowLengths } from './HostFrame';
 
 // After each round, the knight swings if its team attacked and the enemy flinches, or the enemy attacks.
 function useRoundAnimation(stage: number | undefined, lastRound: RoundResult | null | undefined) {
@@ -25,113 +26,149 @@ function useRoundAnimation(stage: number | undefined, lastRound: RoundResult | n
 }
 
 const teamNames: Record<TeamId, string> = { red: 'Red', blue: 'Blue' };
-const teamText: Record<TeamId, string> = { red: 'text-danger', blue: 'text-primary' };
-const spriteWidth = 'min(250px, 40vw)';
+// The sprites' width on this screen, from the stage's --sprite in Host.css.
+const spriteSize = 'var(--sprite)';
 
-function HpBar({ label, hp, maxHp, barClass }: { label: string; hp: number; maxHp: number; barClass: string }) {
+type FighterProps = {
+  children: ReactNode;
+  label: string;
+  hp: number;
+  maxHp: number;
+  boss?: boolean;
+  // A knight that fell to the boss falls backward where it stood; -1 for a sprite drawn mirrored.
+  knockedOut?: boolean;
+  mirror?: 1 | -1;
+  // A line under the HP bar, such as the knight's item bonuses.
+  note?: string | null;
+};
+
+// A fighter on the stage: its sprite standing on the floor line, and its nameplate on the boards below.
+function Fighter({ children, label, hp, maxHp, boss = false, knockedOut = false, mirror = 1, note }: FighterProps) {
   return (
-    <div className="mt-2" style={{ width: spriteWidth }}>
-      <p className="mb-1">{label}: {hp.toFixed(1)} / {maxHp} HP</p>
-      <div className="progress" role="progressbar" aria-label={`${label} health`}
-        aria-valuenow={hp} aria-valuemin={0} aria-valuemax={maxHp}>
-        <div className={`progress-bar ${barClass}`} style={{ width: `${100 * hp / maxHp}%` }} />
+    <div className={`stage-fighter ${boss ? 'is-boss' : ''} ${knockedOut ? 'is-knocked-out' : ''}`}
+      style={knockedOut ? ({ '--mirror': mirror } as CSSProperties) : undefined}>
+      {children}
+      <div className="stage-plate">
+        <p className="stage-plate-label"><span>{label}</span><span className="stage-plate-value">{formatHp(hp)} / {maxHp} HP</span></p>
+        <div className="stage-hp" role="progressbar" aria-label={`${label} health`}
+          aria-valuenow={hp} aria-valuemin={0} aria-valuemax={maxHp}>
+          <div style={{ width: `${(100 * hp) / maxHp}%` }} />
+        </div>
+        {note && <p className="stage-plate-note">{note}</p>}
       </div>
     </div>
   );
 }
 
-function columnStatus(view: HostTeamView, other: TeamId): string {
-  switch (view.phase) {
-    case 'combat': return view.endsAt !== null ? `Round ${view.round}` : 'Get ready';
-    case 'waiting': return `${view.enemy?.name ?? 'Boss'} down! Waiting for ${teamNames[other].toLowerCase()}`;
-    case 'selection': {
-      const vote = view.vote;
-      if (!vote) return 'Item vote';
-      if (vote.closed) return `Picked ${vote.offers.find(item => item.id === vote.pick)?.name ?? 'an item'}`;
-      return `Voting: ${vote.voters}/${vote.players}`;
-    }
-    case 'ready': return 'Ready for PvP';
-    case 'won': return 'Wins!';
-    case 'failed': return 'Knight down';
-  }
-}
-
-// A team's item vote on the host's screen: the three offers with their votes, and the pick once it closes.
-function VoteTiles({ vote, mirrored }: { vote: TeamVote; mirrored: boolean }) {
+// A team's item vote on the stage: the three offers stand on the floor in their moves' colors,
+// each with its votes on the boards, and the pick rings out when the vote closes.
+function VoteOffers({ vote }: { vote: TeamVote }) {
   return (
-    <ul className={`row row-cols-3 g-2 list-unstyled mb-2 ${mirrored ? 'flex-row-reverse' : ''}`} aria-label="Item vote">
+    <div className="stage-offers">
       {vote.offers.map(item => {
         const picked = vote.closed && vote.pick === item.id;
         const votes = vote.counts[item.id] ?? 0;
         return (
-          <li className="col" key={item.id}>
-            <div className={`h-100 text-center rounded-3 p-2 border ${picked ? 'border-dark border-4' : ''} ${vote.closed && !picked ? 'opacity-50' : ''}`}>
-              <img src={itemIcons[item.id]} alt="" width={64} height={64} style={{ objectFit: 'contain' }} />
-              <p className="fw-semibold mb-0">{item.name}</p>
-              <p className="small text-body-secondary mb-1">+{Math.round(item.bonus * 100)}% {item.stat}</p>
-              <p className="fs-4 fw-bold mb-0">{votes} {votes === 1 ? 'vote' : 'votes'}</p>
-              {picked && <p className="small fw-semibold mb-0">Picked</p>}
+          <div className={`stage-offer move-${item.stat} ${picked ? 'is-picked' : ''} ${vote.closed && !picked ? 'is-faded' : ''}`} key={item.id}>
+            <div className="stage-offer-tile">
+              <span className="stage-offer-art"><img src={itemIcons[item.id]} alt="" /></span>
+              <span className="stage-offer-name">{item.name}</span>
+              <span className="stage-offer-effect">+{Math.round(item.bonus * 100)}% {item.stat}</span>
             </div>
-          </li>
+            <div className="stage-plate">
+              <span className="stage-offer-votes">{picked ? 'Picked: ' : ''}{votes} {votes === 1 ? 'vote' : 'votes'}</span>
+            </div>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
-type ColumnProps = { view: HostTeamView; other: TeamId; secondsLeft: number | null; mirrored: boolean };
+// The big word across the top of each half, which the room reads, and the short line under its clock.
+// The seconds before a tap window count down, and the window itself says "Tap!".
+function stageHeadline(view: HostTeamView, other: TeamId, countdown: number | undefined): { line: string; next: string | null } {
+  const enemy = view.enemy?.name ?? 'Boss';
+  switch (view.phase) {
+    case 'combat':
+      if (view.endsAt !== null) return { line: 'Tap!', next: null };
+      return { line: countdown !== undefined ? String(countdown) : 'Get ready', next: `Round ${view.round + 1}` };
+    case 'waiting': return { line: `${enemy} down!`, next: `Waiting for ${teamNames[other].toLowerCase()}` };
+    case 'selection': {
+      const vote = view.vote;
+      if (!vote) return { line: 'Vote', next: null };
+      if (vote.closed) return { line: vote.offers.find(item => item.id === vote.pick)?.name ?? 'Picked', next: "The team's pick" };
+      return { line: 'Vote', next: `${vote.voters} of ${vote.players} voted` };
+    }
+    case 'ready': return { line: 'Bosses down!', next: 'PvP next' };
+    case 'won': return { line: 'Won!', next: null };
+    case 'failed': return { line: 'K.O.!', next: 'Knight down' };
+  }
+}
 
-// One team's boss fight on the host's screen. Blue's column is red's mirrored,
+type StageProps = {
+  view: HostTeamView;
+  other: TeamId;
+  // How much of a tap window or a vote is left, from 1 to 0, or null when nothing is timed.
+  clock: number | null;
+  countdown: number | undefined;
+  mirrored: boolean;
+  // While the room's shared count shows over the seam, this half's own big line steps aside.
+  sharedCount: boolean;
+};
+
+// One team's boss fight on the host's stage. Blue's half is red's mirrored,
 // so each knight stands on its own team's side and the bosses meet in the middle.
-function BossFightColumn({ view, other, secondsLeft, mirrored }: ColumnProps) {
+function BossStage({ view, other, clock, countdown, mirrored, sharedCount }: StageProps) {
   const animation = useRoundAnimation(view.stage, view.lastRound);
   const bossDown = view.phase === 'waiting' || view.phase === 'selection' || view.phase === 'ready';
-  const totalTaps = view.taps.attack + view.taps.block + view.taps.heal;
-  const reverse = mirrored ? 'flex-row-reverse' : '';
+  const voting = view.phase === 'selection' && Boolean(view.vote);
+  const headline = stageHeadline(view, other, countdown);
   const { knight, enemy, lastRound } = view;
+  const windowOpen = view.phase === 'combat' && view.endsAt !== null;
+  const showResult = lastRound !== null && lastRound !== undefined && !windowOpen && view.phase === 'combat';
+  // The knight's bonuses from the items its team picked, on its nameplate. While the team votes,
+  // its plate is too narrow, and the vote's own pick says what's coming.
+  const bonus = voting ? null : bonusText(knight.buffs);
 
   return (
-    <section className={`card h-100 ${mirrored ? 'text-end' : ''}`} aria-labelledby={`${view.team}-heading`}>
-      <div className="card-body d-flex flex-column p-4">
-        <div className={`d-flex align-items-baseline justify-content-between gap-3 ${reverse}`}>
-          <h2 className={`h3 mb-0 ${teamText[view.team]}`} id={`${view.team}-heading`}>{teamNames[view.team]} team</h2>
-          <p className="text-body-secondary mb-0 text-truncate">{view.players.map(player => player.name).join(', ')}</p>
-        </div>
-        <div className={`d-flex align-items-baseline justify-content-between gap-3 mt-2 ${reverse}`}>
-          <p className="fs-3 fw-semibold mb-0" role="status">{columnStatus(view, other)}</p>
-          {secondsLeft !== null && <p className="display-6 mb-0" role="timer">{secondsLeft.toFixed(1)} s</p>}
-        </div>
+    <section className={`stage team-${view.team} ${mirrored ? 'is-mirrored' : ''} ${voting ? 'is-voting' : ''} ${bonus ? 'has-bonus' : ''}`}
+      aria-labelledby={`${view.team}-heading`}>
+      <header className="stage-band">
+        <h2 id={`${view.team}-heading`}>{teamNames[view.team]} team</h2>
+      </header>
 
-        <div className={`d-flex align-items-end justify-content-around flex-grow-1 py-4 ${reverse}`}>
-          <div className="d-flex flex-column align-items-center">
-            <Knight animation={bossDown ? 'victory' : animation.knight} mirrored={mirrored}
-              label={`${teamNames[view.team]} team's knight`} />
-            <HpBar label="Knight" hp={knight.hp} maxHp={knight.maxHp} barClass="bg-success" />
-          </div>
-          <div className="d-flex flex-column align-items-center" style={{ minWidth: spriteWidth }}>
-            {view.phase === 'combat' && enemy && <>
+      <div className="stage-arena">
+        <div className="stage-headline">
+          {/* While the room's shared count shows over the seam, this half's own big word steps aside. */}
+          <p className={`stage-moment ${sharedCount ? 'is-hidden' : ''}`} key={headline.line} role="status">{headline.line}</p>
+          <Clock fraction={clock} />
+          {windowOpen
+            ? <TapCounts label="Taps this round" taps={view.taps} />
+            : showResult
+              ? <p className="stage-next">
+                  Last round: {formatAmount(lastRound.attack)} damage, {formatAmount(lastRound.blocked)} blocked, {formatAmount(lastRound.healed)} healed
+                </p>
+              : headline.next && <p className="stage-next">{headline.next}</p>}
+        </div>
+        <div className="stage-floor">
+          <Fighter label="Knight" hp={knight.hp} maxHp={knight.maxHp} knockedOut={view.phase === 'failed'} mirror={mirrored ? -1 : 1} note={bonus}>
+            <Knight animation={bossDown ? 'victory' : animation.knight} team={view.team} mirrored={mirrored}
+              label={`${teamNames[view.team]} team's knight`} size={spriteSize} />
+          </Fighter>
+          {/* The boss stays standing over a knight it knocked out. */}
+          {(view.phase === 'combat' || view.phase === 'failed') && enemy && (
+            <Fighter label={enemy.name} hp={enemy.hp} maxHp={enemy.maxHp} boss>
+              {/* Alex drew both bosses facing left, toward red's knight, so blue's half flips them to face its own. */}
               {view.stage === 0
-                ? <Goblin animation={animation.foe} mirrored={!mirrored} />
-                : <Skeleton animation={animation.foe} mirrored={!mirrored} />}
-              <HpBar label={enemy.name} hp={enemy.hp} maxHp={enemy.maxHp} barClass="bg-danger" />
-            </>}
-          </div>
+                ? <Goblin animation={animation.foe} mirrored={mirrored} size={spriteSize} />
+                : <Skeleton animation={animation.foe} mirrored={mirrored} size={spriteSize} />}
+            </Fighter>
+          )}
+          {voting && view.vote && <VoteOffers vote={view.vote} />}
         </div>
-
-        {view.phase === 'combat' && <>
-          <p className="fs-2 fw-semibold mb-0">Taps this round: {totalTaps}</p>
-          <p className="text-body-secondary mb-2">
-            Attack {view.taps.attack} · Block {view.taps.block} · Heal {view.taps.heal}
-          </p>
-        </>}
-        {view.phase === 'selection' && view.vote && <VoteTiles vote={view.vote} mirrored={mirrored} />}
-        {lastRound && <p className="mb-1">
-          Last round: {lastRound.attack.toFixed(1)} damage, {lastRound.blocked.toFixed(1)} blocked, {lastRound.healed.toFixed(1)} healed
-        </p>}
-        <p className="small text-body-secondary mb-0">
-          Knight's bonuses: attack ×{knight.buffs.attack.toFixed(2)}, block ×{knight.buffs.block.toFixed(2)}, heal ×{knight.buffs.heal.toFixed(2)}
-        </p>
       </div>
+
     </section>
   );
 }
@@ -150,28 +187,50 @@ export function HostBossFights({ state, receivedAt, onEndGame }: HostBossFightsP
     const interval = window.setInterval(() => setNow(Date.now()), 100);
     return () => window.clearInterval(interval);
   }, []);
-  // A round's time left, or an open item vote's.
-  const secondsLeft = (view: HostTeamView) => {
-    const remaining = view.endsAt !== null ? view.remainingMs
-      : view.phase === 'selection' && view.vote && !view.vote.closed ? view.vote.remainingMs
+  // How much of a round's tap window, or an open item vote, is left.
+  const windowLength = useWindowLengths();
+  const clock = (view: HostTeamView) => {
+    const timed = view.endsAt !== null ? { key: `${view.team}:${view.stage}:${view.round}`, remaining: view.remainingMs }
+      : view.phase === 'selection' && view.vote && !view.vote.closed ? { key: `${view.team}:v${view.stage}`, remaining: view.vote.remainingMs }
       : null;
-    return remaining === null ? null : Math.max(0, (remaining - (now - receivedAt)) / 1000);
+    if (!timed) return null;
+    return Math.max(0, timed.remaining - (now - receivedAt)) / windowLength(timed.key, timed.remaining);
+  };
+  // Whole seconds until a team's next tap window opens, while one is waiting to. It holds at 1
+  // until the window's state arrives, so the count never jumps back to "Get ready". The clock ticks
+  // every 100 ms and can trail a state that just arrived, so a negative wait counts as none.
+  const countdown = (view: HostTeamView) => {
+    if (view.phase !== 'combat' || view.endsAt !== null || view.nextRoundInMs <= 0) return undefined;
+    return Math.max(1, Math.ceil((view.nextRoundInMs - Math.max(0, now - receivedAt)) / 1000));
   };
 
+  // Both teams start each boss fight together, so the room gets one shared count over the seam,
+  // "3, 2, 1", then a big "Tap!" for the first second of round 1. Later rounds count in each half.
+  const { red, blue } = state.teams;
+  const bothFighting = red.phase === 'combat' && blue.phase === 'combat' && red.stage === blue.stage;
+  const startingFight = bothFighting && red.round === 0 && blue.round === 0 && red.endsAt === null && blue.endsAt === null;
+  const firstWindow = bothFighting && red.round === 1 && blue.round === 1 && red.endsAt !== null && blue.endsAt !== null;
+  const [tapUntil, setTapUntil] = useState<{ stage: number; until: number } | null>(null);
+  useEffect(() => {
+    if (firstWindow) setTapUntil(current => (current?.stage === red.stage ? current : { stage: red.stage, until: Date.now() + 1000 }));
+  }, [firstWindow, red.stage]);
+  const startCount = startingFight ? countdown(red) : undefined;
+  const shared = startCount !== undefined ? String(startCount)
+    : firstWindow && tapUntil?.stage === red.stage && now < tapUntil.until ? 'Tap!'
+    : null;
+
   return (
-    <main className="container-fluid px-4 pt-4" style={{ paddingBottom: 88 }}>
-      <h1 className="visually-hidden">Boss fights, session {state.code}</h1>
-      <div className="row g-4">
-        <div className="col-12 col-lg-6">
-          <BossFightColumn view={state.teams.red} other="blue" secondsLeft={secondsLeft(state.teams.red)} mirrored={false} />
-        </div>
-        <div className="col-12 col-lg-6">
-          <BossFightColumn view={state.teams.blue} other="red" secondsLeft={secondsLeft(state.teams.blue)} mirrored />
-        </div>
-      </div>
-      <div className="position-fixed bottom-0 start-0 end-0 p-3 bg-body">
-        <button className="btn btn-outline-dark" type="button" onClick={onEndGame}>End game</button>
-      </div>
-    </main>
+    <HostFrame dark split action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
+      <main className="stage-split">
+        <h1 className="visually-hidden">Boss fights, session {state.code}</h1>
+        <BossStage view={red} other="blue" clock={clock(red)}
+          countdown={countdown(red)} mirrored={false} sharedCount={shared !== null} />
+        <BossStage view={blue} other="red" clock={clock(blue)}
+          countdown={countdown(blue)} mirrored sharedCount={shared !== null} />
+        {shared !== null && (
+          <p className={`stage-count ${shared === 'Tap!' ? 'is-go' : ''}`} key={shared} role="status">{shared}</p>
+        )}
+      </main>
+    </HostFrame>
   );
 }

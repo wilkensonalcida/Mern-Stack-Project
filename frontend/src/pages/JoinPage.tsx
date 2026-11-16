@@ -1,133 +1,227 @@
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { socket } from '../socket/socket'
-import PageLayout from '../components/PageLayout'
+import PhoneMessage from '../components/PhoneMessage'
+import { sentence } from '../text'
+// The logo is off until a new one is drawn. When it lands, put this import and both <Logo /> lines back.
+// import Logo from '../components/Logo'
+import '../game/Controller.css'
 import type { LobbyResponse } from '../socket/lobby'
 
+type CheckResponse = { success: boolean; code?: string; error?: string }
+type CheckResult = { success: true } | { success: false; error: string }
+
+// Errors that mean the code no longer names an open lobby, which send a phone back to the code step.
+const codeErrors = ['Lobby not found', 'Game already started']
+// The server's reasons, in the join screen's own words, with what to do next.
+const friendlyErrors: Record<string, string> = {
+  'Lobby not found': 'No game has that code. Check the code on the big screen.',
+  'Game already started': 'That game already started. Join the next one.',
+}
+const friendly = (message: string) => friendlyErrors[message] ?? sentence(message)
+
+// Sends a request once the socket is connected, connecting it first when it isn't.
+function whenConnected(send: () => void, fail: () => void) {
+  if (socket.connected) {
+    send()
+    return
+  }
+  const onConnect = () => {
+    socket.off('connect_error', onError)
+    send()
+  }
+  const onError = () => {
+    socket.off('connect', onConnect)
+    fail()
+  }
+  socket.once('connect', onConnect)
+  socket.once('connect_error', onError)
+  socket.connect()
+}
+
+// Asks the server whether a code names a lobby that's still open, without joining it.
+function checkCode(sessionCode: string, done: (result: CheckResult) => void) {
+  whenConnected(
+    () => socket.timeout(5000).emit('game:check', { code: sessionCode }, (err: Error | null, response: CheckResponse) => {
+      if (err) done({ success: false, error: 'Server not responding.' })
+      else if (response?.success) done({ success: true })
+      else done({ success: false, error: response?.error || 'Lobby not found' })
+    }),
+    () => done({ success: false, error: 'Unable to connect to server.' }),
+  )
+}
+
+// Joining takes two steps: the game code, which the server checks, then a nickname, at /join?code=<code>.
+// The host's QR code links straight to the second step.
 export default function JoinPage() {
   const navigate = useNavigate()
-  // The host's QR code links here with ?code=, so a scan only needs a nickname.
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const linkedCode = (searchParams.get('code') ?? '').trim().toUpperCase().slice(0, 6)
+  // The first step checks the code before it moves here, so this page doesn't check it twice.
+  const handedOver = (location.state as { checked?: string } | null)?.checked
 
   const [code, setCode] = useState(linkedCode)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
-  const [joining, setJoining] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [checked, setChecked] = useState(handedOver ?? '')
+
+  const onNicknameStep = Boolean(linkedCode) && (checked === linkedCode || handedOver === linkedCode)
+  // The code whose nickname step is showing, so a join that lands after the guest went back is undone.
+  const showingCode = useRef('')
+  useEffect(() => {
+    showingCode.current = onNicknameStep ? linkedCode : ''
+  }, [onNicknameStep, linkedCode])
+
+  // A code the server turns down goes back to the code step, filled in, with the server's reason,
+  // and leaves the address so the step can't check it again.
+  const refuse = useCallback((sessionCode: string, message: string) => {
+    setCode(sessionCode)
+    setError(friendly(message))
+    navigate('/join', { replace: true })
+  }, [navigate])
+
+  useEffect(() => {
+    if (!linkedCode || checked === linkedCode || handedOver === linkedCode) return
+    let live = true
+    checkCode(linkedCode, (result) => {
+      if (!live) return
+      if (result.success) setChecked(linkedCode)
+      else refuse(linkedCode, result.error)
+    })
+    return () => {
+      live = false
+    }
+  }, [linkedCode, checked, handedOver, refuse])
+
+  function submitCode(event: React.SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const sessionCode = code.trim().toUpperCase()
+    if (busy || sessionCode.length !== 6) return
+
+    setBusy(true)
+    setError('')
+    checkCode(sessionCode, (result) => {
+      setBusy(false)
+      if (!result.success) {
+        setError(friendly(result.error))
+        return
+      }
+      setChecked(sessionCode)
+      navigate(`/join?code=${sessionCode}`, { state: { checked: sessionCode } })
+    })
+  }
 
   function joinLobby(event: React.SubmitEvent<HTMLFormElement>) {
-
     event.preventDefault()
-
-    if (joining) return
-
-    const sessionCode = code.trim().toUpperCase()
     const nickname = name.trim()
+    const joinCode = linkedCode
+    if (busy || !nickname) return
 
-    if(!nickname || !sessionCode) {
-      setError('Please enter a nickname and session code!')
-      return
-    }
-
-    if(!sessionCode) {
-      setError('Please enter a session code!')
-      return
-    }
-
-    setJoining(true)
+    setBusy(true)
     setError('')
-
-    function sendJoinRequest() {
-      socket.timeout(5000).emit(
-        "game:join",
-        {
-          code: sessionCode,
-          name: nickname
-        }, (err: Error | null, response: LobbyResponse) => {
-          setJoining(false) 
+    whenConnected(
+      () => socket.timeout(5000).emit(
+        'game:join',
+        { code: joinCode, name: nickname },
+        (err: Error | null, response: LobbyResponse) => {
+          setBusy(false)
+          // The guest went back for another code while this join was on its way, so it's undone,
+          // or the server would keep the phone in a lobby it isn't showing and refuse every other code.
+          if (showingCode.current !== joinCode) {
+            if (response?.success) socket.emit('game:leave')
+            return
+          }
           if (err) {
-            console.error("Join request failed:", err)
-            setError(response?.error || "Server not responding.")
+            setError('Server not responding.')
             return
           }
-          if(!response?.success || !response.lobby) {
-            setError(response?.error || "Invalid lobby code.")
+          if (!response?.success || !response.lobby) {
+            const message = response?.error || 'Unable to join the game.'
+            // A lobby that closed or started since the check sends the phone back for another code.
+            if (codeErrors.includes(message)) refuse(joinCode, message)
+            else setError(friendly(message))
             return
           }
-          console.log("Join request successful:", response.lobby)
-          navigate(`/lobby/${response.lobby.code}`)
-        }
-      )
-    }
+          navigate(`/lobby/${response.lobby.code}`, { state: { rejoinKey: response.rejoinKey } })
+        },
+      ),
+      () => {
+        setBusy(false)
+        setError('Unable to connect to server.')
+      },
+    )
+  }
 
-    if(socket.connected) {
-      sendJoinRequest()
-    } else {
-      socket.connect()
-      socket.timeout(5000).once("connect", () => {
-        sendJoinRequest()
-      })
-      socket.once("connect_error", () => {
-        setJoining(false)
-        setError("Unable to connect to server.")
-      })
-    }
+  if (linkedCode && !onNicknameStep) {
+    return <PhoneMessage title="Checking the code…" live="status" />
+  }
 
+  if (onNicknameStep) {
+    return (
+      <div className="controller-page team-none is-form">
+        <main className="controller">
+          {/* <Logo /> */}
+          <h1 className="phone-heading" id="nickname-heading">Pick a nickname</h1>
+          <p className="phone-note">Game code <span className="phone-code">{linkedCode}</span></p>
+          <form className="phone-form" onSubmit={joinLobby} aria-labelledby="nickname-heading">
+            <input
+              id="nickname"
+              className="phone-input"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value)
+                setError('')
+              }}
+              maxLength={20}
+              required
+              disabled={busy}
+              placeholder="Your nickname"
+              aria-labelledby="nickname-heading"
+              autoFocus
+            />
+            <button className="phone-button" type="submit" disabled={busy || !name.trim()}>{busy ? 'Joining…' : 'Join'}</button>
+          </form>
+          {error && <p className="phone-error" role="alert">{error}</p>}
+          <p className="phone-switch">
+            <Link to="/join" onClick={() => { setCode(''); setError('') }}>Enter a different code</Link>
+          </p>
+        </main>
+      </div>
+    )
   }
 
   return (
-    <PageLayout>
-      <section className="card" aria-labelledby="join-heading">
-        <div className="card-body p-4">
-          <h1 className="h4 card-title mb-3" id="join-heading">Join a game</h1>
-          <form onSubmit={joinLobby}>
-            <div className="mb-3">
-              <label htmlFor="nickname" className="form-label visually-hidden">Nickname</label>
-              <input
-              id="nickname"
-              className="form-control"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              maxLength={20}
-              required
-              disabled={joining}
-              placeholder="Enter your nickname"
-              aria-label="Nickname"
-              autoFocus={Boolean(linkedCode)}
-              />
-            </div>
-            <div className="mb-3">
-              <input
-                className="form-control form-control-lg text-center"
-                type="text"
-                id="session-code"
-                name="sessionCode"
-                placeholder="Enter game code"
-                aria-label="Game code"
-                autoComplete="off"
-                autoCapitalize="characters"
-                spellCheck={false}
-                maxLength={6}
-                value={code}
-                onChange={(event) => {
-                  setCode(event.target.value.toUpperCase())
-                  setError('')
-                }}
-                pattern=".*\S.*"
-                required
-                autoFocus={!linkedCode}
-                disabled={joining}
-              />
-            </div>
-            <button className="btn btn-dark w-100" type="submit" disabled={joining || !code.trim()}>{joining ? 'Joining...' : 'Next'}</button>
-          </form>
-           {error && (
-            <p className="text-danger mt-3" role="alert">
-              {error}
-            </p>
-          )}
-        </div>
-      </section>
-    </PageLayout>
+    <div className="controller-page team-none is-form">
+      <main className="controller">
+        {/* <Logo /> */}
+        <h1 className="phone-heading" id="join-heading">Join a game</h1>
+        <form className="phone-form" onSubmit={submitCode} aria-labelledby="join-heading">
+          <label htmlFor="session-code" className="phone-label">Game code</label>
+          <input
+            className="phone-input is-code"
+            type="text"
+            id="session-code"
+            name="sessionCode"
+            placeholder="6 letters and numbers"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            maxLength={6}
+            value={code}
+            onChange={(event) => {
+              setCode(event.target.value.toUpperCase())
+              setError('')
+            }}
+            required
+            autoFocus
+            disabled={busy}
+          />
+          <button className="phone-button" type="submit" disabled={busy || code.trim().length !== 6}>{busy ? 'Checking…' : 'Next'}</button>
+        </form>
+        {error && <p className="phone-error" role="alert">{error}</p>}
+      </main>
+    </div>
   )
 }

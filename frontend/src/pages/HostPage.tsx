@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import PageLayout from '../components/PageLayout'
 import { socket } from '../socket/socket'
 import { QRCodeSVG } from 'qrcode.react'
 import { HostBossFights } from '../game/EnemyFight'
 import TeamFight from '../game/TeamFight'
 import HostResults from '../game/HostResults'
+import { EndButton, HostFrame, HostMessage } from '../game/HostFrame'
+import { KNOCKOUT_MS } from '../game/knockout'
 import type { GameResult, HostBossState } from '../game/enemyTypes'
 
 import type {
@@ -24,6 +25,8 @@ export default function HostPage() {
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false)
   const [result, setResult] = useState<GameResult | null>(null)
+  // The results wait while the arena holds the final blow.
+  const [showResults, setShowResults] = useState(false)
   const [boss, setBoss] = useState<{ state: HostBossState, receivedAt: number } | null>(null)
   const [pvpStarted, setPvpStarted] = useState(false)
 
@@ -33,6 +36,8 @@ export default function HostPage() {
     function onUpdate(updatedLobby: Lobby) {
       if(updatedLobby.code === code) {
         setLobby(updatedLobby)
+        // A refused start's reason is stale once the lobby changes.
+        setError("")
       }
     }
 
@@ -66,14 +71,21 @@ export default function HostPage() {
       if (data.code === code) setPvpStarted(true)
     }
 
+    let knockout = 0
+    let finishedGame = false
     function onFinished(finished: GameResult) {
       if (finished.code === code) {
+        finishedGame = true
         setResult(finished)
+        window.clearTimeout(knockout)
+        knockout = window.setTimeout(() => setShowResults(true), KNOCKOUT_MS)
       }
     }
 
+    // The lobby went: the host ended it, or every phone left. Once the game has a result,
+    // the results stay up, since the last phones leave while the room is still reading them.
     function onCancelled() {
-      navigate('/')
+      if (!finishedGame) navigate('/')
     }
 
     socket.on("game:updated", onUpdate)
@@ -99,6 +111,7 @@ export default function HostPage() {
   )
 
   return () => {
+    window.clearTimeout(knockout)
     socket.off("game:updated", onUpdate)
     socket.off("game:started", onStarted)
     socket.off("game:enemy:host", onBossState)
@@ -136,6 +149,19 @@ export default function HostPage() {
     navigate('/')
   }
 
+  // Puts a guest who's still picking onto the smaller team, so one idle phone can't hold up the start.
+  // The server picks the team, since this screen's lobby can be a click behind.
+  function placePlayer(playerId: string) {
+    if (!lobby) return
+    socket.timeout(5000).emit(
+      "game:assign",
+      { code: lobby.code, playerId },
+      (err: Error | null, response: { success: boolean, error?: string }) => {
+        if (err || !response?.success) setError(response?.error || "Unable to place that player.")
+      }
+    )
+  }
+
   // After the game, the host leaves without ending the lobby, so the players keep their results.
   function backToDashboard() {
     setError("")
@@ -153,42 +179,36 @@ export default function HostPage() {
 
   if(error && !lobby) {
     return (
-      <PageLayout>
-        <p className="text-danger">{error}</p>
-        <button className="btn btn-outline-dark" onClick={(() => navigate('/'))}>Back to dashboard</button>
-      </PageLayout>
+      <HostMessage
+        title={error}
+        live="alert"
+        action={<button className="host-start" type="button" onClick={() => navigate('/')}>Back to dashboard</button>}
+      />
     )
   }
 
   if(!lobby){
-    return (
-      <PageLayout>
-        <p>Loading lobby...</p>
-      </PageLayout>
-    )
+    return <HostMessage title="Loading the lobby…" live="status" />
   }
 
   // After Start game, the phones play, and this screen shows the game.
   if (lobby.status === "playing") {
-    if (pvpStarted && !result) {
+    if (pvpStarted && !showResults) {
       return <TeamFight code={lobby.code} onEndGame={cancelGame} />
     }
-    if (boss && !result) {
+    if (boss && !showResults) {
       return <HostBossFights state={boss.state} receivedAt={boss.receivedAt} onEndGame={cancelGame} />
     }
     if (result) {
       return <HostResults result={result} lobby={lobby} error={error} onNewGame={backToDashboard} />
     }
     return (
-      <PageLayout>
-        <section className="card" aria-labelledby="game-heading">
-          <div className="card-body p-4 text-center">
-            <p className="text-body-secondary mb-1">Game session code {lobby.code}</p>
-            <h1 className="h3 card-title" id="game-heading">Loading the game...</h1>
-            <button className="btn btn-outline-dark" type="button" onClick={cancelGame}>End game</button>
-          </div>
-        </section>
-      </PageLayout>
+      <HostFrame action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={cancelGame} />}>
+        <main className="host-message" role="status">
+          <h1>Loading the game…</h1>
+          <p className="host-muted mb-0">Game code {lobby.code}</p>
+        </main>
+      </HostFrame>
     )
   }
 
@@ -206,6 +226,14 @@ export default function HostPage() {
   const isHost = lobby.hostId === socket.id
 
   const canStart = !starting &&  isHost && redPlayers.length > 0 && bluePlayers.length > 0 && unassignedPlayers.length === 0;
+  // What Start game is waiting for, so the host can tell the room.
+  const waitingFor =
+    playerCount === 0 ? "Waiting for players to join"
+    : unassignedPlayers.length === 1 ? `Waiting for ${unassignedPlayers[0].name} to pick a team`
+    : unassignedPlayers.length > 1 ? `Waiting for ${unassignedPlayers.length} players to pick a team`
+    : redPlayers.length === 0 ? "Red team needs a player"
+    : bluePlayers.length === 0 ? "Blue team needs a player"
+    : null
   
   function renderTeam(
     teamId: TeamId,
@@ -213,85 +241,68 @@ export default function HostPage() {
     players: LobbyPlayer[]
   ) {
     return (
-      <div className="col-6" key={teamId}>
-        <section className="card h-100">
-          <div className="card-body">
-            <h2 className="h6 card-title text-center mb-2">
-              {name}
-            </h2>
-            {players.length > 0 ? (
-              <ul className="d-flex flex-wrap justify-content-center gap-2 list-unstyled mb-0">
-                {players.map(player => (
-                  <li className="border rounded px-2 py-1" key={player.id}>
-                    {player.name}
-                  </li>
-                )
-              )}
-              </ul>
-            ) : (
-              <p className="text-body-secondary text-center mb-0">
-                No players yet.
-              </p>
-            )}
-          </div>
-        </section>
-      </div>
+      <section className={`host-card host-team team-${teamId}`} key={teamId} aria-labelledby={`${teamId}-team`}>
+        <header className="host-card-head">
+          <h2 id={`${teamId}-team`}>{name}</h2>
+          <span className="host-team-count" aria-label={`${players.length} ${players.length === 1 ? 'player' : 'players'}`}>{players.length}</span>
+        </header>
+        {players.length > 0 ? (
+          <ul className="host-chips">
+            {players.map(player => <li className="host-chip" key={player.id}>{player.name}</li>)}
+          </ul>
+        ) : (
+          <p className="host-empty">Nobody yet</p>
+        )}
+      </section>
     )
   }
-  
+
   return (
-    <PageLayout wide>
-      {/* Fills the screen above the bar. 3rem is the page's own padding, and 88 pixels leave room for the bar. */}
-      <div className="d-flex flex-column" style={{ minHeight: 'calc(100vh - 3rem)', paddingBottom: 88 }}>
-        <section className="card" aria-labelledby="code-heading">
-          <div className="card-body py-4">
-            {/* Where to join sits at the left edge and the QR code at the right, so the code stays in the middle. */}
-            <div className="row align-items-center row-gap-3">
-              <div className="col-md-3 order-2 order-md-1 text-center text-md-start">
-                <p className="text-body-secondary mb-0">Join at</p>
-                <p className="fs-5 fw-semibold mb-0">{window.location.host}/join</p>
-              </div>
-              <div className="col-md-6 order-1 order-md-2 text-center">
-                <h1 className="fs-6 fw-normal text-body-secondary mb-1" id="code-heading">Game session code</h1>
-                <p className="display-1 fw-bold mb-0">{lobby.code}</p>
-              </div>
-              <div className="col-md-3 order-3 d-flex justify-content-center justify-content-md-end">
-                {/* Opens the join page on a phone with this code filled in, on whatever address the host is using. */}
-                <QRCodeSVG value={`${window.location.origin}/join?code=${lobby.code}`} size={176} marginSize={2}
-                  title={`Scan to join game ${lobby.code}`} role="img" aria-label={`QR code to join game ${lobby.code}`} />
-              </div>
-            </div>
+    <HostFrame action={<EndButton label="Cancel match" confirmLabel="Cancel for everyone?" onConfirm={cancelGame} disabled={!isHost} />}>
+      <main className="host-lobby">
+        <section className="host-join" aria-labelledby="code-heading">
+          {/* The code is the screen's heading, with where to type it on one line under it, and the QR code beside. */}
+          <div className="host-join-code">
+            <h1 className="host-code" id="code-heading" aria-label={`Game code ${lobby.code}`}>{lobby.code}</h1>
+            <p className="host-join-url">Go to <strong>{window.location.host}/join</strong> and type this code, or scan</p>
+          </div>
+          <div className="host-qr">
+            {/* Opens the join page on a phone at the nickname step, on whatever address the host is using. */}
+            <QRCodeSVG value={`${window.location.origin}/join?code=${lobby.code}`} size={200} marginSize={2}
+              title={`Scan to join game ${lobby.code}`} role="img" aria-label={`QR code to join game ${lobby.code}`} />
           </div>
         </section>
-        <section className="flex-grow-1 d-flex flex-column justify-content-center py-4" aria-label="Players">
+        <section className="host-teams" aria-label="Players">
           {/* Players who just joined wait here until they pick a team. */}
           {unassignedPlayers.length > 0 && (
-            <ul className="d-flex flex-wrap justify-content-center gap-2 list-unstyled mb-3" aria-label="Waiting for a team">
-              {unassignedPlayers.map(player => (
-                <li className="border rounded px-2 py-1" key={player.id}>{player.name}</li>
-              ))}
-            </ul>
+            <div className="host-waiting">
+              <p>Picking a team. Click a name to put them on the smaller team:</p>
+              <ul className="host-chips" aria-label="Picking a team">
+                {unassignedPlayers.map(player => (
+                  <li key={player.id}>
+                    <button className="host-chip" type="button" onClick={() => placePlayer(player.id)}>{player.name}</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-          <div className="row g-3">
+          <div className="host-team-grid">
             {renderTeam("red", "Red team", redPlayers)}
             {renderTeam("blue", "Blue team", bluePlayers)}
           </div>
         </section>
-        {/* With the bar's room, this matches the code banner's height on wider screens, */}
-        {/* so the players sit at the middle of the screen, not the middle of the space below the code. */}
-        <div className="d-none d-md-block flex-shrink-0" aria-hidden="true" style={{ height: 139 }} />
-      </div>
+      </main>
 
-      {/* Stays at the bottom of the screen: cancel on the left, the player count and start on the right. */}
-      <div className="position-fixed bottom-0 start-0 end-0 p-3 bg-body d-flex justify-content-between align-items-center gap-3">
-        <button className="btn btn-outline-dark text-nowrap" type="button" onClick={cancelGame} disabled={!isHost}>Cancel match</button>
-        <div className="d-flex align-items-center gap-3">
-          <span className="fs-5 text-body-secondary text-nowrap" role="status">
-            {playerCount} {playerCount === 1 ? 'player' : 'players'}
-          </span>
-          <button className="btn btn-dark px-md-5 text-nowrap" type="button" onClick={startGame} disabled={!canStart}>{starting ? 'Starting game...' : 'Start game'}</button>
-        </div>
-      </div>
-    </PageLayout>
+      {/* Stays at the bottom of the screen: the player count and Start game. */}
+      <footer className="host-footer">
+        {error
+          ? <p className="host-footer-note is-error" role="alert">{error}</p>
+          : waitingFor && <p className="host-footer-note" role="status">{waitingFor}</p>}
+        <span className="host-count" role="status">
+          {playerCount} {playerCount === 1 ? 'player' : 'players'}
+        </span>
+        <button className="host-start" type="button" onClick={startGame} disabled={!canStart}>{starting ? 'Starting game…' : 'Start game'}</button>
+      </footer>
+    </HostFrame>
   )
 }

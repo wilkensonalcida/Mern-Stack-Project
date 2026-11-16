@@ -1,0 +1,967 @@
+/* The host's screen on a laptop or projector, sized to read from the back of the room. The lobby sits on
+   white canvas, the fight screens on a dark hand drawn ground, and the results on the winner's paint.
+   The palette, lettering, and brush shapes come from theme.css, shared with the phones. */
+.host-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.host-page ::selection { background: var(--ink); color: var(--cream); }
+/* The fight screens' ground is Alex's dark forest, behind both halves. It covers the screen,
+   so keep what matters off its edges. */
+.host-page.is-dark {
+  background: #1d1714 url('../assets/art/forest.webp') center / cover no-repeat;
+  color: var(--cream);
+}
+/* In the boss fights each team's half has its own copy of the forest, top to bottom, and blue's is mirrored,
+   so the two halves face each other across the split. The final fight keeps one forest behind both knights. */
+.host-page.is-dark.is-split {
+  position: relative;
+  isolation: isolate;
+  background: #1d1714;
+}
+.host-page.is-split::before,
+.host-page.is-split::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: -1;
+  width: 50%;
+  background: url('../assets/art/forest.webp') center / cover no-repeat;
+  pointer-events: none;
+}
+.host-page.is-split::before { left: 0; }
+.host-page.is-split::after { right: 0; transform: scaleX(-1); }
+/* The results take the winner's paint, top to bottom. */
+.host-page.is-painted {
+  background: var(--grain) center / 400px 400px, var(--team);
+  color: var(--cream);
+}
+.host-page.is-dark ::selection,
+.host-page.is-painted ::selection { background: var(--cream); color: var(--ink); }
+
+/* The game's name lettered across the top, and the host's one control at the right. */
+.host-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 60px;
+  padding: 10px 28px 0;
+}
+.host-brand {
+  font-family: var(--letters);
+  font-size: 34px;
+  line-height: 1;
+}
+/* End game and Cancel match: a small swatch of ink on canvas, or of cream on the dark ground and the paint. */
+.host-bar-button {
+  position: relative;
+  isolation: isolate;
+  padding: 10px 22px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--cream);
+  font-family: var(--letters);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.host-bar-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--paint, var(--ink));
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.host-page.is-dark .host-bar-button,
+.host-page.is-painted .host-bar-button { --paint: var(--cream); color: var(--ink); }
+.host-bar-button:hover::before { filter: brightness(1.2); }
+.host-bar-button:disabled { opacity: 0.45; cursor: default; }
+/* Armed by a first click: one more ends the game on every phone. */
+.host-bar-button.is-armed,
+.host-page.is-dark .host-bar-button.is-armed { --paint: var(--health); color: var(--cream); }
+.host-bar-button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.host-page.is-dark .host-bar-button:focus-visible { outline-color: var(--cream); }
+
+.host-muted { color: var(--muted); }
+
+/* A panel on the canvas is a swatch of paint, never a card. */
+.host-card {
+  position: relative;
+  isolation: isolate;
+}
+.host-card-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 48px 4px;
+  color: var(--cream);
+}
+.host-card-head h2 {
+  flex: none;
+  margin: 0;
+  font-family: var(--letters);
+  font-size: clamp(38px, 3.2vw, 52px);
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* The big button, Start game and New game: a swatch of ink lettered in cream, or of cream on paint. */
+.host-start {
+  position: relative;
+  isolation: isolate;
+  min-width: 260px;
+  min-height: 76px;
+  padding: 8px 38px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--cream);
+  font-family: var(--letters);
+  font-size: 40px;
+  line-height: 1;
+  cursor: pointer;
+}
+.host-start::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--paint, var(--ink));
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.host-start:active:not(:disabled) { transform: translateY(3px); }
+.host-start:disabled { color: rgb(255 250 242 / 0.8); cursor: default; }
+.host-start:disabled::before { filter: grayscale(1) brightness(2.2) contrast(0.45); }
+.host-start:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+.host-start.is-light { --paint: var(--cream); color: var(--ink); }
+.host-start.is-light:focus-visible { outline-color: var(--cream); }
+
+/* The lobby: where to join and the code across the top, then the two teams filling in. */
+.host-lobby {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 18px clamp(24px, 4vw, 64px) 132px;
+}
+.host-join {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(32px, 5vw, 72px);
+}
+.host-join-label {
+  margin: 0;
+  font: inherit;
+  font-size: 24px;
+  color: var(--muted);
+}
+.host-join-url {
+  margin: 8px 0 0;
+  font-size: clamp(24px, 2vw, 30px);
+  line-height: 1.2;
+  color: var(--muted);
+}
+.host-join-url strong { font-family: var(--letters); font-size: 1.3em; font-weight: 400; color: var(--ink); }
+.host-join-code { text-align: center; }
+.host-code {
+  margin: 0;
+  font-family: var(--letters);
+  font-size: clamp(104px, 12vw, 172px);
+  line-height: 0.92;
+  letter-spacing: 0.08em;
+}
+/* The QR code on an inked white tag, since scanners need its quiet white border. */
+.host-qr {
+  padding: 4px;
+  border: 14px solid transparent;
+  border-image: var(--frame) 24 / 24px / 0 stretch;
+  background: #fff padding-box;
+  line-height: 0;
+}
+.host-teams {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.host-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.host-waiting p { margin: 0; font-size: 24px; color: var(--muted); }
+.host-team-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+/* Each team is a swatch of its paint, with its players on canvas tags. */
+.host-team { min-height: clamp(170px, 25vh, 250px); padding-bottom: 12px; }
+.host-team::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--team);
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.host-team-count {
+  display: grid;
+  place-items: center;
+  min-width: 62px;
+  height: 56px;
+  margin-left: auto;
+  padding: 7px 14px 0;
+  background: var(--dab) center / 100% 100% no-repeat;
+  color: var(--ink);
+  font-family: var(--letters);
+  font-size: 34px;
+  line-height: 1;
+}
+.host-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.host-team .host-chips { padding: 14px 48px 22px; }
+.host-chip {
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  padding: 9px 20px 5px;
+  color: var(--ink);
+  font-family: var(--letters);
+  font-size: clamp(28px, 2.4vw, 36px);
+  line-height: 1;
+}
+.host-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+/* A guest still picking, on the canvas: an inked tag the host can click to place on the smaller team. */
+button.host-chip {
+  padding: 0 8px;
+  border: 12px solid transparent;
+  border-image: var(--frame) 24 / 24px / 0 stretch;
+  background: #fff padding-box;
+  cursor: pointer;
+}
+button.host-chip::before { display: none; }
+button.host-chip:hover { background: var(--canvas); }
+button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.host-empty { margin: 0; padding: 14px 48px 22px; font-size: 26px; color: var(--cream); }
+.host-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 24px;
+  padding: 12px clamp(24px, 4vw, 64px) 16px;
+  background: var(--canvas);
+}
+.host-count { font-size: 26px; color: var(--muted); }
+/* Why Start game is off, or why the server refused it. */
+.host-footer-note { margin: 0; font-size: 26px; color: var(--ink); }
+.host-footer-note.is-error { color: var(--error); }
+
+/* One message, such as while the lobby loads. */
+.host-message {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px;
+  text-align: center;
+}
+.host-message h1 { margin: 0; font-family: var(--letters); font-size: 64px; font-weight: 400; line-height: 1; }
+
+/* The fight. Each team's half carries its paint as a band with its name, then its big word with the clock
+   and the taps under it, then its fighters on the floor. Both halves share the dark ground. */
+.stage-split {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow-x: clip;
+}
+/* One faint line splits red's half from blue's. */
+.stage-split::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 50%;
+  border-left: 3px solid rgb(255 250 242 / 0.14);
+  pointer-events: none;
+}
+/* The room's shared count before each boss fight: one giant number on a torn scrap of canvas over the split,
+   then "Tap!". It sits above the fighters' heads, level with the halves' big words. */
+.stage-count {
+  position: absolute;
+  top: calc(clamp(60px, 9vh, 84px) + clamp(10px, 2.4vh, 26px));
+  left: 0;
+  right: 0;
+  z-index: 2;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: clamp(130px, 19vh, 210px);
+  height: clamp(130px, 19vh, 210px);
+  margin: 0 auto;
+  padding: 10px 0.4em 0;
+  color: var(--ink);
+  font-family: var(--letters);
+  font-size: clamp(88px, 13vh, 150px);
+  line-height: 1;
+  pointer-events: none;
+}
+.stage-count::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+.stage {
+  /* As big as two fighters can stand side by side in a half, with a gap between their readouts. */
+  --sprite: clamp(170px, min(calc(25vw - 42px), 50vh), 360px);
+  --floor: clamp(72px, 10.5vh, 96px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* While its team votes, the knight steps aside for the three offers. */
+.stage.is-voting { --sprite: clamp(130px, min(12vw, 30vh), 230px); }
+/* A knight with bonuses carries a third line on its nameplate, so the floor grows to hold it. */
+.stage.has-bonus { --floor: clamp(96px, 12.5vh, 112px); }
+
+/* The team's paint as a brushed band across the top of its half, its name lettered in cream. */
+.stage-band {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  min-height: clamp(60px, 9vh, 84px);
+  margin: 6px 16px 0;
+  padding: 6px 32px 0;
+}
+.stage-band::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--team);
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.stage.is-mirrored .stage-band { justify-content: flex-end; }
+.stage-band h2 {
+  margin: 0;
+  font-family: var(--letters);
+  font-size: clamp(38px, 3.4vw, 54px);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--cream);
+}
+
+.stage-arena {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+}
+/* The big word, the clock drawn under it, and under the clock the taps or what's next. */
+.stage-headline {
+  position: absolute;
+  top: clamp(6px, 2vh, 22px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px;
+  text-align: center;
+}
+.stage-moment {
+  margin: 0;
+  font-family: var(--letters);
+  font-size: clamp(64px, min(7vw, 12vh), 124px);
+  font-weight: 400;
+  line-height: 0.95;
+  text-wrap: balance;
+  color: var(--cream);
+}
+.stage-moment.is-hidden { visibility: hidden; }
+.stage-next {
+  margin: 4px 0 0;
+  font-size: clamp(24px, 2.2vw, 32px);
+  color: var(--cream);
+}
+
+/* The clock: a cream brush stroke that drains from the right, over a faint track. The phones use the same. */
+.host-clock {
+  position: relative;
+  width: clamp(220px, 22vw, 360px);
+  height: clamp(18px, 2.6vh, 26px);
+}
+.host-clock::before,
+.host-clock > i {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--cream);
+  -webkit-mask: var(--stroke-mask) center / 100% 100% no-repeat;
+  mask: var(--stroke-mask) center / 100% 100% no-repeat;
+}
+.host-clock::before { opacity: 0.25; }
+.host-clock > i { clip-path: inset(0 calc(100% - var(--left, 0%)) 0 0); }
+
+/* The tap total lettered under the clock, with each move's count on a dab of its paint. */
+.host-taps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.host-taps-total {
+  margin: 0;
+  font-size: clamp(26px, 2.4vw, 34px);
+  color: var(--cream);
+}
+.host-taps-number {
+  font-family: var(--letters);
+  font-size: clamp(52px, 5vw, 78px);
+  line-height: 1;
+}
+.host-move-chips {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.host-move-chips li {
+  position: relative;
+  isolation: isolate;
+  min-width: 54px;
+  padding: 7px 13px 3px;
+  text-align: center;
+  color: var(--cream);
+  font-family: var(--letters);
+  font-size: clamp(26px, 2.2vw, 32px);
+  line-height: 1;
+}
+.host-move-chips li::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--paint);
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+
+/* The floor: a faint cream stroke level with the fighters' feet, with their nameplates below it. */
+.stage-floor {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 40px;
+  /* Wide enough that a fighter grown from its feet stays inside its half. */
+  padding: 0 clamp(20px, 3.4vw, 52px);
+}
+.stage-floor::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--floor) - 9px);
+  height: 18px;
+  background: var(--cream);
+  opacity: 0.16;
+  -webkit-mask: var(--stroke-mask) center / 100% 100% no-repeat;
+  mask: var(--stroke-mask) center / 100% 100% no-repeat;
+}
+.stage.is-mirrored .stage-floor { flex-direction: row-reverse; }
+.stage-fighter {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--sprite);
+  min-width: 220px;
+}
+/* A soft contact shadow where the feet meet the floor. */
+.stage-fighter::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--floor) - 9px);
+  width: min(70%, 200px);
+  height: 18px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.45);
+  filter: blur(4px);
+  transform: translateX(-50%);
+}
+.stage-fighter canvas { position: relative; }
+.stage-plate {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--floor);
+  padding-top: clamp(10px, 1.6vh, 14px);
+  color: var(--cream);
+}
+.stage-plate-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 6px;
+  white-space: nowrap;
+  font-family: var(--letters);
+  font-size: clamp(26px, 2.2vw, 32px);
+  line-height: 1;
+}
+/* The knight's item bonuses under its HP bar, in the vote's words, such as "+25% heal". */
+.stage-plate-note {
+  margin: 4px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: clamp(19px, 1.5vw, 22px);
+  line-height: 1.2;
+}
+/* Health: a brush stroke, cream where it's empty and potion red where it's full. */
+.stage-hp {
+  height: 22px;
+  background: var(--cream);
+  -webkit-mask: var(--stroke-mask) center / 100% 100% no-repeat;
+  mask: var(--stroke-mask) center / 100% 100% no-repeat;
+}
+.stage-fighter.is-boss .stage-hp { -webkit-mask-image: var(--stroke-mask-2); mask-image: var(--stroke-mask-2); }
+.stage-hp > div { height: 100%; background: var(--health); }
+
+/* The item vote: the three offers stand on the floor beside the knight, each with its votes below. */
+.stage-offers {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+.stage-offer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: clamp(124px, 10.5vw, 160px);
+}
+.stage-offer-tile {
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: clamp(170px, 30vh, 290px);
+  padding: 16px 10px 26px;
+  color: var(--cream);
+  text-align: center;
+}
+.stage-offer-tile::before,
+.stage-offer-tile::after {
+  content: "";
+  position: absolute;
+  z-index: -2;
+}
+.stage-offer-tile::before {
+  inset: 0;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+.stage-offer-tile::after {
+  inset: 9px 8px;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--move);
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.stage-offer-art {
+  display: grid;
+  place-items: center;
+  width: clamp(58px, 9vh, 90px);
+  height: clamp(58px, 9vh, 90px);
+}
+.stage-offer-art img { width: 100%; height: 100%; object-fit: contain; }
+.stage-offer-name { margin-top: 2px; font-family: var(--letters); font-size: clamp(26px, 2.1vw, 32px); line-height: 1; }
+.stage-offer-effect { font-size: clamp(24px, 1.8vw, 26px); white-space: nowrap; }
+.stage-offer .stage-plate { display: flex; justify-content: center; }
+.stage-offer-votes {
+  align-self: flex-start;
+  padding: 8px 16px 4px;
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--letters);
+  font-size: clamp(24px, 1.9vw, 30px);
+  line-height: 1;
+  white-space: nowrap;
+}
+/* The team's pick is circled by hand in cream, and the rest fade into the dark. */
+.stage-offer { position: relative; }
+.stage-offer.is-picked::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  right: -14px;
+  top: -12px;
+  bottom: calc(var(--floor) - 12px);
+  background: var(--loop) center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+.stage-offer.is-faded { opacity: 0.42; }
+.stage-offer.is-faded .stage-offer-tile::after { filter: grayscale(1) brightness(0.85); }
+.stage-offer.is-faded img { filter: grayscale(1); }
+.stage.is-voting .stage-fighter { min-width: 150px; }
+/* A voting knight's plate is narrow, so it keeps only its HP. */
+.stage.is-voting .stage-plate-label { justify-content: center; }
+.stage.is-voting .stage-plate-label > span:first-child { display: none; }
+.stage.is-voting .stage-floor { gap: 10px; padding: 0 16px; }
+
+/* PvP: one shared arena under a scoreboard, with the knights facing each other at stage size. */
+.stage-pvp {
+  --sprite: clamp(200px, min(28vw, 46vh), 420px);
+  --floor: clamp(30px, 5vh, 48px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* The losing knight falls backward on the final blow, and never past the screen's edge. */
+  overflow-x: clip;
+}
+.pvp-board {
+  display: grid;
+  /* A fixed middle, so the teams' scores hold still while the heading changes. */
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 30vw, 460px) minmax(0, 1fr);
+  gap: 12px;
+  padding: 6px 16px 0;
+}
+/* Each team's name and health stand bare on the dark ground, like the boss fights' health bars;
+   the paint goes on the middle card instead, in the colors of the team whose turn it is. */
+.pvp-team {
+  min-width: 0;
+  padding: clamp(16px, 2.4vh, 22px) 32px clamp(16px, 2.6vh, 24px);
+  color: var(--cream);
+}
+.pvp-team-name {
+  margin: 0;
+  font-family: var(--letters);
+  font-size: clamp(38px, 3.2vw, 52px);
+  font-weight: 400;
+  line-height: 1;
+}
+/* PvP health: a cream track on the dark ground, and the red fill inside it keeps the stroke's brush shape
+   at any length. --hp is the share of HP left, set by the page. */
+@property --hp { syntax: '<number>'; inherits: true; initial-value: 1; }
+.pvp-hp {
+  position: relative;
+  height: 26px;
+  margin-top: 12px;
+}
+.pvp-hp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--cream);
+  -webkit-mask: var(--stroke-mask) center / 100% 100% no-repeat;
+  mask: var(--stroke-mask) center / 100% 100% no-repeat;
+}
+.pvp-hp > div {
+  position: relative;
+  height: 100%;
+  background: var(--health);
+  -webkit-mask: var(--stroke-mask) left center / calc(100% / max(var(--hp), 0.01)) 100% no-repeat;
+  mask: var(--stroke-mask) left center / calc(100% / max(var(--hp), 0.01)) 100% no-repeat;
+}
+.pvp-team.team-blue .pvp-hp::before,
+.pvp-team.team-blue .pvp-hp > div { -webkit-mask-image: var(--stroke-mask-3); mask-image: var(--stroke-mask-3); }
+.pvp-hp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 0;
+  font-family: var(--letters);
+  font-size: clamp(30px, 2.6vw, 38px);
+  line-height: 1;
+}
+.pvp-shield {
+  position: relative;
+  isolation: isolate;
+  padding: 7px 16px 3px;
+  color: var(--ink);
+  font-size: 26px;
+}
+.pvp-shield::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+/* The knight's item bonuses under its HP in PvP. */
+.pvp-bonus { margin: 6px 0 0; font-size: clamp(20px, 1.6vw, 24px); }
+/* The middle card takes the paint of the team the heading is about: the team tapping, the team up next
+   between turns, the team going first at the coin flip, and the winner at the end. */
+.pvp-center {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: clamp(16px, 2.4vh, 22px) 24px clamp(16px, 2.6vh, 24px);
+  text-align: center;
+  color: var(--cream);
+}
+.pvp-center::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grain) center / cover, var(--team);
+  -webkit-mask: var(--swatch-mask-3) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask-3) center / 100% 100% no-repeat;
+}
+/* On the team's paint each move chip wears an ink edge, so Attack's orange still reads on red and Block's steel on blue. */
+.pvp-center .host-move-chips li {
+  filter: drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink)) drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink));
+}
+.pvp-heading {
+  margin: 0;
+  font-family: var(--letters);
+  font-size: clamp(40px, 3.6vw, 60px);
+  font-weight: 400;
+  line-height: 1;
+  text-wrap: balance;
+}
+.pvp-turn { margin: 0; font-size: 24px; }
+.stage-pvp .stage-moment {
+  position: absolute;
+  top: clamp(14px, 4vh, 40px);
+  left: 0;
+  right: 0;
+  padding: 0 20px;
+  text-align: center;
+}
+.stage-pvp .stage-fighter { min-width: 0; }
+.stage-pvp .stage-foot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: clamp(70px, 11vh, 96px);
+  padding: 8px 26px 14px;
+  text-align: center;
+  color: var(--cream);
+}
+.stage-pvp .stage-foot p { margin: 0; max-width: 900px; font-size: clamp(24px, 2.2vw, 32px); text-wrap: balance; }
+
+/* The end: the winner's paint fills the screen, with its knight on a torn scrap of canvas. */
+.stage-results {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2vh, 20px);
+  padding: clamp(10px, 2.4vh, 28px) 32px;
+  text-align: center;
+}
+.stage-results h1 {
+  margin: 0;
+  font-family: var(--letters);
+  font-size: clamp(72px, min(9vw, 14vh), 150px);
+  font-weight: 400;
+  line-height: 0.95;
+}
+.stage-results-how { margin: 0; font-size: clamp(24px, 2.2vw, 32px); }
+.stage-spotlight {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: clamp(200px, min(28vw, 38vh), 400px);
+  aspect-ratio: 1.08 / 1;
+}
+.stage-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+.stage-tally {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stage-tally li {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 26px 7px;
+  color: var(--ink);
+  font-size: 24px;
+}
+.stage-tally li::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+.stage-tally strong { font-family: var(--letters); font-size: 32px; font-weight: 400; color: var(--team); }
+.stage-tally .tally-taps { font-family: var(--letters); font-size: 32px; }
+.host-error { margin: 0; text-align: center; font-size: 22px; color: var(--error); }
+.stage-results .host-error { color: var(--cream); }
+.host-message .host-muted { font-size: 24px; }
+
+/* The stage's motion: the big moments pop in, a pick rings out, and the winner's knight rises. */
+@media (prefers-reduced-motion: no-preference) {
+  .stage-moment,
+  .stage-count { animation: stage-pop 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .stage-offer.is-picked .stage-offer-tile { animation: stage-pick 360ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .stage-spotlight { animation: stage-rise 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .stage-results h1 { animation: stage-pop 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+  /* The final blow: HP drains, and once the winner's swing lands, the loser falls backward and fades. */
+  .pvp-hp > div { transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1), --hp 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .stage-fighter.is-knocked-out canvas {
+    transform-origin: 50% 96%;
+    animation: stage-knockout 700ms 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-fighter.is-knocked-out canvas { opacity: 0.4; }
+}
+/* It tips back on its heels, then rises by its own depth so it lies on the floor, not through it.
+   Both ends list the same functions, so a mirrored sprite turns smoothly instead of flipping. */
+@keyframes stage-knockout {
+  from { transform: translateY(0) scaleX(var(--mirror, 1)) rotate(0deg); }
+  to { transform: translateY(-30%) scaleX(var(--mirror, 1)) rotate(-80deg); opacity: 0.4; }
+}
+@keyframes stage-pop {
+  from { transform: scale(0.7); }
+}
+@keyframes stage-pick {
+  40% { transform: scale(1.07); }
+}
+@keyframes stage-rise {
+  from { transform: translateY(24px) scale(0.92); }
+}
+
+/* Neighbours never share a brush edge: blue's band and panels take the second swatch, and each tag,
+   chip, and offer in a row takes the next scrap or swatch. */
+.stage.team-blue .stage-band::before,
+.host-team.team-blue::before { -webkit-mask-image: var(--swatch-mask-2); mask-image: var(--swatch-mask-2); }
+.host-team .host-chip:nth-child(3n + 2)::before,
+.stage-offer:nth-child(3n + 2) .stage-offer-votes { -webkit-mask-image: var(--scrap-mask-2); mask-image: var(--scrap-mask-2); }
+.host-team .host-chip:nth-child(3n)::before,
+.stage-offer:nth-child(3n) .stage-offer-votes { -webkit-mask-image: var(--scrap-mask-3); mask-image: var(--scrap-mask-3); }
+.host-move-chips li:nth-child(2)::before,
+.stage-offer:nth-child(2) .stage-offer-tile::after { -webkit-mask-image: var(--swatch-mask-2); mask-image: var(--swatch-mask-2); }
+.host-move-chips li:nth-child(3)::before,
+.stage-offer:nth-child(3) .stage-offer-tile::after { -webkit-mask-image: var(--swatch-mask-3); mask-image: var(--swatch-mask-3); }
+.stage-offer:nth-child(2) .stage-offer-tile::before { -webkit-mask-image: var(--scrap-mask-2); mask-image: var(--scrap-mask-2); }
+.stage-offer:nth-child(3) .stage-offer-tile::before { -webkit-mask-image: var(--scrap-mask-3); mask-image: var(--scrap-mask-3); }
+.host-clock > i,
+.host-clock::before { -webkit-mask-image: var(--stroke-mask-3); mask-image: var(--stroke-mask-3); }
+
+/* The projector carries the fight, so on a screen tall enough the fighters grow from their feet
+   into the space under the taps, past the width two of them get side by side. */
+.stage-fighter canvas { transform-origin: 50% 100%; scale: var(--fighter-scale, 1); }
+@media (min-height: 680px) {
+  .stage { --fighter-scale: 1.15; }
+  .stage-pvp { --fighter-scale: 1.1; }
+}
+@media (min-height: 800px) {
+  .stage { --fighter-scale: 1.28; }
+  .stage-pvp { --fighter-scale: 1.18; }
+}
+.stage.is-voting { --fighter-scale: 1; }
+
+/* Each boss stands further up the path than its team's knight, a little smaller and leaning in toward it,
+   so the knight in front reads as fighting it. Its nameplate stays on the boards below. */
+.stage {
+  --boss-lift: calc(var(--sprite) * 0.22);
+  --boss-shift: calc(var(--sprite) * -0.12);
+  --boss-scale: 0.85;
+}
+.stage.is-mirrored { --boss-shift: calc(var(--sprite) * 0.12); }
+/* On a short screen, such as a 720 pixel projector, the boss climbs less, so the Skeleton's hood clears the taps. */
+@media (max-height: 799px) {
+  .stage { --boss-lift: calc(var(--sprite) * 0.16); }
+}
+.stage-fighter.is-boss canvas {
+  translate: var(--boss-shift) calc(-1 * var(--boss-lift));
+  scale: calc(var(--fighter-scale, 1) * var(--boss-scale));
+}
+.stage-fighter.is-boss::before {
+  bottom: calc(var(--floor) - 9px + var(--boss-lift));
+  translate: var(--boss-shift) 0;
+  scale: var(--boss-scale);
+}
+/* The knight stands in front of the boss. */
+.stage-fighter:not(.is-boss) { z-index: 1; }
+/* The PvP clock sits beside blue's health bar, so it takes another stroke, and the results' two tally tags
+   take scraps of their own, apart from the knight's. */
+.pvp-center .host-clock > i,
+.pvp-center .host-clock::before { -webkit-mask-image: var(--stroke-mask-2); mask-image: var(--stroke-mask-2); }
+.stage-tally li:nth-child(1)::before { -webkit-mask-image: var(--scrap-mask-2); mask-image: var(--scrap-mask-2); }
+.stage-tally li:nth-child(2)::before { -webkit-mask-image: var(--scrap-mask-3); mask-image: var(--scrap-mask-3); }

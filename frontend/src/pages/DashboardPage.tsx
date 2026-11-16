@@ -41,14 +41,11 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
 
   return (
     <PageLayout>
-      <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
-        <h1 className="h3 mb-0 text-truncate">Wassup, {name}!</h1>
-        <button className="btn btn-outline-dark btn-sm flex-shrink-0" type="button" onClick={onLogout}>Log out</button>
-      </div>
+      <h1 className="text-truncate">Wassup, {name}!</h1>
 
       <section className="card" aria-labelledby="host-heading">
         <div className="card-body p-4">
-          <h2 className="h4 card-title" id="host-heading">Host a game</h2>
+          <h2 className="card-title" id="host-heading">Host a game</h2>
           <p className="text-body-secondary">Create a lobby, share its code, and start when everyone's in.</p>
           {/* TODO (API): Create the game before opening its lobby. */}
           <button className="btn btn-dark w-100" type="button" onClick={createLobby} disabled={creating}>
@@ -59,6 +56,10 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
               {error}
             </p>
           )}
+          {/* Log out sits under the main button, where the other account pages keep their links. */}
+          <p className="mt-3 mb-0 text-center">
+            <button className="btn btn-link p-0 align-baseline" type="button" onClick={onLogout}>Log out</button>
+          </p>
         </div>
       </section>
     </PageLayout>

@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 // Imported from where Alex keeps her sprites, so the build includes the sheet, and a missing sheet fails the build.
 import knightSheet from '../../sprites/playersheet.png'
+// Alex's same knight in the blue team's cape and plume, drawn on the same frames.
+import blueKnightSheet from '../../sprites/playersheet2.png'
 import { Sprite } from './Sprite'
 
 export type KnightAnimation = 'idle' | 'attack' | 'victory'
@@ -19,12 +21,17 @@ type KnightProps = {
   // The sheet's knight faces right, so the knight on the right is mirrored to face the other.
   mirrored?: boolean
   label: string
+  // How wide to draw it, as a CSS length; the host's screen draws it bigger.
+  size?: string
+  // Whose knight it is: red's wears the red cape, and blue's the blue one.
+  team?: 'red' | 'blue'
 }
 
 // Draws one knight from Alex's sheet and plays the animation the fight asks for.
-export default function Knight({ animation, mirrored = false, label }: KnightProps) {
+export default function Knight({ animation, mirrored = false, label, size, team = 'red' }: KnightProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [sprite] = useState(() => new Sprite(knightSheet, FRAME_SIZE, FRAME_SIZE, animations))
+  // A knight whose team changes, such as on a phone's result, redraws from the other sheet.
+  const sprite = useMemo(() => new Sprite(team === 'blue' ? blueKnightSheet : knightSheet, FRAME_SIZE, FRAME_SIZE, animations), [team])
 
   // An attack plays once, then the sprite goes back to idle on its own.
   useEffect(() => {
@@ -57,7 +64,8 @@ export default function Knight({ animation, mirrored = false, label }: KnightPro
       height={FRAME_SIZE}
       role="img"
       aria-label={label}
-      style={{ width: `min(${FRAME_SIZE}px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined }}
+      // The sheet has small marks at its frames' top and side edges, so a 2% crop hides them and keeps the feet.
+      style={{ width: size ?? `min(${FRAME_SIZE}px, 40vw)`, aspectRatio: '1 / 1', transform: mirrored ? 'scaleX(-1)' : undefined, clipPath: 'inset(2% 2% 0 2%)' }}
     />
   )
 }

@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import Controller from '../game/Controller';
+import Knight from '../game/Knight';
 import '../game/Controller.css';
-import PageLayout from '../components/PageLayout';
+import PhoneMessage from '../components/PhoneMessage';
 import { socket } from '../socket/socket';
 import type { Lobby } from '../socket/lobby';
-import type { GameResult } from '../game/enemyTypes';
+import type { GameResult, TeamId } from '../game/enemyTypes';
+import { KNOCKOUT_MS } from '../game/knockout';
 
 type LobbyAck = { success: boolean; lobby?: Lobby; error?: string };
 type ResultAck = { success: boolean; result?: GameResult; error?: string };
@@ -18,13 +20,32 @@ export default function PlayPage() {
   const [lobby, setLobby] = useState<Lobby | null>(null);
   const [result, setResult] = useState<GameResult | null>(null);
   const [cancelled, setCancelled] = useState(false);
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [leaveError, setLeaveError] = useState('');
   const [currentSocketId, setCurrentSocketId] = useState<string | null>(socket.id ?? null);
+  // Who this phone played as, kept once known. A phone that reconnects, such as after sleeping on its
+  // result, comes back as a new connection the lobby doesn't list, and its result should stay as it was.
+  const [self, setSelf] = useState<{ name: string; team: TeamId } | null>(null);
+  useEffect(() => {
+    const mine = lobby?.players.find(player => player.id === currentSocketId);
+    if (mine?.team) setSelf({ name: mine.name, team: mine.team });
+  }, [lobby, currentSocketId]);
 
   const onFinished = useCallback((data: GameResult) => {
     if (data.code !== normalizedCode) return;
     setResult(data);
   }, [normalizedCode]);
+
+  // A result that arrives live waits while the big screen shows the final blow, as the host's screen does.
+  const knockout = useRef(0);
+  const heldResult = useRef<GameResult | null>(null);
+  const onLiveFinished = useCallback((data: GameResult) => {
+    if (data.code !== normalizedCode) return;
+    heldResult.current = data;
+    window.clearTimeout(knockout.current);
+    knockout.current = window.setTimeout(() => setResult(data), KNOCKOUT_MS);
+  }, [normalizedCode]);
+  useEffect(() => () => window.clearTimeout(knockout.current), []);
 
   function leaveGame(destination: string) {
       socket.timeout(5000).emit(
@@ -34,7 +55,7 @@ export default function PlayPage() {
           response: { success: boolean; error?: string }
         ) => {
           if (err || !response?.success) {
-            setError(response?.error || "Unable to leave game.");
+            setLeaveError(response?.error || "Unable to leave game.");
             return;
           }
 
@@ -52,10 +73,10 @@ export default function PlayPage() {
         (err: Error | null, reply: LobbyAck) => {
           if (!mounted) return;
           if (err || !reply?.success || !reply.lobby) {
-            setError(reply?.error || 'Unable to load game lobby.');
+            setLoadError(reply?.error || 'Unable to load game lobby.');
           } else {
             setLobby(reply.lobby);
-            setError('');
+            setLoadError('');
           }
         });
       for (const event of ['game:result:get', 'game:pvp:result:get']) {
@@ -65,67 +86,75 @@ export default function PlayPage() {
           });
       }
     }
-    // The host ended the game, so the lobby is gone.
+    // The host ended the game, so the lobby is gone. A game already won shows its result now,
+    // since the big screen that was holding the final blow has gone too.
     const onCancelled = () => {
-      if (mounted) setCancelled(true);
+      if (!mounted) return;
+      window.clearTimeout(knockout.current);
+      if (heldResult.current) setResult(heldResult.current);
+      else setCancelled(true);
     };
 
-    socket.on('game:finished', onFinished);
+    socket.on('game:finished', onLiveFinished);
     socket.on('game:cancelled', onCancelled);
     socket.on('connect', load);
     if (socket.connected) load();
     else socket.connect();
     return () => {
       mounted = false;
-      socket.off('game:finished', onFinished);
+      socket.off('game:finished', onLiveFinished);
       socket.off('game:cancelled', onCancelled);
       socket.off('connect', load);
     };
-  }, [normalizedCode, onFinished]);
+  }, [normalizedCode, onFinished, onLiveFinished]);
 
-  if (!normalizedCode) return <PageLayout><p>Invalid game code.</p></PageLayout>;
+  const joinLink = (label: string) => <Link className="phone-button" to="/join">{label}</Link>;
+  if (!normalizedCode) return <PhoneMessage title="Invalid game code" action={joinLink('Join a game')} />;
   if (cancelled && !result) {
-    return (
-      <PageLayout>
-        <section className="card"><div className="card-body p-4 text-center">
-          <h1 className="h3">The host ended the game</h1>
-          <Link className="btn btn-dark mt-2" to="/join">Join another game</Link>
-        </div></section>
-      </PageLayout>
-    );
+    return <PhoneMessage title="The host ended the game" action={joinLink('Join another game')} />;
   }
   if (result) {
-    // The phone keeps its team's color, names the winner, and offers another game.
-    const myTeam = lobby?.players.find(player => player.id === currentSocketId)?.team ?? null;
+    // The phone fills with its team's color, with its knight in a spotlight and one verdict.
+    const myTeam = self?.team ?? null;
     const myTaps = myTeam && result.totals
       ? result.totals[myTeam].attack + result.totals[myTeam].block + result.totals[myTeam].heal
       : null;
+    const teamName = (team: TeamId) => (team === 'red' ? 'Red team' : 'Blue team');
+    const won = myTeam === result.winner;
+    const verdict = myTeam === null ? `${teamName(result.winner)} won!` : won ? 'You won!' : 'You lost';
+    const shown = myTeam ?? result.winner;
     return (
-      <div className={`controller-page team-${myTeam ?? result.winner}`}>
-        <main className="controller justify-content-center text-center">
-          <h1 className="display-5 fw-bold">{result.winner === 'red' ? 'Red' : 'Blue'} team wins!</h1>
-          {myTeam && <p className="fs-3 fw-semibold">{myTeam === result.winner ? 'Your team won!' : 'Your team lost. Good fight!'}</p>}
-          {myTaps !== null && <p className="fs-5">Your team tapped {myTaps} times.</p>}
-          {error && <p role="alert" className="text-danger fw-semibold">{error}</p>}
-          <button className="btn btn-dark btn-lg" type="button" onClick={() => leaveGame('/join')}>Join another game</button>
+      <div className={`controller-page team-${shown} is-result`}>
+        <main className="controller result-screen">
+          <p className="result-who">{self ? `${self.name}, ${teamName(self.team)}` : 'Fight Me Bro'}</p>
+          <div className="result-spot">
+            <Knight animation={myTeam === null || won ? 'victory' : 'idle'} team={shown} mirrored={shown === 'blue'}
+              label={`${teamName(shown)}'s knight`} size="82%" />
+          </div>
+          <h1 className="result-verdict">{verdict}</h1>
+          {myTeam && myTaps !== null && (
+            <p className="result-taps">
+              {won ? '' : 'Good fight. '}{teamName(myTeam)} tapped <strong>{myTaps}</strong> {myTaps === 1 ? 'time' : 'times'}
+            </p>
+          )}
+          {leaveError && <p className="controller-error" role="alert">{leaveError}</p>}
+          <div className="phone-actions">
+            <button className="phone-button is-light" type="button" onClick={() => leaveGame('/join')}>Join another game</button>
+          </div>
         </main>
       </div>
     );
   }
-  if (error && !lobby) return <PageLayout><p role="alert" className="text-danger">{error}</p></PageLayout>;
-  if (!lobby) return <PageLayout><p role="status">Loading the game…</p></PageLayout>;
+  if (loadError && !lobby) return <PhoneMessage title={loadError} live="alert" action={joinLink('Join a game')} />;
+  if (!lobby) return <PhoneMessage title="Loading the game…" live="status" />;
 
   // A phone whose connection dropped comes back as a new connection, which the game doesn't know.
   const me = lobby.players.find(player => player.id === currentSocketId);
   if (!me?.team) {
     return (
-      <PageLayout>
-        <section className="card"><div className="card-body p-4 text-center">
-          <h1 className="h3">You're not in this game</h1>
-          <p>A phone that loses its connection can't rejoin a game that has started.</p>
-          <Link className="btn btn-dark" to="/join">Join a game</Link>
-        </div></section>
-      </PageLayout>
+      <PhoneMessage title="You're not in this game" action={joinLink('Join a game')}>
+        A phone that loses its connection can't rejoin a game that has started.
+      </PhoneMessage>
     );
   }
   return <Controller code={normalizedCode} team={me.team} nickname={me.name} />;

@@ -1,6 +1,6 @@
 "use strict";
 
-const { randomInt } = require("node:crypto");
+const { randomInt, randomUUID } = require("node:crypto");
 const { createEnemyGameManager } = require("./enemyGame");
 const { createPvpGameManager } = require("./pvpGame");
 
@@ -116,8 +116,12 @@ function registerLobbySockets(io) {
     // On the results screen, an explicit game:leave must not delete the
     // match while other players are still reading results.
     lobby.players = lobby.players.filter((player) => player.id !== socket.id);
-    if (lobby.players.length === 0) {
-      destroyLobby(code, { notify: false });
+    // A waiting lobby still has its host, whose code and QR code must keep working,
+    // so it stays open with no players. A game goes with its last player, and a host
+    // still on its page is told, so the big screen doesn't freeze on a game nobody is in.
+    if (lobby.players.length === 0 && lobby.status !== "waiting") {
+      const hostWatching = io.sockets.sockets.get(lobby.hostId)?.data.lobbyCode === code;
+      destroyLobby(code, { notify: hostWatching });
       return;
     }
 
@@ -159,6 +163,21 @@ function registerLobbySockets(io) {
       console.info("[LOBBY CREATED]", { code, hostId: socket.id });
     });
 
+    // CHECK A CODE: public, so a phone asks for a nickname only once its code names a lobby that's still open.
+    // It joins nothing, and its errors match game:join's.
+    socket.on("game:check", (data, callback) => {
+      if (typeof callback !== "function") return;
+      const lobby = lobbies.get(normalizeCode(data?.code));
+
+      if (!lobby) {
+        return reply(callback, { success: false, error: "Lobby not found" });
+      }
+      if (lobby.status !== "waiting") {
+        return reply(callback, { success: false, error: "Game already started" });
+      }
+      reply(callback, { success: true, code: lobby.code });
+    });
+
     // JOIN LOBBY — remains PUBLIC: guests only need a code and nickname.
     socket.on("game:join", (data, callback) => {
       if (typeof callback !== "function") return;
@@ -184,13 +203,29 @@ function registerLobbySockets(io) {
         return reply(callback, { success: false, error: "The host can't join as a player" });
       }
 
-      if (!lobby.players.some((player) => player.id === socket.id)) {
-        lobby.players.push({ id: socket.id, name, team: null });
+      // A phone that drops comes back as a new connection, often before the server has noticed the
+      // old one is gone. The rejoin key, which only that phone was given, takes its seat back, team
+      // and all, so the lobby never lists it twice.
+      let player = lobby.players.find((member) => member.id === socket.id);
+      const seat = !player && typeof data?.rejoinKey === "string"
+        ? lobby.players.find((member) => member.rejoinKey === data.rejoinKey)
+        : undefined;
+      if (seat) {
+        const oldSocket = io.sockets.sockets.get(seat.id);
+        if (oldSocket) {
+          oldSocket.leave(code);
+          if (oldSocket.data.lobbyCode === code) delete oldSocket.data.lobbyCode;
+        }
+        seat.id = socket.id;
+        player = seat;
+      } else if (!player) {
+        player = { id: socket.id, name, team: null, rejoinKey: randomUUID() };
+        lobby.players.push(player);
       }
       socket.join(code);
       socket.data.lobbyCode = code;
 
-      reply(callback, { success: true, lobby: publicLobby(lobby) });
+      reply(callback, { success: true, lobby: publicLobby(lobby), rejoinKey: player.rejoinKey });
       io.to(code).emit("game:updated", publicLobby(lobby));
       console.info("[LOBBY JOINED]", { code, socketId: socket.id });
     });
@@ -234,6 +269,32 @@ function registerLobbySockets(io) {
       io.to(code).emit("game:updated", publicLobby(lobby));
       reply(callback, { success: true });
       console.info("[TEAM]", { code, playerId: socket.id, team });
+    });
+
+    // PLACE A PLAYER: the host puts a guest who's still picking onto the smaller team,
+    // so one idle phone can't hold up the start. The server picks the team from the lobby
+    // as it is now, so quick clicks spread guests out, and a guest who picked meanwhile keeps the pick.
+    socket.on("game:assign", (data, callback) => {
+      const lobby = lobbies.get(normalizeCode(data?.code));
+      if (!lobby || lobby.hostId !== socket.id) {
+        return reply(callback, { success: false, error: "Only the host can place players." });
+      }
+      if (lobby.status !== "waiting") {
+        return reply(callback, { success: false, error: "Game has already started." });
+      }
+      const player = lobby.players.find((member) => member.id === data?.playerId);
+      if (!player) {
+        return reply(callback, { success: false, error: "Player not found in lobby." });
+      }
+      if (player.team) {
+        return reply(callback, { success: true, team: player.team });
+      }
+
+      const size = (team) => lobby.players.filter((member) => member.team === team).length;
+      player.team = size("red") <= size("blue") ? "red" : "blue";
+      io.to(lobby.code).emit("game:updated", publicLobby(lobby));
+      reply(callback, { success: true, team: player.team });
+      console.info("[TEAM PLACED]", { code: lobby.code, playerId: player.id, team: player.team });
     });
 
     // START GAME — unchanged frontend contract. Initialize PvE first;

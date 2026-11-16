@@ -1,10 +1,9 @@
-import PageLayout from '../components/PageLayout';
 import type { Lobby } from '../socket/lobby';
 import type { GameResult, TeamId } from './enemyTypes';
+import Knight from './Knight';
+import { HostFrame } from './HostFrame';
 
 const teamNames: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' };
-const teamText: Record<TeamId, string> = { red: 'text-danger', blue: 'text-primary' };
-const teamBorder: Record<TeamId, string> = { red: 'border-danger', blue: 'border-primary' };
 const teams: TeamId[] = ['red', 'blue'];
 
 type Props = {
@@ -14,47 +13,40 @@ type Props = {
   onNewGame: () => void;
 };
 
-// The host's screen when the game ends: the winner, and each team's taps across the whole game.
+// The host's screen when the game ends: the winner's color fills the screen, with its knight in a spotlight,
+// and each team's taps across the game in a line below.
 export default function HostResults({ result, lobby, error, onNewGame }: Props) {
   const how = result.reason === 'pvp-defeat'
     ? `${teamNames[result.winner]}'s knight won the final fight.`
     : `${teamNames[result.loser]}'s knight fell to a boss.`;
 
   return (
-    <PageLayout wide>
-      <section className="text-center pt-3 pb-4" aria-labelledby="results-heading">
-        <h1 className={`display-3 fw-bold mb-2 ${teamText[result.winner]}`} id="results-heading">{teamNames[result.winner]} wins!</h1>
-        <p className="fs-4 text-body-secondary mb-0">{how}</p>
-      </section>
-
-      {result.totals && (
-        <div className="row g-4 justify-content-center">
-          {teams.map(team => {
-            const taps = result.totals![team];
-            const total = taps.attack + taps.block + taps.heal;
-            const players = lobby.players.filter(player => player.team === team).map(player => player.name);
-            const won = team === result.winner;
-            return (
-              <div className="col-12 col-md-5" key={team}>
-                <section className={`card h-100 text-center ${won ? `border-4 ${teamBorder[team]}` : ''}`} aria-labelledby={`${team}-results`}>
-                  <div className="card-body p-4">
-                    <h2 className={`h3 mb-1 ${teamText[team]}`} id={`${team}-results`}>{teamNames[team]}</h2>
-                    <p className="text-body-secondary mb-3">{players.join(', ') || 'Nobody left'}</p>
-                    <p className="display-4 fw-bold mb-0">{total}</p>
-                    <p className="fs-5 mb-2">taps</p>
-                    <p className="text-body-secondary mb-0">Attack {taps.attack} · Block {taps.block} · Heal {taps.heal}</p>
-                  </div>
-                </section>
-              </div>
-            );
-          })}
+    <HostFrame team={result.winner}>
+      <main className={`stage-results team-${result.winner}`}>
+        <h1 id="results-heading">{teamNames[result.winner]} wins!</h1>
+        <p className="stage-results-how">{how}</p>
+        <div className="stage-spotlight">
+          <Knight animation="victory" team={result.winner} mirrored={result.winner === 'blue'} label={`${teamNames[result.winner]}'s knight`} size="82%" />
         </div>
-      )}
-
-      {error && <p className="text-danger text-center mt-3" role="alert">{error}</p>}
-      <div className="text-center mt-4">
-        <button className="btn btn-dark btn-lg px-5" type="button" onClick={onNewGame}>New game</button>
-      </div>
-    </PageLayout>
+        {result.totals && (
+          <ul className="stage-tally" aria-label="Taps across the game">
+            {teams.map(team => {
+              const taps = result.totals![team];
+              const total = taps.attack + taps.block + taps.heal;
+              const players = lobby.players.filter(player => player.team === team).map(player => player.name);
+              return (
+                <li className={`team-${team}`} key={team}>
+                  <strong>{teamNames[team]}</strong>
+                  <span>{players.join(', ') || 'Nobody left'}</span>
+                  <span className="tally-taps">{total} taps</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {error && <p className="host-error" role="alert">{error}</p>}
+        <button className="host-start is-light" type="button" onClick={onNewGame}>New game</button>
+      </main>
+    </HostFrame>
   );
 }

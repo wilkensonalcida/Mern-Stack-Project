@@ -1,3 +1,5 @@
+import { sentence } from '../text';
+
 export type User = { _id: string; login: string; firstName?: string; lastName?: string; email?: string; emailVerified?: boolean };
 export type LoginResult = { token: string; user: User };
 export type SignupInput = { firstName: string; lastName: string; login: string; password: string; email: string };
@@ -20,7 +22,7 @@ async function post(path: string, body: object): Promise<unknown> {
   let data: unknown;
   try { data = await response.json(); }
   catch { throw new AuthError(response.status, 'The server returned an unexpected response. Please try again.'); }
-  if (!response.ok) throw new AuthError(response.status, record(data) && typeof data.error === 'string' ? data.error : 'Request failed. Please try again.');
+  if (!response.ok) throw new AuthError(response.status, record(data) && typeof data.error === 'string' ? sentence(data.error) : 'Request failed. Please try again.');
   return data;
 }
 export async function login(loginName: string, password: string): Promise<LoginResult> {

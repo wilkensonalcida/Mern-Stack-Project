@@ -1,4 +1,3 @@
-import PageLayout from './PageLayout'
 import { moveIcons } from '../game/itemArt'
 import '../game/Controller.css'
 
@@ -6,7 +5,6 @@ type TeamId = 'red' | 'blue'
 type Move = 'attack' | 'block' | 'heal'
 
 type PlayerLobbyProps = {
-  sessionCode: string
   player: { id: string; name: string }
   teams: {
     id: string
@@ -14,20 +12,23 @@ type PlayerLobbyProps = {
     players: { id: string; name: string }[]
   }[]
   onSelectTeam: (team: TeamId) => void
+  // While the phone's connection is down or it's rejoining, the status says so instead of waiting.
+  offline?: boolean
 }
 
 const moves: Move[] = ['attack', 'block', 'heal']
 const moveNames: Record<Move, string> = { attack: 'Attack', block: 'Block', heal: 'Heal' }
 // One line on what each button does, so players learn the controls while they wait.
 const moveHints: Record<Move, string> = {
-  attack: 'Hits the boss, or the other knight',
-  block: "Blocks the boss's hit, or shields your knight",
+  attack: 'Hits the enemy',
+  block: 'Blocks the next hit',
   heal: 'Heals your knight',
 }
-const teamButtons: Record<TeamId, string> = { red: 'btn-danger', blue: 'btn-primary' }
+const teamLabels: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' }
+const isTeam = (id: string): id is TeamId => id === 'red' || id === 'blue'
 
 // A player's phone in the lobby. The host's screen shows who joined.
-export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }: PlayerLobbyProps) {
+export default function PlayerLobby({ player, teams, onSelectTeam, offline = false }: PlayerLobbyProps) {
 
   // Team selection comes from the server's lobby state
   const teamId = teams.find((team) =>
@@ -42,60 +43,70 @@ export default function PlayerLobby({ sessionCode, player, teams, onSelectTeam }
 
   // Once a team is picked, the phone takes the team's color and shows its controls, locked until the game starts.
   if (teamId === 'red' || teamId === 'blue') {
-    const team = teams.find((entry) => entry.id === teamId)
     const other = teams.find((entry) => entry.id !== teamId)
     return (
       <div className={`controller-page team-${teamId}`}>
         <main className="controller">
           <header className="controller-header">
-            <h1 className="controller-team mb-0">{team?.name}</h1>
+            <h1 className="controller-team">{teamLabels[teamId]}</h1>
             <span className="controller-name">{player.name}</span>
           </header>
-          <p className="controller-status" role="status">Waiting for the host to start.</p>
-          <p className="text-center mb-0">Your buttons, which unlock when the game starts:</p>
+          <div className="controller-word" role="status">
+            {offline
+              ? <p className="controller-status is-offline">Reconnecting…</p>
+              : <>
+                  <p className="controller-status size-m">You're in</p>
+                  <p className="controller-note">Waiting for the host to start</p>
+                </>}
+          </div>
+          <p className="phone-note">Your buttons unlock when the game starts</p>
           <div className="controller-buttons">
             {moves.map((move) => (
               <div className={`controller-button controller-preview move-${move}`} key={move}>
-                <img src={moveIcons[move]} alt="" />
-                <span>
-                  <span className="controller-label">{moveNames[move]}</span>
+                <span className="controller-art"><img src={moveIcons[move]} alt="" /></span>
+                <span className="controller-label">
+                  {moveNames[move]}
                   <span className="controller-detail">{moveHints[move]}</span>
                 </span>
               </div>
             ))}
           </div>
-          {other && (
-            <button className="btn btn-outline-dark" type="button" onClick={() => selectTeam(other.id)}>
-              Switch to {other.name}
-            </button>
+          {other && isTeam(other.id) && (
+            <div className="phone-actions">
+              <button className={`phone-button is-outline to-${other.id}`} type="button" disabled={offline} onClick={() => selectTeam(other.id)}>
+                Switch to {teamLabels[other.id].toLowerCase()}
+              </button>
+            </div>
           )}
         </main>
       </div>
     )
   }
 
+  // Before a pick: one big tile per team, with who's already on it, under the heading alone.
+  // While the connection is down the tiles lock and say so, since a pick sent then would be lost.
   return (
-    <PageLayout>
-      <section className="card" aria-labelledby="lobby-heading">
-        <div className="card-body p-4">
-          <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
-            <h1 className="h4 card-title mb-0" id="lobby-heading">Choose a team</h1>
-            <span className="border rounded px-2 py-1 fw-semibold text-nowrap" aria-label={`Game code ${sessionCode}`}>{sessionCode}</span>
-          </div>
-          <div className="d-flex gap-2" role="group" aria-labelledby="lobby-heading">
-            {teams.map((team) => (
-              <button
-                className={`btn btn-lg flex-fill text-nowrap ${teamButtons[team.id as TeamId] ?? 'btn-dark'}`}
-                type="button"
-                onClick={() => selectTeam(team.id)}
-                key={team.id}
-              >
-                {team.name}
-              </button>
-            ))}
-          </div>
+    <div className="controller-page team-none">
+      <main className="controller">
+        <h1 className="phone-heading is-top" id="lobby-heading">Pick a team</h1>
+        {offline && <p className="phone-note" role="status">Reconnecting…</p>}
+        <div className="controller-buttons" role="group" aria-labelledby="lobby-heading">
+          {teams.filter((team) => isTeam(team.id)).map((team) => (
+            <button
+              className={`controller-button team-tile pick-${team.id}`}
+              type="button"
+              disabled={offline}
+              onClick={() => selectTeam(team.id)}
+              key={team.id}
+            >
+              <span className="controller-label">{teamLabels[team.id as TeamId]}</span>
+              <span className="controller-detail">
+                {team.players.length ? team.players.map((member) => member.name).join(', ') : 'Nobody yet'}
+              </span>
+            </button>
+          ))}
         </div>
-      </section>
-    </PageLayout>
+      </main>
+    </div>
   )
 }

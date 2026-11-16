@@ -1,0 +1,19 @@
+/* The logo: Alex's knight beside the game's name lettered in ink, centered at the top of a page. */
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  color: var(--ink);
+}
+/* The knight's frame leaves room above and in front of him, so it's pulled in to sit close to the name. */
+.logo canvas { flex: none; margin: -18px -15px -1px -3px; }
+.logo-name {
+  margin: 0;
+  padding-top: 3px;
+  font-family: var(--letters);
+  font-size: 30px;
+  line-height: 1;
+  white-space: nowrap;
+}

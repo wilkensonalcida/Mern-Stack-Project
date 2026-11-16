@@ -1,0 +1,78 @@
+/* The game's palette, lettering, and brush shapes, shared by the phones and the host's screen.
+   Alex's Canvas, drenched: a team's dry brush paint fills the ground, each move keeps one paint,
+   and ink and lettering sit on top, the way her drawings sit on painted grounds in her sheets. */
+.controller-page,
+.host-page,
+.account-page {
+  --canvas: #fbfaf8;
+  --ink: #1b1714;
+  --cream: #fffaf2;
+  --muted: #5b524b;
+  /* The thin warm line around a plain field or checkbox, 3.7:1 on the canvas. */
+  --line: #8a7f77;
+  /* Team paints, from Alex's drawings: the red of her potion and a slate blue. */
+  --red: #b24f37;
+  --blue: #4b6584;
+  /* One paint per move, each from Alex's drawings: the heated blade's orange, the sword's steel, and the Goblin's green. */
+  --attack: #bc6940;
+  --block: #4b5761;
+  --heal: #799766;
+  /* Health bars take the red of Alex's potion. */
+  --health: #a73f26;
+  --error: #a73f26;
+  --team: var(--ink);
+  --letters: 'Caveat Brush', 'Patrick Hand', cursive;
+  --text: 'Patrick Hand', 'Caveat Brush', cursive;
+  /* The brush shapes, rendered once as images so phones never filter them live: Alex's grain to lay
+     over a paint, a swatch with her dry brush edge, a torn scrap of white canvas, and one brush stroke. */
+  --grain: url('../assets/art/grain.webp');
+  --swatch-mask: url('../assets/art/swatch.webp');
+  --scrap-mask: url('../assets/art/scrap.webp');
+  --stroke-mask: url('../assets/art/stroke.webp');
+  /* Two more of each shape, so neighbours never share an edge. */
+  --swatch-mask-2: url('../assets/art/swatch-2.webp');
+  --swatch-mask-3: url('../assets/art/swatch-3.webp');
+  --scrap-mask-2: url('../assets/art/scrap-2.webp');
+  --scrap-mask-3: url('../assets/art/scrap-3.webp');
+  --stroke-mask-2: url('../assets/art/stroke-2.webp');
+  --stroke-mask-3: url('../assets/art/stroke-3.webp');
+  /* Alex's ink line, drawn by hand: a cream dab outlined in ink for counts, a cream loop around a pick,
+     and an ink frame that any box can wear as a nine-sliced border image. */
+  --dab: url('../assets/art/dab.webp');
+  --loop: url('../assets/art/loop.webp');
+  --frame: url('../assets/art/frame.webp');
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--text);
+  font-weight: 400;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Anything inside takes its team's paint, or ink before a team is picked. */
+.team-red { --team: var(--red); }
+.team-blue { --team: var(--blue); }
+.team-none { --team: var(--ink); }
+
+/* One paint per move. --move is the same paint under the name the host's stage reads. */
+.move-attack { --paint: var(--attack); --move: var(--attack); }
+.move-block { --paint: var(--block); --move: var(--block); }
+.move-heal { --paint: var(--heal); --move: var(--heal); }
+
+/* The brush shapes as classes. Each takes its color from --paint, and a swatch lays the grain over it.
+   Pseudo-elements use the same variables directly. */
+.paint-swatch {
+  background: var(--grain) center / cover, var(--paint, var(--team));
+  -webkit-mask: var(--swatch-mask) center / 100% 100% no-repeat;
+  mask: var(--swatch-mask) center / 100% 100% no-repeat;
+}
+.canvas-scrap {
+  background: var(--canvas);
+  -webkit-mask: var(--scrap-mask) center / 100% 100% no-repeat;
+  mask: var(--scrap-mask) center / 100% 100% no-repeat;
+}
+.brush-stroke {
+  background: var(--paint, var(--cream));
+  -webkit-mask: var(--stroke-mask) center / 100% 100% no-repeat;
+  mask: var(--stroke-mask) center / 100% 100% no-repeat;
+}
