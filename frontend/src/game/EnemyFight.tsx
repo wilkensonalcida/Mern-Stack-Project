@@ -159,9 +159,10 @@ function BossStage({ view, other, clock, countdown, mirrored, sharedCount }: Sta
           {/* The boss stays standing over a knight it knocked out. */}
           {(view.phase === 'combat' || view.phase === 'failed') && enemy && (
             <Fighter label={enemy.name} hp={enemy.hp} maxHp={enemy.maxHp} boss>
+              {/* Alex drew both bosses facing left, toward red's knight, so blue's half flips them to face its own. */}
               {view.stage === 0
-                ? <Goblin animation={animation.foe} mirrored={!mirrored} size={spriteSize} />
-                : <Skeleton animation={animation.foe} mirrored={!mirrored} size={spriteSize} />}
+                ? <Goblin animation={animation.foe} mirrored={mirrored} size={spriteSize} />
+                : <Skeleton animation={animation.foe} mirrored={mirrored} size={spriteSize} />}
             </Fighter>
           )}
           {voting && view.vote && <VoteOffers vote={view.vote} />}
