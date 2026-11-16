@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { HostBossFights } from '../game/EnemyFight'
 import TeamFight from '../game/TeamFight'
 import HostResults from '../game/HostResults'
-import { HostFrame, HostMessage } from '../game/HostFrame'
+import { EndButton, HostFrame, HostMessage } from '../game/HostFrame'
 import type { GameResult, HostBossState } from '../game/enemyTypes'
 
 import type {
@@ -33,6 +33,8 @@ export default function HostPage() {
     function onUpdate(updatedLobby: Lobby) {
       if(updatedLobby.code === code) {
         setLobby(updatedLobby)
+        // A refused start's reason is stale once the lobby changes.
+        setError("")
       }
     }
 
@@ -136,6 +138,20 @@ export default function HostPage() {
     navigate('/')
   }
 
+  // Puts a guest who's still picking onto the smaller team, so one idle phone can't hold up the start.
+  function placePlayer(playerId: string) {
+    if (!lobby) return
+    const red = lobby.players.filter(p => p.team === "red").length
+    const blue = lobby.players.filter(p => p.team === "blue").length
+    socket.timeout(5000).emit(
+      "game:assign",
+      { code: lobby.code, playerId, team: red <= blue ? "red" : "blue" },
+      (err: Error | null, response: { success: boolean, error?: string }) => {
+        if (err || !response?.success) setError(response?.error || "Unable to place that player.")
+      }
+    )
+  }
+
   // After the game, the host leaves without ending the lobby, so the players keep their results.
   function backToDashboard() {
     setError("")
@@ -177,7 +193,7 @@ export default function HostPage() {
       return <HostResults result={result} lobby={lobby} error={error} onNewGame={backToDashboard} />
     }
     return (
-      <HostFrame action={<button className="host-bar-button" type="button" onClick={cancelGame}>End game</button>}>
+      <HostFrame action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={cancelGame} />}>
         <main className="host-message" role="status">
           <h1>Loading the game…</h1>
           <p className="host-muted mb-0">Game code {lobby.code}</p>
@@ -200,6 +216,14 @@ export default function HostPage() {
   const isHost = lobby.hostId === socket.id
 
   const canStart = !starting &&  isHost && redPlayers.length > 0 && bluePlayers.length > 0 && unassignedPlayers.length === 0;
+  // What Start game is waiting for, so the host can tell the room.
+  const waitingFor =
+    playerCount === 0 ? "Waiting for players to join"
+    : unassignedPlayers.length === 1 ? `Waiting for ${unassignedPlayers[0].name} to pick a team`
+    : unassignedPlayers.length > 1 ? `Waiting for ${unassignedPlayers.length} players to pick a team`
+    : redPlayers.length === 0 ? "Red team needs a player"
+    : bluePlayers.length === 0 ? "Blue team needs a player"
+    : null
   
   function renderTeam(
     teamId: TeamId,
@@ -224,7 +248,7 @@ export default function HostPage() {
   }
 
   return (
-    <HostFrame action={<button className="host-bar-button" type="button" onClick={cancelGame} disabled={!isHost}>Cancel match</button>}>
+    <HostFrame action={<EndButton label="Cancel match" confirmLabel="Cancel for everyone?" onConfirm={cancelGame} disabled={!isHost} />}>
       <main className="host-lobby">
         <section className="host-card host-join" aria-labelledby="code-heading">
           {/* Where to join sits at the left and the QR code at the right, so the code stays in the middle. */}
@@ -246,9 +270,13 @@ export default function HostPage() {
           {/* Players who just joined wait here until they pick a team. */}
           {unassignedPlayers.length > 0 && (
             <div className="host-waiting">
-              <p>Picking a team:</p>
+              <p>Picking a team. Click a name to put them on the smaller team:</p>
               <ul className="host-chips" aria-label="Picking a team">
-                {unassignedPlayers.map(player => <li className="host-chip" key={player.id}>{player.name}</li>)}
+                {unassignedPlayers.map(player => (
+                  <li key={player.id}>
+                    <button className="host-chip" type="button" onClick={() => placePlayer(player.id)}>{player.name}</button>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -261,6 +289,9 @@ export default function HostPage() {
 
       {/* Stays at the bottom of the screen: the player count and Start game. */}
       <footer className="host-footer">
+        {error
+          ? <p className="host-footer-note is-error" role="alert">{error}</p>
+          : waitingFor && <p className="host-footer-note" role="status">{waitingFor}</p>}
         <span className="host-count" role="status">
           {playerCount} {playerCount === 1 ? 'player' : 'players'}
         </span>

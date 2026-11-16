@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { Move, TeamId } from './enemyTypes';
 import './Host.css';
 
@@ -21,6 +21,31 @@ export function HostFrame({ action, children }: HostFrameProps) {
       </header>
       {children}
     </div>
+  );
+}
+
+type EndButtonProps = {
+  label: string;
+  // What the pill asks once armed, such as "End for everyone?".
+  confirmLabel: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+};
+
+// The host bar's one control ends the game on every phone, so it takes two clicks:
+// the first arms it for 3 seconds, and the second ends the game.
+export function EndButton({ label, confirmLabel, onConfirm, disabled }: EndButtonProps) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const timeout = window.setTimeout(() => setArmed(false), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [armed]);
+  return (
+    <button className={`host-bar-button ${armed ? 'is-armed' : ''}`} type="button" disabled={disabled}
+      onClick={() => (armed ? onConfirm() : setArmed(true))}>
+      {armed ? confirmLabel : label}
+    </button>
   );
 }
 

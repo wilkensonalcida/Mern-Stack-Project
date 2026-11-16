@@ -33,6 +33,9 @@
 }
 .host-bar-button:hover { background: #374151; }
 .host-bar-button:disabled { border-color: #9ca3af; color: #9ca3af; background: transparent; }
+/* Armed by a first click: one more ends the game on every phone. */
+.host-bar-button.is-armed,
+.host-bar-button.is-armed:hover { background: var(--error); }
 .host-bar-button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
 .host-muted { color: var(--muted); }
@@ -167,6 +170,15 @@
   font-weight: 600;
 }
 .host-team .host-chip { color: var(--team-deep); box-shadow: inset 0 0 0 2px var(--team); }
+/* A guest still picking, whom the host can click to place on the smaller team. */
+button.host-chip {
+  border: 0;
+  color: var(--ink);
+  font-family: inherit;
+  cursor: pointer;
+}
+button.host-chip:hover { box-shadow: inset 0 0 0 2px var(--ink); }
+button.host-chip:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
 .host-empty { margin: 0; padding: 20px 22px 24px; font-size: 22px; color: var(--muted); }
 .host-footer {
   position: fixed;
@@ -182,6 +194,9 @@
   box-shadow: 0 -2px 0 var(--track);
 }
 .host-count { font-size: 22px; font-weight: 600; color: var(--muted); }
+/* Why Start game is off, or why the server refused it. */
+.host-footer-note { margin: 0; font-size: 22px; font-weight: 700; color: var(--ink); }
+.host-footer-note.is-error { color: var(--error); }
 
 /* One message, such as while the lobby loads. */
 .host-message {

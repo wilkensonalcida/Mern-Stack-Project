@@ -251,6 +251,30 @@ function registerLobbySockets(io) {
       console.info("[TEAM]", { code, playerId: socket.id, team });
     });
 
+    // PLACE A PLAYER — the host puts a guest who's still picking onto a team,
+    // so one idle phone can't hold up the start.
+    socket.on("game:assign", (data, callback) => {
+      const lobby = lobbies.get(normalizeCode(data?.code));
+      if (!lobby || lobby.hostId !== socket.id) {
+        return reply(callback, { success: false, error: "Only the host can place players." });
+      }
+      if (lobby.status !== "waiting") {
+        return reply(callback, { success: false, error: "Game has already started." });
+      }
+      if (data?.team !== "red" && data?.team !== "blue") {
+        return reply(callback, { success: false, error: "Invalid team." });
+      }
+      const player = lobby.players.find((member) => member.id === data?.playerId);
+      if (!player) {
+        return reply(callback, { success: false, error: "Player not found in lobby." });
+      }
+
+      player.team = data.team;
+      io.to(lobby.code).emit("game:updated", publicLobby(lobby));
+      reply(callback, { success: true });
+      console.info("[TEAM PLACED]", { code: lobby.code, playerId: player.id, team: data.team });
+    });
+
     // START GAME — unchanged frontend contract. Initialize PvE first;
     // later PvE calls the onPvpReady callback above to start PvP.
     // The team checks cover only the guests, since the host isn't in players.

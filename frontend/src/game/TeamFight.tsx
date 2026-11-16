@@ -4,7 +4,7 @@ import type { TeamId } from './enemyTypes';
 import type { PvpState, PvpStateAck } from './pvpTypes';
 import Knight, { type KnightAnimation } from './Knight';
 import { describeTurn } from './pvpText';
-import { HostFrame, HostMessage, TapCounts, formatAmount, formatHp } from './HostFrame';
+import { EndButton, HostFrame, HostMessage, TapCounts, formatAmount, formatHp } from './HostFrame';
 
 const teamNames: Record<TeamId, string> = { red: 'Red team', blue: 'Blue team' };
 const otherTeam = (team: TeamId): TeamId => (team === 'red' ? 'blue' : 'red');
@@ -101,7 +101,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
     : null;
 
   return (
-    <HostFrame action={<button className="host-bar-button" type="button" onClick={onEndGame}>End game</button>}>
+    <HostFrame action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
       <main className="stage-pvp">
         <div className="pvp-board">
           {teamScore('red')}

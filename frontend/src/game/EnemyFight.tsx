@@ -5,7 +5,7 @@ import Skeleton from './Skeleton';
 import type { EnemyAnimation } from './AnimateEnemy';
 import type { HostBossState, HostTeamView, RoundResult, TeamId, TeamVote } from './enemyTypes';
 import { itemIcons } from './itemArt';
-import { HostFrame, TapCounts, formatAmount, formatHp } from './HostFrame';
+import { EndButton, HostFrame, TapCounts, formatAmount, formatHp } from './HostFrame';
 
 // After each round, the knight swings if its team attacked and the enemy flinches, or the enemy attacks.
 function useRoundAnimation(stage: number | undefined, lastRound: RoundResult | null | undefined) {
@@ -190,7 +190,7 @@ export function HostBossFights({ state, receivedAt, onEndGame }: HostBossFightsP
   };
 
   return (
-    <HostFrame action={<button className="host-bar-button" type="button" onClick={onEndGame}>End game</button>}>
+    <HostFrame action={<EndButton label="End game" confirmLabel="End for everyone?" onConfirm={onEndGame} />}>
       <main className="stage-split">
         <h1 className="visually-hidden">Boss fights, session {state.code}</h1>
         <BossStage view={state.teams.red} other="blue" secondsLeft={secondsLeft(state.teams.red)}
