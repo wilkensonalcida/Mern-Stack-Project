@@ -20,8 +20,16 @@ export default function PlayPage() {
   const [lobby, setLobby] = useState<Lobby | null>(null);
   const [result, setResult] = useState<GameResult | null>(null);
   const [cancelled, setCancelled] = useState(false);
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [leaveError, setLeaveError] = useState('');
   const [currentSocketId, setCurrentSocketId] = useState<string | null>(socket.id ?? null);
+  // Who this phone played as, kept once known. A phone that reconnects, such as after sleeping on its
+  // result, comes back as a new connection the lobby doesn't list, and its result should stay as it was.
+  const [self, setSelf] = useState<{ name: string; team: TeamId } | null>(null);
+  useEffect(() => {
+    const mine = lobby?.players.find(player => player.id === currentSocketId);
+    if (mine?.team) setSelf({ name: mine.name, team: mine.team });
+  }, [lobby, currentSocketId]);
 
   const onFinished = useCallback((data: GameResult) => {
     if (data.code !== normalizedCode) return;
@@ -45,7 +53,7 @@ export default function PlayPage() {
           response: { success: boolean; error?: string }
         ) => {
           if (err || !response?.success) {
-            setError(response?.error || "Unable to leave game.");
+            setLeaveError(response?.error || "Unable to leave game.");
             return;
           }
 
@@ -63,10 +71,10 @@ export default function PlayPage() {
         (err: Error | null, reply: LobbyAck) => {
           if (!mounted) return;
           if (err || !reply?.success || !reply.lobby) {
-            setError(reply?.error || 'Unable to load game lobby.');
+            setLoadError(reply?.error || 'Unable to load game lobby.');
           } else {
             setLobby(reply.lobby);
-            setError('');
+            setLoadError('');
           }
         });
       for (const event of ['game:result:get', 'game:pvp:result:get']) {
@@ -101,8 +109,7 @@ export default function PlayPage() {
   }
   if (result) {
     // The phone fills with its team's color, with its knight in a spotlight and one verdict.
-    const mine = lobby?.players.find(player => player.id === currentSocketId);
-    const myTeam = mine?.team ?? null;
+    const myTeam = self?.team ?? null;
     const myTaps = myTeam && result.totals
       ? result.totals[myTeam].attack + result.totals[myTeam].block + result.totals[myTeam].heal
       : null;
@@ -113,7 +120,7 @@ export default function PlayPage() {
     return (
       <div className={`controller-page team-${shown} is-result`}>
         <main className="controller result-screen">
-          <p className="result-who">{mine && myTeam ? `${mine.name}, ${teamName(myTeam)}` : 'Fight Me Bro'}</p>
+          <p className="result-who">{self ? `${self.name}, ${teamName(self.team)}` : 'Fight Me Bro'}</p>
           <div className="result-spot">
             <Knight animation={myTeam === null || won ? 'victory' : 'idle'} team={shown} mirrored={shown === 'blue'}
               label={`${teamName(shown)}'s knight`} size="82%" />
@@ -124,7 +131,7 @@ export default function PlayPage() {
               {won ? '' : 'Good fight. '}{teamName(myTeam)} tapped <strong>{myTaps}</strong> {myTaps === 1 ? 'time' : 'times'}
             </p>
           )}
-          {error && <p className="controller-error" role="alert">{error}</p>}
+          {leaveError && <p className="controller-error" role="alert">{leaveError}</p>}
           <div className="phone-actions">
             <button className="phone-button is-light" type="button" onClick={() => leaveGame('/join')}>Join another game</button>
           </div>
@@ -132,7 +139,7 @@ export default function PlayPage() {
       </div>
     );
   }
-  if (error && !lobby) return <PhoneMessage title={error} live="alert" action={joinLink('Join a game')} />;
+  if (loadError && !lobby) return <PhoneMessage title={loadError} live="alert" action={joinLink('Join a game')} />;
   if (!lobby) return <PhoneMessage title="Loading the game…" live="status" />;
 
   // A phone whose connection dropped comes back as a new connection, which the game doesn't know.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 // Imported from where Alex keeps her sprites, so the build includes the sheet, and a missing sheet fails the build.
 import knightSheet from '../../sprites/playersheet.png'
 // Alex's same knight in the blue team's cape and plume, drawn on the same frames.
@@ -30,7 +30,8 @@ type KnightProps = {
 // Draws one knight from Alex's sheet and plays the animation the fight asks for.
 export default function Knight({ animation, mirrored = false, label, size, team = 'red' }: KnightProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [sprite] = useState(() => new Sprite(team === 'blue' ? blueKnightSheet : knightSheet, FRAME_SIZE, FRAME_SIZE, animations))
+  // A knight whose team changes, such as on a phone's result, redraws from the other sheet.
+  const sprite = useMemo(() => new Sprite(team === 'blue' ? blueKnightSheet : knightSheet, FRAME_SIZE, FRAME_SIZE, animations), [team])
 
   // An attack plays once, then the sprite goes back to idle on its own.
   useEffect(() => {
