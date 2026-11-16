@@ -84,15 +84,18 @@ export default function PlayerLobby({ player, teams, onSelectTeam, offline = fal
   }
 
   // Before a pick: one big tile per team, with who's already on it, under the heading alone.
+  // While the connection is down the tiles lock and say so, since a pick sent then would be lost.
   return (
     <div className="controller-page team-none">
       <main className="controller">
         <h1 className="phone-heading is-top" id="lobby-heading">Pick a team</h1>
+        {offline && <p className="phone-note" role="status">Reconnecting…</p>}
         <div className="controller-buttons" role="group" aria-labelledby="lobby-heading">
           {teams.filter((team) => isTeam(team.id)).map((team) => (
             <button
               className={`controller-button team-tile pick-${team.id}`}
               type="button"
+              disabled={offline}
               onClick={() => selectTeam(team.id)}
               key={team.id}
             >
