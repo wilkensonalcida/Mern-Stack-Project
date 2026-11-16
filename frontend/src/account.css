@@ -32,7 +32,7 @@
 .account-brand-name {
   margin: 0;
   font-family: var(--letters);
-  font-size: clamp(42px, 11vw, 62px);
+  font-size: clamp(42px, 11vw, 56px);
   line-height: 1;
   white-space: nowrap;
 }
@@ -91,13 +91,11 @@
   width: 28px;
   height: 28px;
   margin: 0;
-  border: 7px solid transparent;
-  border-image: var(--frame) 24 / 14px / 0 stretch;
-  border-radius: 0;
+  border: 3px solid var(--ink);
+  border-radius: 3px 5px 2px 4px;
   background-color: #fff;
-  background-clip: padding-box;
 }
-.account-page .form-check-input:checked { background-color: var(--ink); border-color: transparent; }
+.account-page .form-check-input:checked { background-color: var(--ink); border-color: var(--ink); }
 .account-page .form-check-input:focus { box-shadow: none; outline: 3px solid var(--red); outline-offset: 2px; }
 
 /* The main button is a swatch of ink lettered in cream, and the second is an inked outline. */
@@ -185,4 +183,9 @@
   .account-page h2,
   .account-page .card-title { margin-bottom: 6px; }
   .account-page .my-3 { margin-top: 8px !important; margin-bottom: 8px !important; }
+}
+
+/* From tablet width up, the banner reaches past the form's column, so the whole name fits beside the knight. */
+@media (min-width: 768px) {
+  .account-brand { margin-left: -48px; margin-right: -48px; }
 }

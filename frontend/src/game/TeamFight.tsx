@@ -85,7 +85,7 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
         <h2 className="pvp-team-name" id={`${team}-score`}>{teamNames[team]}</h2>
         <div className="pvp-hp" role="progressbar" aria-label={`${teamNames[team]}'s knight's health`}
           aria-valuenow={knight.hp} aria-valuemin={0} aria-valuemax={knight.maxHp}>
-          <div style={{ width: `${(100 * knight.hp) / knight.maxHp}%` }} />
+          <div style={{ width: `${(100 * knight.hp) / knight.maxHp}%`, '--hp': knight.hp / knight.maxHp } as CSSProperties} />
         </div>
         <p className="pvp-hp-row">
           <span className="stage-plate-value">{formatHp(knight.hp)} / {knight.maxHp} HP</span>

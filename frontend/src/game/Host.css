@@ -564,7 +564,7 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: clamp(118px, 10vw, 158px);
+  width: clamp(124px, 10.5vw, 160px);
 }
 .stage-offer-tile {
   position: relative;
@@ -577,7 +577,7 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   gap: 4px;
   width: 100%;
   min-height: clamp(170px, 30vh, 290px);
-  padding: 16px 12px 18px;
+  padding: 16px 10px 26px;
   color: var(--cream);
   text-align: center;
 }
@@ -608,7 +608,7 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
 }
 .stage-offer-art img { width: 100%; height: 100%; object-fit: contain; }
 .stage-offer-name { margin-top: 2px; font-family: var(--letters); font-size: clamp(26px, 2.1vw, 32px); line-height: 1; }
-.stage-offer-effect { font-size: clamp(24px, 1.8vw, 26px); }
+.stage-offer-effect { font-size: clamp(24px, 1.8vw, 26px); white-space: nowrap; }
 .stage-offer .stage-plate { display: flex; justify-content: center; }
 .stage-offer-votes {
   align-self: flex-start;
@@ -637,15 +637,15 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
 .stage-offer.is-faded { opacity: 0.42; }
 .stage-offer.is-faded .stage-offer-tile::after { filter: grayscale(1) brightness(0.85); }
 .stage-offer.is-faded img { filter: grayscale(1); }
-.stage.is-voting .stage-fighter { min-width: 190px; }
+.stage.is-voting .stage-fighter { min-width: 150px; }
 /* A voting knight's plate is narrow, so it keeps only its HP. */
 .stage.is-voting .stage-plate-label { justify-content: center; }
 .stage.is-voting .stage-plate-label > span:first-child { display: none; }
-.stage.is-voting .stage-floor { gap: 14px; }
+.stage.is-voting .stage-floor { gap: 10px; padding: 0 16px; }
 
 /* PvP: one shared arena under a scoreboard, with the knights facing each other at stage size. */
 .stage-pvp {
-  --sprite: clamp(200px, min(24vw, 40vh), 380px);
+  --sprite: clamp(200px, min(28vw, 46vh), 420px);
   --floor: clamp(30px, 5vh, 48px);
   flex: 1;
   display: flex;
@@ -683,15 +683,32 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   font-weight: 400;
   line-height: 1;
 }
+/* PvP health sits on its team's own paint, so it carries an ink edge all round: a cream track, and the red
+   fill inside it keeps the stroke's brush shape at any length. --hp is the share of HP left, set by the page. */
+@property --hp { syntax: '<number>'; inherits: true; initial-value: 1; }
 .pvp-hp {
-  height: 28px;
+  position: relative;
+  height: 26px;
   margin-top: 12px;
+  filter: drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink)) drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink));
+}
+.pvp-hp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: var(--cream);
   -webkit-mask: var(--stroke-mask) center / 100% 100% no-repeat;
   mask: var(--stroke-mask) center / 100% 100% no-repeat;
 }
-.pvp-team.team-blue .pvp-hp { -webkit-mask-image: var(--stroke-mask-3); mask-image: var(--stroke-mask-3); }
-.pvp-hp > div { height: 100%; background: var(--health); }
+.pvp-hp > div {
+  position: relative;
+  height: 100%;
+  background: var(--health);
+  -webkit-mask: var(--stroke-mask) left center / calc(100% / max(var(--hp), 0.01)) 100% no-repeat;
+  mask: var(--stroke-mask) left center / calc(100% / max(var(--hp), 0.01)) 100% no-repeat;
+}
+.pvp-team.team-blue .pvp-hp::before,
+.pvp-team.team-blue .pvp-hp > div { -webkit-mask-image: var(--stroke-mask-3); mask-image: var(--stroke-mask-3); }
 .pvp-hp-row {
   display: flex;
   align-items: center;
@@ -837,7 +854,7 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
   .stage-spotlight { animation: stage-rise 600ms cubic-bezier(0.16, 1, 0.3, 1); }
   .stage-results h1 { animation: stage-pop 520ms cubic-bezier(0.16, 1, 0.3, 1); }
   /* The final blow: HP drains, and once the winner's swing lands, the loser falls backward and fades. */
-  .pvp-hp > div { transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .pvp-hp > div { transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1), --hp 600ms cubic-bezier(0.16, 1, 0.3, 1); }
   .stage-fighter.is-knocked-out canvas {
     transform-origin: 50% 96%;
     animation: stage-knockout 700ms 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -883,8 +900,12 @@ button.host-chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 
 /* The projector carries the fight, so on a screen tall enough the fighters grow from their feet
    into the space under the taps, past the width two of them get side by side. */
 .stage-fighter canvas { transform-origin: 50% 100%; scale: var(--fighter-scale, 1); }
+@media (min-height: 680px) {
+  .stage { --fighter-scale: 1.15; }
+  .stage-pvp { --fighter-scale: 1.1; }
+}
 @media (min-height: 800px) {
   .stage { --fighter-scale: 1.28; }
-  .stage.is-voting { --fighter-scale: 1; }
   .stage-pvp { --fighter-scale: 1.18; }
 }
+.stage.is-voting { --fighter-scale: 1; }
