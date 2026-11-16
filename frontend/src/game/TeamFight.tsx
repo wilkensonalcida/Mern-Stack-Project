@@ -55,7 +55,8 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
 
   if (!pvp) return <HostMessage title={error || 'Loading PvP…'} live={error ? 'alert' : 'status'} />;
   const { state } = pvp;
-  const seconds = state.endsAt === null ? null : Math.max(0, (state.remainingMs - (now - pvp.at)) / 1000);
+  // The clock ticks every 100 ms, so it can trail a state that just arrived; a negative wait would add a second.
+  const seconds = state.endsAt === null ? null : Math.max(0, (state.remainingMs - Math.max(0, now - pvp.at)) / 1000);
   const heading = state.winner ? `${teamNames[state.winner]} wins!`
     : state.phase === 'flip' ? 'Coin flip'
     : state.phase === 'pause' ? `${teamNames[otherTeam(state.turn)]} is up next`
@@ -91,9 +92,12 @@ export default function TeamFight({ code, onEndGame }: TeamFightProps) {
     );
   }
 
-  // The big line across the arena: who goes first, or who won.
+  // The big line across the arena, which the room watches: who goes first, the team that taps now,
+  // the seconds until the next team's turn, or who won.
   const moment = state.winner ? `${teamNames[state.winner]} wins!`
     : state.phase === 'flip' ? `${teamNames[state.turn]} goes first!`
+    : state.phase === 'turn' ? `${teamNames[state.turn]}, tap!`
+    : state.phase === 'pause' && seconds !== null ? String(Math.max(1, Math.ceil(seconds)))
     : null;
 
   return (

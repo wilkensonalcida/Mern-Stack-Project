@@ -86,24 +86,28 @@ function VoteOffers({ vote }: { vote: TeamVote }) {
   );
 }
 
-// The big line across the top of the arena: the fight's state, or the boss going down,
-// with what's next under it.
-function stageHeadline(view: HostTeamView, other: TeamId): { line: string; next: string | null } {
+// The big line across the top of the arena, with what's next under it. The room watches this screen,
+// so the seconds before a tap window count down, and the window itself says "Tap!".
+function stageHeadline(view: HostTeamView, other: TeamId, countdown: number | undefined): { line: string; next: string | null } {
   if (view.phase === 'waiting') {
     return { line: `${view.enemy?.name ?? 'Boss'} down!`, next: `Waiting for ${teamNames[other].toLowerCase()}` };
+  }
+  if (view.phase === 'combat') {
+    if (view.endsAt !== null) return { line: 'Tap!', next: `Round ${view.round}` };
+    return { line: countdown !== undefined ? String(countdown) : 'Get ready', next: `Round ${view.round + 1}` };
   }
   return { line: columnStatus(view, other), next: null };
 }
 
-type StageProps = { view: HostTeamView; other: TeamId; secondsLeft: number | null; mirrored: boolean };
+type StageProps = { view: HostTeamView; other: TeamId; secondsLeft: number | null; countdown: number | undefined; mirrored: boolean };
 
 // One team's boss fight on the host's stage. Blue's half is red's mirrored,
 // so each knight stands on its own team's side and the bosses meet in the middle.
-function BossStage({ view, other, secondsLeft, mirrored }: StageProps) {
+function BossStage({ view, other, secondsLeft, countdown, mirrored }: StageProps) {
   const animation = useRoundAnimation(view.stage, view.lastRound);
   const bossDown = view.phase === 'waiting' || view.phase === 'selection' || view.phase === 'ready';
   const voting = view.phase === 'selection' && Boolean(view.vote);
-  const headline = stageHeadline(view, other);
+  const headline = stageHeadline(view, other, countdown);
   const { knight, enemy, lastRound } = view;
   const windowOpen = view.phase === 'combat' && view.endsAt !== null;
   const showResult = lastRound !== null && lastRound !== undefined && !windowOpen && view.phase !== 'selection';
@@ -177,13 +181,22 @@ export function HostBossFights({ state, receivedAt, onEndGame }: HostBossFightsP
       : null;
     return remaining === null ? null : Math.max(0, (remaining - (now - receivedAt)) / 1000);
   };
+  // Whole seconds until a team's next tap window opens, while one is waiting to. It holds at 1
+  // until the window's state arrives, so the count never jumps back to "Get ready". The clock ticks
+  // every 100 ms and can trail a state that just arrived, so a negative wait counts as none.
+  const countdown = (view: HostTeamView) => {
+    if (view.phase !== 'combat' || view.endsAt !== null || view.nextRoundInMs <= 0) return undefined;
+    return Math.max(1, Math.ceil((view.nextRoundInMs - Math.max(0, now - receivedAt)) / 1000));
+  };
 
   return (
     <HostFrame action={<button className="host-bar-button" type="button" onClick={onEndGame}>End game</button>}>
       <main className="stage-split">
         <h1 className="visually-hidden">Boss fights, session {state.code}</h1>
-        <BossStage view={state.teams.red} other="blue" secondsLeft={secondsLeft(state.teams.red)} mirrored={false} />
-        <BossStage view={state.teams.blue} other="red" secondsLeft={secondsLeft(state.teams.blue)} mirrored />
+        <BossStage view={state.teams.red} other="blue" secondsLeft={secondsLeft(state.teams.red)}
+          countdown={countdown(state.teams.red)} mirrored={false} />
+        <BossStage view={state.teams.blue} other="red" secondsLeft={secondsLeft(state.teams.blue)}
+          countdown={countdown(state.teams.blue)} mirrored />
       </main>
     </HostFrame>
   );
