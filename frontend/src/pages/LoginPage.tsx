@@ -4,7 +4,7 @@ import { AuthError, login, type LoginResult } from '../api/auth'
 import OrDivider from '../components/OrDivider'
 import PageLayout from '../components/PageLayout'
 import VerifyWait from '../components/VerifyWait'
-import logo from '.../sprites/items/logo.png'
+import logo from '../../sprites/items/logo.png'
 
 type Waiting = { loginName: string; password: string; remember: boolean }
 
