@@ -4,6 +4,7 @@ import { AuthError, login, type LoginResult } from '../api/auth'
 import OrDivider from '../components/OrDivider'
 import PageLayout from '../components/PageLayout'
 import VerifyWait from '../components/VerifyWait'
+import logo from '.../sprites/items/logo.png'
 
 type Waiting = { loginName: string; password: string; remember: boolean }
 
@@ -42,6 +43,7 @@ export default function LoginPage({ onLogin }: { onLogin: (result: LoginResult, 
   return (
     <PageLayout>
       <section className="card" aria-labelledby="host-heading">
+        <img src={logo} alt="Fight Me Bro!" width={400} height= {400}/>
         <div className="card-body p-4">
           <h1 className="h4 card-title" id="host-heading">Host a game</h1>
           <p className="text-body-secondary">You need an account to host.</p>
